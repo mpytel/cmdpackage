@@ -1,0 +1,33 @@
+[project]
+name = "cmdpackage"
+version = "0.1.0"
+description = "Automated python package generator for CLI function calls"
+readme = "README.md"
+license-files = ["LICEN[CS]E*"]
+authors = [
+{name = "mpytel", email = "mpytel@domain.com"}
+]
+maintainers = [
+{name = "mpytel", email = "mpytel@domain.com"}
+]
+
+classifiers=[
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+    ]
+
+[project.urls]
+"Homepage" = "https://github.com/mpytel/cmdpackage"
+"Bug Tracker" = "https://github.com/mpytel/cmdpackage/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+[tool.setuptools.package-dir]
+cmdpackage = "src"
+
+[project.scripts]
+cmdpackage = "src:main"
