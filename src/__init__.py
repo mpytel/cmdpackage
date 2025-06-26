@@ -71,24 +71,3 @@ def ensure_and_cd_to_directory(target_dir_name: str) -> bool:
         print(
             f"Error: Could not process directory '{target_dir_name}'. Reason: {e}")
         return False
-def count_files_in_directory(directory_path: Path) -> int:
-    """
-    Counts the number of regular files directly within a specified directory.
-
-    Args:
-        directory_path: A pathlib.Path object representing the directory.
-
-    Returns:
-        The total number of files in the directory. Returns 0 if the path
-        is not a directory or doesn't exist.
-    """
-    if not directory_path.is_dir():
-        # Handle cases where the path doesn't exist or isn't a directory
-        print(f"Warning: '{directory_path}' is not a directory or does not exist.")
-        return 0
-
-    file_count = 0
-    for item in directory_path.iterdir():
-        if item.is_file():
-            file_count += 1
-    return file_count
