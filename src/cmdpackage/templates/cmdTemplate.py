@@ -77,8 +77,8 @@ def ${defName}(argParse):
     theArgNames = list(commands[theCmd].keys())
     theArgs = args.arguments
     argIndex = 0
-    intOnly = True
-    printIt("Modify default behavour in ${packName}/commands/${defName}.py", lable.DEBUG)
+    nonCmdArg = True
+    printIt("Modify default behavour in $src/{packName}/commands/${defName}.py", lable.DEBUG)
     # delete place holder code bellow that loops though arguments provided
     # when this command is called when not needed.
     # Note: that function having a name that is entered as an argument part
@@ -86,10 +86,13 @@ def ${defName}(argParse):
     while argIndex < len(theArgs):
         anArg = theArgs[argIndex]
         if anArg in commands[theCmd]:
-            intOnly = False
+            nonCmdArg = False
             exec(f"{anArg}(argParse)")
-        elif intOnly: # starts out with intergr
-            printIt(f"{theArgNames[argIndex+1]}: {anArg}",lable.INFO)
+        elif nonCmdArg:  # not a know aregument for this {packName} {defName} command
+            if len(theArgNames) > 1:
+                printIt(f"{theArgNames[argIndex+1]}: {anArg}",lable.INFO)
+            else:
+                printIt(f"unknown argument: {anArg}", lable.INFO)
         argIndex += 1
     if len(theArgs) == 0:
         printIt("no argument(s) entered", lable.INFO)
