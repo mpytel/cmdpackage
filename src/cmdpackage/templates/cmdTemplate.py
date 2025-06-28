@@ -78,7 +78,7 @@ def ${defName}(argParse):
     theArgs = args.arguments
     argIndex = 0
     nonCmdArg = True
-    printIt("Modify default behavour in $src/{packName}/commands/${defName}.py", lable.DEBUG)
+    printIt("Modify default behavour in src/${packName}/commands/${defName}.py", lable.DEBUG)
     # delete place holder code bellow that loops though arguments provided
     # when this command is called when not needed.
     # Note: that function having a name that is entered as an argument part
