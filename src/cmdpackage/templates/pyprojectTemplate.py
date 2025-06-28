@@ -24,11 +24,9 @@ pyproject_base_template = Template(dedent("""\
     build-backend = "setuptools.build_meta"
 
     [tool.setuptools.packages.find]
-    [tool.setuptools.package-dir]
-    ${name} = "src"
-
+    where = ["src"]
     [project.scripts]
-    ${name} = "src:main"
+    ${name} = "${name}.main:main"
     """))
 
 classifiers_line = Template(

@@ -1,6 +1,6 @@
 import os, json
 from ..templates.cmdTemplate import \
-    initFile, logPrintTemplate, \
+    mainFile, logPrintTemplate, \
     commandsFileStr, commandsJsonDict, \
     cmdSwitchbordFileStr, cmdOptSwitchbordFileStr, \
     argParseTemplate, optSwitchesTemplate, \
@@ -13,12 +13,12 @@ def writeCLIPackage(fields: dict):
     programName = fields[field_name]
     # -- package dir files
     ## write __init__.py to package dir from str
-    packDir = os.path.join(os.path.abspath("."),'src')
-    print('packDir:', str(packDir))
+    packDir = os.path.join(os.path.abspath("."), 'src', programName)
+    #print('packDir:', str(packDir))
     chkDir(packDir)
-    fileName = os.path.join(packDir,"__init__.py")
+    fileName = os.path.join(packDir,"main.py")
     with open(fileName,"w") as wf:
-        wf.write(initFile)
+        wf.write(mainFile)
 
     # -- defs dir files
     ## write logPrint.py def for def dir from template

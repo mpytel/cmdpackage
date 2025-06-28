@@ -2,7 +2,7 @@
 from string import Template
 from textwrap import dedent
 
-initFile = dedent("""import sys, os
+mainFile = dedent("""import sys, os
 from .classes.argParse import ArgParse
 from .commands.cmdSwitchbord import cmdSwitchbord
 

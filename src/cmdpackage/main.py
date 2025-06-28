@@ -8,7 +8,9 @@ from pathlib import Path
 GREEN = "\033[32m"
 RESET = "\033[0m"
 
+
 def main():
+    print("--- Inside cmdPack.src.main() ---")
     projName = ''
     askForDirChange = False
     if len(sys.argv) > 1:
@@ -17,7 +19,7 @@ def main():
         askForDirChange = ensure_and_cd_to_directory(projName)
     else:
         projName = Path(os.getcwd()).stem
-    fields: dict[str,str] = writePyProject()
+    fields: dict[str, str] = writePyProject()
     writeCLIPackage(fields)
     createzVirtualEnv(fields)
     print(f'*** Activate and install {projName} virtual enviroment ***')
@@ -26,8 +28,10 @@ def main():
     print(f'{GREEN}execute{RESET}: . env/{projName}/bin/activate')
     print(f'{GREEN}execute{RESET}: pip install -e .')
 
+
 if __name__ == '__main__':
     main()
+
 
 def ensure_and_cd_to_directory(target_dir_name: str) -> bool:
     """
