@@ -126,7 +126,7 @@ myTypes type int integer 'An integer is a whole number that can be positive, neg
 The path to the Python file that needs your modification (`type.py`) is displayed as output, along with the values of the three arguments (type, title, sd):
 
 ```
-DEBUG: Modify default behavior in myTypes/commands/type.py
+DEBUG: Modify default behavior in src/myTypes/commands/type.py
 INFO: token: int
 INFO: title: integer
 INFO: sd: An integer is a whole number that can be positive, negative, or zero.
@@ -191,6 +191,6 @@ myPack helloWorld "You're ready to add and remove commands, and modify code in y
 The following output results from executing `myPack helloWorld`:
 
 ```
-DEBUG: Modify default behavior in myPack/commands/helloWorld.py
+DEBUG: Modify default behavior in src/myPack/commands/helloWorld.py
 INFO: greeting: You're ready to add and remove commands, and modify code in your myPack project!
 ```
