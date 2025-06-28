@@ -1,6 +1,6 @@
 [project]
 name = "cmdpackage"
-version = "0.1.3"
+version = "0.1.4"
 description = "Automated python package generator for CLI function calls"
 readme = "README.md"
 license-files = ["LICEN[CS]E*"]
