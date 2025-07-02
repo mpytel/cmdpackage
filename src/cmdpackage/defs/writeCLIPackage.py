@@ -5,7 +5,9 @@ from ..templates.cmdTemplate import \
     cmdSwitchbordFileStr, cmdOptSwitchbordFileStr, \
     argParseTemplate, optSwitchesTemplate, \
     newCmdStr, modCmdStr, rmCmdStr, \
-    newCmdTemplateStr, argDefTemplateStr
+    newCmdTemplateStr, argDefTemplateStr, \
+    asyncTemplateStr, classCallTemplateStr, \
+    simpleTemplateStr
 
 def writeCLIPackage(fields: dict):
     print()
@@ -79,17 +81,25 @@ def writeCLIPackage(fields: dict):
         wf.write(rmCmdStr)
 
     # -- commands\templates dir files
+    template_names = ['async', 'classCall', 'newCmd', 'simple']
+    template_name_map = {
+        "async": asyncTemplateStr,
+        "classCall": classCallTemplateStr,
+        "newCmd": newCmdTemplateStr,
+        "simple": simpleTemplateStr,
+    }
     ## write newCmd.py template file
     dirName = os.path.join(dirName, "templates")
-    fileName = os.path.join(dirName,"newCmd.py")
-    chkDir(dirName)
+    for template_name in template_names:
+        fileName = os.path.join(dirName, f"{template_name}.py")
+        chkDir(dirName)
 
-    fileStr = "from string import Template\n"
-    fileStr += "from textwrap import dedent\n\n"
-    fileStr += f'cmdDefTemplate = Template(dedent("""{newCmdTemplateStr}\n"""))\n\n'
-    fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
-    with open(fileName,"w") as wf:
-        wf.write(fileStr)
+        fileStr = "from string import Template\n"
+        fileStr += "from textwrap import dedent\n\n"
+        fileStr += f'cmdDefTemplate = Template(dedent("""{template_name_map.get(template_name)}\n"""))\n\n'
+        fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
+        with open(fileName,"w") as wf:
+            wf.write(fileStr)
 
 def chkDir(dirName: str):
     if not os.path.isdir(dirName):

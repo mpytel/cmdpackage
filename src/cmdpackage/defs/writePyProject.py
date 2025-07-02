@@ -3,6 +3,7 @@
 from ..templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
+from ..templates.readmeTemplate import readme_template
 from sys import version_info
 from .runSubProc import runSubProc
 from subprocess import Popen, PIPE
@@ -38,6 +39,12 @@ def writePyProject() -> dict[str,str]:
 
     with open('pyproject.toml', 'w') as pyproject_file:
         write_content(pyproject_file, pyproject_content)
+
+    readme_content = readme_template.substitute(
+        packName=rtnDict['name'], version=rtnDict['version'])
+
+    with open(rtnDict['readme'], 'w') as readme_file:
+        write_content(readme_file, readme_content)
 
     with_gitignore = get_input('commit a git repo [Y/n]?: ',
                                default='y')
@@ -110,6 +117,8 @@ def default_values(field_name, rtnDict=None):
         return '0.1.0'
     elif field_name == 'description':
         return 'name pip package'
+    elif field_name == 'readme':
+        return 'README.md'
     elif field_name == 'license':
         return 'MIT License'
     elif field_name == 'authors':
