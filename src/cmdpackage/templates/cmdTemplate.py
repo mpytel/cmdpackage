@@ -32,7 +32,8 @@ def cmdSwitchbord(argParse: ArgParse):
         if len(sys.argv) > 1:
             if len(sys.argv) > 2:
                 switchFlagChk = sys.argv[2]
-                if len(sys.argv) == 3 and switchFlagChk[0] in '-+?':
+                # Only handle single hyphen options here, let double hyphen pass through
+                if len(sys.argv) == 3 and switchFlagChk[0] in '-+?' and not switchFlagChk.startswith('--'):
                     if switchFlagChk[1:] in switchFlags.keys():
                         print(f'00001: {switchFlagChk}')
                         cmdOptSwitchbord(switchFlagChk, switchFlags)
@@ -48,9 +49,14 @@ def cmdSwitchbord(argParse: ArgParse):
                 exec(f'from ..commands.{theCmd} import {theCmd}')
                 exec(f'{theCmd}(argParse)')
             else:
-                print(args)
-                printIt(f'Command "{theCmd}" not present.\\n',lable.ERROR)
-                argParse.parser.print_help()
+                theArgs = args.arguments
+                argIndex = 0
+                while argIndex < len(theArgs):
+                    anArg = theArgs[argIndex]
+                    printIt(f"argument {str(argIndex).zfill(2)}: {anArg}", lable.INFO)
+                    argIndex += 1
+                if len(theArgs) == 0:
+                    printIt("no argument(s) entered", lable.INFO)
         else:
             argParse.parser.print_help()
     except Exception as e:
@@ -103,6 +109,98 @@ argDefTemplateStr = dedent("""def ${argName}(argParse):
     printIt(args, lable.INFO)
 
 """)
+asyncTemplateStr = """import asyncio
+from ..defs.logIt import printIt, lable, cStr, color
+from .commands import Commands
+
+async def ${defName}_async(argParse):
+    '''Async implementation of ${defName} command'''
+    args = argParse.args
+    theCmd = args.commands[0]
+    theArgs = args.arguments
+
+    printIt(f"Starting async {theCmd} command", lable.INFO)
+
+    if len(theArgs) == 0:
+        printIt("No arguments provided", lable.WARN)
+        return
+
+    # Process arguments asynchronously
+    tasks = []
+    for arg in theArgs:
+        tasks.append(process_argument_async(arg))
+
+    results = await asyncio.gather(*tasks)
+    printIt(f"Completed processing {len(results)} arguments", lable.PASS)
+
+async def process_argument_async(arg):
+    '''Process individual argument asynchronously'''
+    # Simulate async work
+    await asyncio.sleep(0.1)
+    printIt(f"Processed: {arg}", lable.INFO)
+    return arg
+
+def ${defName}(argParse):
+    '''Entry point for async ${defName} command'''
+    asyncio.run(${defName}_async(argParse))
+
+"""
+classCallTemplateStr = """from ..defs.logIt import printIt, lable, cStr, color
+from .commands import Commands
+
+class ${defName}Command:
+    def __init__(self, argParse):
+        self.argParse = argParse
+        self.cmdObj = Commands()
+        self.commands = self.cmdObj.commands
+        self.args = argParse.args
+        self.theCmd = self.args.commands[0]
+        self.theArgNames = list(self.commands[self.theCmd].keys())
+        self.theArgs = self.args.arguments
+
+    def execute(self):
+        '''Main execution method for ${defName} command'''
+        printIt(f"Executing {self.theCmd} command with class-based approach", lable.INFO)
+
+        if len(self.theArgs) == 0:
+            printIt("No arguments provided", lable.WARN)
+            return
+
+        argIndex = 0
+        while argIndex < len(self.theArgs):
+            anArg = self.theArgs[argIndex]
+            method_name = f"handle_{anArg}"
+            if hasattr(self, method_name):
+                getattr(self, method_name)()
+            else:
+                printIt(f"Processing argument: {anArg}", lable.INFO)
+            argIndex += 1
+
+def ${defName}(argParse):
+    '''Entry point for ${defName} command'''
+    command_instance = ${defName}Command(argParse)
+    command_instance.execute()
+
+
+"""
+simpleTemplateStr = """from ..defs.logIt import printIt, lable
+
+def ${defName}(argParse):
+    '''Simple ${defName} command implementation'''
+    args = argParse.args
+    arguments = args.arguments
+
+    printIt(f"Running ${defName} command", lable.INFO)
+
+    if len(arguments) == 0:
+        printIt("No arguments provided", lable.WARN)
+        return
+
+    for i, arg in enumerate(arguments):
+        printIt(f"Argument {i+1}: {arg}", lable.INFO)
+
+
+"""
 newCmdStr = dedent("""import os, sys, copy
 from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
@@ -114,17 +212,56 @@ readline.parse_and_bind('set editing-mode vi')
 
 def newCmd(argParse: ArgParse):
     args = argParse.args
-    #cmd = args.commands
+
+    # Handle --templates option to list available templates
+    if hasattr(argParse, 'cmd_options') and 'templates' in argParse.cmd_options:
+        list_templates()
+        return
+
     cmdObj = Commands()
     argsDict = args.arguments
+
+    if len(argsDict) == 0:
+        printIt("Command name required", lable.ERROR)
+        return
+
     newCmdName = args.arguments[0]
     if newCmdName not in cmdObj.commands.keys():
         theArgs = verifyArgsWithDiscriptions(cmdObj, argsDict)
         updateCMDJson(cmdObj, theArgs)
-        writeCodeFile(theArgs)
-        printIt(f'"{newCmdName}" added.',lable.NewCmd)
+
+        # Determine template to use
+        template_name = 'newCmd'  # default
+        if hasattr(argParse, 'cmd_options') and 'template' in argParse.cmd_options:
+            template_name = argParse.cmd_options['template']
+            if not template_exists(template_name):
+                printIt(f"Template '{template_name}' not found. Using default template.", lable.WARN)
+                template_name = 'newCmd'
+
+        writeCodeFile(theArgs, template_name)
+        printIt(f'"{newCmdName}" added using {template_name} template.', lable.NewCmd)
     else:
-        printIt(f'"{newCmdName}" exists. use modCmd or rmCmd to modiify or remove this command.',lable.INFO)
+        printIt(f'"{newCmdName}" exists. use modCmd or rmCmd to modify or remove this command.', lable.INFO)
+
+def list_templates():
+    '''List all available templates'''
+    template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+    templates = []
+
+    for file in os.listdir(template_dir):
+        if file.endswith('.py') and file != '__init__.py':
+            template_name = file[:-3]  # Remove .py extension
+            templates.append(template_name)
+
+    printIt("Available templates:", lable.INFO)
+    for template in sorted(templates):
+        printIt(f"  - {template}", lable.INFO)
+
+def template_exists(template_name):
+    '''Check if a template exists'''
+    template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+    template_file = os.path.join(template_dir, f'{template_name}.py')
+    return os.path.isfile(template_file)
 
 def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
     rtnDict = {}
@@ -150,31 +287,39 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
         argIndex += 1
     return rtnDict
 
-def writeCodeFile(theArgs: dict) -> str:
+def writeCodeFile(theArgs: dict, template_name: str = 'newCmd') -> str:
     fileDir = os.path.dirname(__file__)
     fileName = os.path.join(fileDir, f'{list(theArgs.keys())[0]}.py')
     if os.path.isfile(fileName):
         rtnStr = lable.EXISTS
     else:
-        ourStr = cmdCodeBlock(theArgs)
+        ourStr = cmdCodeBlock(theArgs, template_name)
         with open(fileName, 'w') as fw:
             fw.write(ourStr)
         rtnStr = lable.SAVED
     return rtnStr
 
-def cmdCodeBlock(theArgs: dict) -> str:
+def cmdCodeBlock(theArgs: dict, template_name: str = 'newCmd') -> str:
     packName = os.path.basename(sys.argv[0])
     argNames = list(theArgs.keys())
     cmdName = argNames[0]
-    defTemp = cmdDefTemplate
-    argTemp = argDefTemplate
-    rtnStr = defTemp.substitute(
+
+    # Import the specified template
+    try:
+        template_module = __import__(f'myPack.commands.templates.{template_name}', fromlist=['cmdDefTemplate', 'argDefTemplate'])
+        cmdDefTemplate = template_module.cmdDefTemplate
+        argDefTemplate = template_module.argDefTemplate
+    except ImportError:
+        printIt(f"Could not import template '{template_name}', using default", lable.WARN)
+        from .templates.newCmd import cmdDefTemplate, argDefTemplate
+
+    rtnStr = cmdDefTemplate.substitute(
         packName=packName, defName=cmdName,
     )
     argIndex = 1
     while argIndex < len(argNames): # add subarg functions
         argName = argNames[argIndex]
-        rtnStr += argTemp.substitute(argName=argName)
+        rtnStr += argDefTemplate.substitute(argName=argName)
         argIndex += 1
     return rtnStr
 
@@ -192,6 +337,7 @@ def updateCMDJson(cmdObj: Commands, theArgs:  dict) -> None:
         argIndex += 1
     cmdObj.commands = commands
 """)
+
 modCmdStr = dedent("""import os, copy
 from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
@@ -533,11 +679,14 @@ def str_or_int(arg):
 class ArgParse():
 
     def __init__(self):
+        # Parse command-specific options (double hyphen) before main parsing
+        self.cmd_options = {}
+        self.filtered_args = self._extract_cmd_options(sys.argv[1:])
         if not sys.stdin.isatty():
             self.parser = argparse.ArgumentParser(add_help=False)
             self.parser.add_argument('commands', nargs=1)
             self.parser.add_argument('arguments', nargs='*')
-            self.args = self.parser.parse_args(sys.argv[1:])
+            self.args = self.parser.parse_args(self.filtered_args)
         else:
             _, tCols = os.popen('stty size', 'r').read().split()
             tCols = int(tCols)
@@ -599,7 +748,29 @@ class ArgParse():
             for optFlag in switchFlag:
                 flagHelp = switchFlag[optFlag]
                 self.parser.add_argument(f'-{optFlag}', action='store_true', help=flagHelp)
-            self.args = self.parser.parse_args()
+            self.args = self.parser.parse_args(self.filtered_args)
+
+    def _extract_cmd_options(self, args):
+        '''Extract command-specific options(--option) from arguments'''
+        filtered_args = []
+        i = 0
+        while i < len(args):
+            arg = args[i]
+            if arg.startswith('--'):
+                # Handle command-specific options
+                option_name = arg[2:]  # Remove --
+                if i + 1 < len(args) and not args[i + 1].startswith('-'):
+                    # Option with value
+                    self.cmd_options[option_name] = args[i + 1]
+                    i += 2  # Skip both option and value
+                else:
+                    # Option without value (flag)
+                    self.cmd_options[option_name] = True
+                    i += 1
+            else:
+                filtered_args.append(arg)
+                i += 1
+        return filtered_args
 
 def formatHelpWidth(theText, tCols, indentPad=1) -> str:
     # this uses the screen with to estabhish tCols

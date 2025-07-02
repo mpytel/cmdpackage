@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from ..templates.setupTemplates import (
+from templates.setupTemplates import (
     setup_base_template, setup_line, gitignore_content, classifiers_line,
     classifiers_template)
 from sys import version_info
@@ -91,7 +91,7 @@ def get_username():
     return username
 
 
-def default_values(field_name):
+def default_values(field_name) -> str:
     if field_name == 'name':
         rtnStr = os.path.relpath('.', '..')
         rtnStr = rtnStr.replace("-","_")
@@ -104,13 +104,15 @@ def default_values(field_name):
         return 'MIT'
     elif field_name == 'author':
         return get_username()
+    else: return ''
 
 
-def get_input(input_msg, default=None):
+def get_input(input_msg: str, default=''):
     if version_info >= (3, 0):
         input_value = input(input_msg)
     else:
-        input_value = raw_input(input_msg.encode('utf8')).decode('utf8')
+        #input_value = raw_input(input_msg.encode('utf8')).decode('utf8')
+        input_value = input_msg.encode('utf8').decode('utf8')
 
     if input_value == '':
         return default
