@@ -16,7 +16,7 @@ def writePyProject() -> dict[str,str]:
               'license', 'authors', 'authorsEmail', 'maintainers', 'maintainersEmail', 'classifiers']
 
     for field_name in fields:
-        default_value = default_values(field_name)
+        default_value = default_values(field_name, rtnDict)
         if field_name == 'description':
             default_value = default_value.replace('name', rtnDict['name'])
         input_msg = input_message(field_name, default_value)
@@ -101,7 +101,7 @@ def get_username():
 
 #fields = ['name', 'version', 'description', 'readme',
 #          'license', 'author', author email, 'maintainer', 'maintainer email', 'classifiers']
-def default_values(field_name):
+def default_values(field_name, rtnDict=None):
     if field_name == 'name':
         rtnStr = os.path.relpath('.', '..')
         rtnStr = rtnStr.replace("-", "_")
@@ -117,8 +117,14 @@ def default_values(field_name):
     elif field_name == 'authorsEmail':
         return f'{get_username()}@domain.com'
     elif field_name == 'maintainers':
+        # Use authors value if available, otherwise fall back to username
+        if rtnDict and 'authors' in rtnDict:
+            return rtnDict['authors']
         return get_username()
     elif field_name == 'maintainersEmail':
+        # Use authorsEmail value if available, otherwise fall back to username@domain.com
+        if rtnDict and 'authorsEmail' in rtnDict:
+            return rtnDict['authorsEmail']
         return f'{get_username()}@domain.com'
     else: return ''
 
