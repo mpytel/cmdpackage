@@ -6,11 +6,16 @@
   - [Table of Contents](#table-of-contents)
   - [Introduction](#introduction)
   - [Standard Installation from PyPI](#standard-installation-from-pypi)
+    - [Command Line Usage](#command-line-usage)
     - [Using cmdpackage to Create New Python Packages](#using-cmdpackage-to-create-new-python-packages)
+    - [Testing Generated Packages](#testing-generated-packages)
     - [Modifying New Python Packages](#modifying-new-python-packages)
       - [Install New Editable Python Package](#install-new-editable-python-package)
   - [Editable cmdpackage Installation](#editable-cmdpackage-installation)
     - [Automated Default New Package Setup with `cmdpackage.sh`](#automated-default-new-package-setup-with-cmdpackagesh)
+  - [Important Notes](#important-notes)
+    - [System Command Conflicts](#system-command-conflicts)
+    - [Recent Improvements](#recent-improvements)
 
 -----
 
@@ -34,11 +39,34 @@ The derived program packages will be modified in a virtual Python development en
 pip install virtualenv
 ```
 
+### Command Line Usage
+
+cmdpackage supports several command-line options:
+
+```bash
+# Show help and available options
+cmdpackage -h
+
+# Create a package in the current directory (uses directory name as package name)
+cmdpackage
+
+# Create a package with a specific name
+cmdpackage myproject
+
+# Create a package with comprehensive testing
+cmdpackage -t myproject
+
+# Create and test a package in the current directory
+cmdpackage -t
+```
+
+**Important:** Avoid using system command names (like `kill`, `ls`, `cp`, `mv`, `rm`, etc.) as your package name, as they will conflict with existing system commands and cause issues when running your package.
+
 ### Using cmdpackage to Create New Python Packages
 
 Once installed, you can create a package directory for your new Python package (e.g., `myTypes`) and run `cmdpackage` to generate the necessary files within this directory.
 
-```
+```bash
 mkdir $HOME/myTypes
 cd $HOME/myTypes
 cmdpackage
@@ -54,13 +82,57 @@ readme ():
 license (MIT License):
 authors (username):
 authorsEmail (username@domain.com):
-maintainers (username):
-maintainersEmail (username@domain.com):
+maintainers (username):        # Now defaults to authors value
+maintainersEmail (username@domain.com):  # Now defaults to authorsEmail value
 classifiers ():
 commit a git repo [Y/n]?:
 ```
 
 The **default input** for each question is the bracketed value. The username will be set to your global Git config name if Git is present; otherwise, your system login username will be used.
+
+### Testing Generated Packages
+
+cmdpackage includes a comprehensive testing option (`-t`) that validates your generated package:
+
+```bash
+cmdpackage -t myproject
+```
+
+The test suite performs the following checks:
+
+- **System Command Conflict Detection** - Warns if your package name conflicts with system commands
+- **Virtual Environment Validation** - Ensures the virtual environment was created properly
+- **Package Structure Verification** - Confirms all required directories and files exist
+- **Syntax Validation** - Compiles generated Python files to catch syntax errors
+- **Functional Testing** - Tests package installation, help system, and command creation
+
+Example test output:
+```
+*** Running tests on myproject package ***
+🔍 Test 0: Checking for system command conflicts...
+  ✅ No system command conflicts detected for 'myproject'
+🔍 Test 1: Checking virtual environment...
+  ✅ Virtual environment created at env/myproject
+🔍 Test 2: Checking package structure...
+  ✅ Directory src/myproject exists
+  ✅ Directory src/myproject/commands exists
+  ✅ Directory src/myproject/classes exists
+  ✅ Directory src/myproject/defs exists
+🔍 Test 3: Checking key files...
+  ✅ File src/myproject/main.py exists
+  ✅ File src/myproject/defs/logIt.py exists
+  ✅ File src/myproject/classes/argParse.py exists
+  ✅ File src/myproject/commands/commands.py exists
+  ✅ File pyproject.toml exists
+🔍 Test 4: Checking logIt.py syntax...
+  ✅ logIt.py has valid Python syntax
+🔍 Test 5: Installing and testing package functionality...
+  ✅ Package installed successfully
+  ✅ Help command works
+  ✅ newCmd functionality works
+  ✅ Generated command executes and logIt.py works
+✅ All tests passed!
+```
 
 ### Modifying New Python Packages
 
@@ -79,7 +151,7 @@ You're now ready to work on your new Python package, `myTypes`, by first activat
 
 #### Install New Editable Python Package
 
-```
+```bash
 pip install -e .
 ```
 
@@ -96,13 +168,13 @@ wheel      0.45.1
 
 Your new `myTypes` program is now ready to use as a launching point for your Python CLI development. A list of installed commands can be found using:
 
-```
+```bash
 myTypes -h
 ```
 
 To add a new command named `type` – which will record a token, a title representing the type of information this token represents, and a short description of what it is and where it can be used – use the following command:
 
-```
+```bash
 myTypes newCmd type token title sd
 ```
 
@@ -119,7 +191,7 @@ You will then be prompted to enter help text for the command and each of the arg
 
 Run the new `myTypes type` command:
 
-```
+```bash
 myTypes type int integer 'An integer is a whole number that can be positive, negative, or zero.'
 ```
 
@@ -134,7 +206,7 @@ INFO: sd: An integer is a whole number that can be positive, negative, or zero.
 
 The `rmCmd` is used to remove a command from your `myTypes` program.
 
-```
+```bash
 myTypes rmCmd run
 ```
 
@@ -194,3 +266,22 @@ The following output results from executing `myPack helloWorld`:
 DEBUG: Modify default behavior in src/myPack/commands/helloWorld.py
 INFO: greeting: You're ready to add and remove commands, and modify code in your myPack project!
 ```
+
+-----
+
+## Important Notes
+
+### System Command Conflicts
+
+**Avoid using system command names** as your package name. Names like `kill`, `ls`, `cp`, `mv`, `rm`, `cat`, `grep`, etc., will conflict with existing system commands and cause issues when trying to run your package commands. The `-t` testing option will detect and warn about these conflicts.
+
+**Good package names:** `myapp`, `dataprocessor`, `webtools`, `myproject`
+**Problematic names:** `kill`, `ls`, `test`, `python`, `pip`
+
+### Recent Improvements
+
+- **Enhanced Help System:** `cmdpackage -h` now works properly and shows all available options
+- **Improved Defaults:** Maintainer fields automatically default to author values for better user experience
+- **Comprehensive Testing:** The `-t` option provides thorough validation of generated packages
+- **Conflict Detection:** Automatic detection of system command name conflicts
+- **Better Error Messages:** More helpful error messages and guidance when issues occur
