@@ -3,6 +3,7 @@ from .defs.writePyProject import writePyProject
 from .defs.writeCLIPackage import writeCLIPackage
 from .defs.createzVirtualEnv import createzVirtualEnv
 import sys
+import argparse
 from pathlib import Path
 
 GREEN = "\033[32m"
@@ -10,15 +11,31 @@ RESET = "\033[0m"
 
 
 def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description='Generate opinionated Python command-line program packages',
+        prog='cmdpackage'
+    )
+    parser.add_argument(
+        'project_name', 
+        nargs='?', 
+        help='Name of the project to create (optional, defaults to current directory name)'
+    )
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
     print("--- Inside cmdPack.src.main() ---")
     projName = ''
     askForDirChange = False
-    if len(sys.argv) > 1:
-        projName: str = sys.argv[1]
+    
+    if args.project_name:
+        projName: str = args.project_name
         # set the working directory to cwd+projName
         askForDirChange = ensure_and_cd_to_directory(projName)
     else:
         projName = Path(os.getcwd()).stem
+        
     fields: dict[str, str] = writePyProject()
     writeCLIPackage(fields)
     createzVirtualEnv(fields)
