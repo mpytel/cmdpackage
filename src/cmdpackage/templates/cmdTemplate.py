@@ -836,6 +836,7 @@ class color():
         "IMPORT: ": UNDERLINE,
         "RESET": RESET,
         "File Not Found: ": YELLOW,
+        "Directory Not Found: ": YELLOW,
         "FAIL: ": RED,
         "Useage: ": WHITE,
         "DELETE: ": YELLOW,
@@ -849,7 +850,11 @@ class color():
         "ARG REMOVED: ": GREEN,
         "IndexError: ": RED,
         "Testing: ": CYAN,
-        "Update: ": CYAN
+        "Update: ": CYAN,
+        "TODO: ": CYAN,
+        "ABORTPRT": YELLOW,
+        "Unknown PiSeedType: ": RED,
+        "Incorect PiValue Path: ": RED
         }
 
 
@@ -865,6 +870,7 @@ class lable():
     IMPORT = "IMPORT: "
     RESET = "RESET"
     FileNotFound = "File Not Found: "
+    DirNotFound = "Directory Not Found: "
     FAIL = "FAIL: "
     Useage = "Useage: "
     MKDIR = "MKDIR: "
@@ -879,6 +885,10 @@ class lable():
     IndexError = "IndexError: "
     TESTING = "Testing: "
     UPDATE = "Update: "
+    TODO = "TODO: "
+    ABORTPRT = "ABORTPRT"
+    UnknownPiSeedType = "Unknown PiSeedType: "
+    IncorectPiValuePath = "Incorect PiValue Path: "
 
 
 # log function
@@ -905,26 +915,34 @@ def logIt(*message, logFileName="${name}.log"):
     with open(logFileName, "a") as f:
         f.write(prtStr)
 
-def printIt(*message):
+
+def printIt(*message, asStr: bool = False) -> str:
     prtStr = ""
     rtnStr = ""
     needClip = False
-    if len(message) > 0:
-        for mess in message:
-            if mess == lable.BLANK:
-                prtStr += message
-                rtnStr += message
-            elif mess in color.l2cDict:
-                prtStr = color.l2cDict[mess] + mess + color.RESET + prtStr
-                rtnStr = mess + rtnStr
-            else:
-                needClip = True
-                prtStr += str(mess) + " "
-                rtnStr += str(mess) + " "
-        if needClip:
-            prtStr = prtStr[:-1]
-            rtnStr = rtnStr[:-1]
-    print(prtStr)
+    abortPrt = False
+    for mess in message:
+        if mess == lable.ABORTPRT:
+            abortPrt = True
+    if not abortPrt:
+        if len(message) > 0:
+            for mess in message:
+                if mess == lable.BLANK:
+                    prtStr = message[0]
+                    rtnStr = message[0]
+                    needClip = False
+                elif mess in color.l2cDict:
+                    prtStr = color.l2cDict[mess] + mess + color.RESET + prtStr
+                    rtnStr = mess + rtnStr
+                else:
+                    needClip = True
+                    prtStr += str(mess) + " "
+                    rtnStr += str(mess) + " "
+            if needClip:
+                prtStr = prtStr[:-1]
+                rtnStr = rtnStr[:-1]
+        if not asStr:
+            print(prtStr)
     return rtnStr
 
 def cStr(inStr:str, cVal:str):
@@ -935,12 +953,36 @@ def deleteLog(logFileName="${name}.log"):
 
 def getCodeFile():
     cf = currentframe()
-    codeObj =cf.f_back.f_code
-    codeObjStr = str(codeObj).split(",")[1].split(\'"\')[1]
-    codeObjStr = os.path.basename(codeObjStr)
+    codeObj = ''
+    if cf:
+        if cf.f_back: codeObj = cf.f_back.f_code
+    if codeObj:
+        codeObjStr = str(codeObj).split(",")[1].split('"')[1]
+        codeObjStr = os.path.basename(codeObjStr)
+    else:
+        codeObjStr = 'file-no-found'
     return codeObjStr
 
 def getCodeLine():
     cf = currentframe()
-    return cf.f_back.f_lineno
+    codeObj = None
+    if cf:
+        if cf.f_back:
+            codeObj = cf.f_back.f_code
+    return codeObj
+
+def germDbug(loc: str, currPi, nextPi):
+    loc += currPi.piSeedKeyType
+    if nextPi == None:
+        print(loc, currPi.piSeedKeyDepth, nextPi)
+        print("piType:", currPi.piType, nextPi)
+        print("piTitle:", currPi.piTitle, nextPi)
+        print("piSD:", currPi.piSD, nextPi)
+    else:
+        print(loc, currPi.piSeedKeyDepth, nextPi.piSeedKeyDepth)
+        print("piType:", currPi.piType, nextPi.piType)
+        print("piTitle:", currPi.piTitle, nextPi.piTitle)
+        print("piSD:", currPi.piSD, nextPi.piSD)
+    print("--------------------")
+
 """))
