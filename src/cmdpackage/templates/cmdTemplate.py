@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 from string import Template
 from textwrap import dedent
 
@@ -275,15 +276,15 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
                     printIt("Only single hyphen options allowed.",lable.WARN)
                     exit(0)
                 else:
-                    theDisc = input(f'Enter help description for {argName}:\\n')
-                    if theDisc == '': theDisc = f'no help for {argName}'
+                    theDict = input(f'Enter help description for {argName}:\\n')
+                    if theDict == '': theDict = f'no help for {argName}'
             else:
                 printIt("Missing ascii letters after hyphen.",lable.WARN)
                 exit(0)
         else:
-            theDisc = input(f'Enter help description for {argName}:\\n')
-            if theDisc == '': theDisc = f'no help for {argName}'
-        rtnDict[argName] = theDisc
+            theDict = input(f'Enter help description for {argName}:\\n')
+            if theDict == '': theDict = f'no help for {argName}'
+        rtnDict[argName] = theDict
         argIndex += 1
     return rtnDict
 
@@ -367,6 +368,7 @@ def modCmd(argParse: ArgParse):
 
 def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
     rtnDict = {}
+    saveDict = False
     argIndex = 0
     cmdName = theArgs[argIndex]
     while argIndex < len(theArgs):
@@ -377,32 +379,31 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
                     printIt("Only single hyphen options allowed.",lable.WARN)
                     exit(0)
                 else:
-                    theDisc = input(f'Enter help description for {argName}:\\n')
-                    if theDisc == '': theDisc = f'no help for {argName}'
+                    theDict = input(f'Enter help description for {argName}:\\n')
+                    if theDict == '': theDict = f'no help for {argName}'
             else:
                 printIt("Missing ascii letters after hyphen.",lable.WARN)
                 exit(0)
         else:
-            theDisc = ''
-            saveDisc = False
+            theDict = ''
             if argIndex == 0 and len(theArgs) == 1:
                 chgDisc = input(f'Replace description for {argName} (y/N): ')
                 if chgDisc.lower() == 'y':
-                    saveDisc = True
+                    saveDict = True
             elif argIndex > 0:
                 if argName in cmdObj.commands[cmdName].keys():
                     chgDisc = input(f'Replace description for {argName} (y/N): ')
                     if chgDisc.lower() == 'y':
-                        saveDisc = True
+                        saveDict = True
                 else: # add new arg
-                    saveDisc = True
+                    saveDict = True
                     newArg = True
-            if saveDisc:
-                theDisc = input(f'Enter help description for {argName}:\\n')
-                if theDisc == '': theDisc = f'no help for {argName}'
-        if saveDisc:
+            if saveDict:
+                theDict = input(f'Enter help description for {argName}:\\n')
+                if theDict == '': theDict = f'no help for {argName}'
+        if saveDict:
             # only poulate rtnDict with modified discriptions
-            rtnDict[argName] = theDisc
+            rtnDict[argName] = theDict
         argIndex += 1
     return rtnDict
 

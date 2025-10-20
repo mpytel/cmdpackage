@@ -4,7 +4,7 @@ from templates.setupTemplates import (
     setup_base_template, setup_line, gitignore_content, classifiers_line,
     classifiers_template)
 from sys import version_info
-from .runSubProc import runSubProc
+from cmdpackage.defs.runSubProc import runSubProc
 from subprocess import Popen, PIPE
 from getpass import getuser
 import os

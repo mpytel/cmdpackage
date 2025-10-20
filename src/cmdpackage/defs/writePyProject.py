@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from ..templates.pyprojectTemplate import (
+from cmdpackage.templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
-from ..templates.readmeTemplate import readme_template
+from cmdpackage.templates.readmeTemplate import readme_template
 from sys import version_info
-from .runSubProc import runSubProc
+from cmdpackage.defs.runSubProc import runSubProc
 from subprocess import Popen, PIPE
 from getpass import getuser
 import os

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 from subprocess import run, DEVNULL, CompletedProcess
 
 def runSubProc(theCmd: str, noOutput=True) -> CompletedProcess:

@@ -1,4 +1,6 @@
-from .runSubProc import runSubProc
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+from cmdpackage.defs.runSubProc import runSubProc
 
 def createzVirtualEnv(fields: dict):
     try:

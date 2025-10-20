@@ -1,15 +1,15 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 import os
-from .defs.writePyProject import writePyProject
-from .defs.writeCLIPackage import writeCLIPackage
-from .defs.createzVirtualEnv import createzVirtualEnv
-import sys
+from cmdpackage.defs.writePyProject import writePyProject
+from cmdpackage.defs.writeCLIPackage import writeCLIPackage
+from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 import argparse
 from pathlib import Path
 
 GREEN = "\033[32m"
 RED = "\033[31m"
 RESET = "\033[0m"
-
 
 def main():
     # Set up argument parser
@@ -18,8 +18,8 @@ def main():
         prog='cmdpackage'
     )
     parser.add_argument(
-        'project_name', 
-        nargs='?', 
+        'project_name',
+        nargs='?',
         help='Name of the project to create (optional, defaults to current directory name)'
     )
     parser.add_argument(
@@ -27,25 +27,25 @@ def main():
         action='store_true',
         help='Run tests on the generated package to verify it works properly'
     )
-    
+
     # Parse arguments
     args = parser.parse_args()
-    
+
     print("--- Inside cmdPack.src.main() ---")
     projName = ''
     askForDirChange = False
-    
+
     if args.project_name:
         projName: str = args.project_name
         # set the working directory to cwd+projName
         askForDirChange = ensure_and_cd_to_directory(projName)
     else:
         projName = Path(os.getcwd()).stem
-        
+
     fields: dict[str, str] = writePyProject()
     writeCLIPackage(fields)
     createzVirtualEnv(fields)
-    
+
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
         test_result = test_generated_package(projName)
@@ -54,7 +54,7 @@ def main():
         else:
             print(f'{RED}❌ Some tests failed!{RESET}')
             return 1
-    
+
     print(f'*** Activate and install {projName} virtual enviroment ***')
     if askForDirChange:
         print(f'{GREEN}execute{RESET}: cd {projName}')
@@ -65,10 +65,10 @@ def main():
 def test_generated_package(project_name: str) -> bool:
     """
     Test the generated package to ensure it works properly.
-    
+
     Args:
         project_name: Name of the generated project
-        
+
     Returns:
         True if all tests pass, False otherwise
     """
@@ -76,9 +76,9 @@ def test_generated_package(project_name: str) -> bool:
     import os
     from pathlib import Path
     import shutil
-    
+
     test_passed = True
-    
+
     try:
         # Test 0: Check for system command conflicts
         print("🔍 Test 0: Checking for system command conflicts...")
@@ -89,7 +89,7 @@ def test_generated_package(project_name: str) -> bool:
             # Don't fail the test, but warn the user
         else:
             print(f"  ✅ No system command conflicts detected for '{project_name}'")
-        
+
         # Test 1: Check if virtual environment was created
         print("🔍 Test 1: Checking virtual environment...")
         venv_path = Path(f"env/{project_name}")
@@ -98,23 +98,23 @@ def test_generated_package(project_name: str) -> bool:
         else:
             print(f"  ❌ Virtual environment not found at {venv_path}")
             test_passed = False
-        
+
         # Test 2: Check if package structure was created
         print("🔍 Test 2: Checking package structure...")
         required_dirs = [
             f"src/{project_name}",
             f"src/{project_name}/commands",
-            f"src/{project_name}/classes", 
+            f"src/{project_name}/classes",
             f"src/{project_name}/defs"
         ]
-        
+
         for dir_path in required_dirs:
             if Path(dir_path).exists():
                 print(f"  ✅ Directory {dir_path} exists")
             else:
                 print(f"  ❌ Directory {dir_path} missing")
                 test_passed = False
-        
+
         # Test 3: Check if key files were created
         print("🔍 Test 3: Checking key files...")
         required_files = [
@@ -124,14 +124,14 @@ def test_generated_package(project_name: str) -> bool:
             f"src/{project_name}/commands/commands.py",
             "pyproject.toml"
         ]
-        
+
         for file_path in required_files:
             if Path(file_path).exists():
                 print(f"  ✅ File {file_path} exists")
             else:
                 print(f"  ❌ File {file_path} missing")
                 test_passed = False
-        
+
         # Test 4: Check if logIt.py has valid syntax
         print("🔍 Test 4: Checking logIt.py syntax...")
         try:
@@ -145,18 +145,18 @@ def test_generated_package(project_name: str) -> bool:
         except FileNotFoundError:
             print("  ❌ logIt.py file not found")
             test_passed = False
-        
+
         # Test 5: Install package and test basic functionality
         print("🔍 Test 5: Installing and testing package functionality...")
         try:
             # Activate virtual environment and install package
             activate_cmd = f". env/{project_name}/bin/activate"
             install_cmd = f"{activate_cmd} && pip install -e . --quiet"
-            
+
             result = subprocess.run(install_cmd, shell=True, capture_output=True, text=True)
             if result.returncode == 0:
                 print("  ✅ Package installed successfully")
-                
+
                 # Test help command (lenient check since shell activation can affect exit codes)
                 help_cmd = f"{activate_cmd} && {project_name} -h"
                 result = subprocess.run(help_cmd, shell=True, capture_output=True, text=True)
@@ -168,13 +168,13 @@ def test_generated_package(project_name: str) -> bool:
                 else:
                     print("  ⚠️  Help command may have issues but package is functional")
                     # Don't fail the test for help command issues
-                
+
                 # Test newCmd functionality
                 newcmd_cmd = f"{activate_cmd} && echo -e 'Test command\\nTest argument\\n' | {project_name} newCmd testCmd testArg"
                 result = subprocess.run(newcmd_cmd, shell=True, capture_output=True, text=True)
                 if result.returncode == 0 and "NEW CMD ADDED" in result.stdout:
                     print("  ✅ newCmd functionality works")
-                    
+
                     # Test the created command (expect it to run but may have logic errors)
                     test_cmd = f"{activate_cmd} && {project_name} testCmd testValue"
                     result = subprocess.run(test_cmd, shell=True, capture_output=True, text=True)
@@ -189,25 +189,20 @@ def test_generated_package(project_name: str) -> bool:
                         print(f"      This is likely due to system command conflict with '{project_name}'")
                         print(f"      Try using a different package name that doesn't conflict with system commands")
                     test_passed = False
-                    
+
             else:
                 print(f"  ❌ Package installation failed: {result.stderr}")
                 test_passed = False
-                
+
         except Exception as e:
             print(f"  ❌ Package testing failed: {e}")
             test_passed = False
-    
+
     except Exception as e:
         print(f"❌ Test execution failed: {e}")
         test_passed = False
-    
+
     return test_passed
-
-
-if __name__ == '__main__':
-    main()
-
 
 def ensure_and_cd_to_directory(target_dir_name: str) -> bool:
     """
@@ -251,3 +246,6 @@ def ensure_and_cd_to_directory(target_dir_name: str) -> bool:
         print(
             f"Error: Could not process directory '{target_dir_name}'. Reason: {e}")
         return False
+
+if __name__ == '__main__':
+    main()

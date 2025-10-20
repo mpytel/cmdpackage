@@ -1,5 +1,7 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 import os, json
-from ..templates.cmdTemplate import \
+from cmdpackage.templates.cmdTemplate import \
     mainFile, logPrintTemplate, \
     commandsFileStr, commandsJsonDict, \
     cmdSwitchbordFileStr, cmdOptSwitchbordFileStr, \
