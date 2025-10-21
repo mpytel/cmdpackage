@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os
-from cmdpackage.defs.writePyProject import writePyProject
+from cmdpackage.defs.writePyProject import writePyProject, commitGitRepo
 from cmdpackage.defs.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 import argparse
@@ -44,6 +44,7 @@ def main():
 
     fields: dict[str, str] = writePyProject()
     writeCLIPackage(fields)
+    commitGitRepo("finalize package setup")
     createzVirtualEnv(fields)
 
     if args.test:

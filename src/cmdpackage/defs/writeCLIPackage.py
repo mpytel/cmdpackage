@@ -6,9 +6,9 @@ from cmdpackage.templates.cmdTemplate import \
     commandsFileStr, commandsJsonDict, \
     cmdSwitchbordFileStr, cmdOptSwitchbordFileStr, \
     argParseTemplate, optSwitchesTemplate, \
-    newCmdStr, modCmdStr, rmCmdStr, \
+    newCmdTemplate, modCmdTemplate, rmCmdTemplate, \
     newCmdTemplateStr, argDefTemplateStr, \
-    asyncTemplateStr, classCallTemplateStr, \
+    asyncDefTemplateStr, classCallTemplateStr, \
     simpleTemplateStr
 
 def writeCLIPackage(fields: dict):
@@ -69,23 +69,28 @@ def writeCLIPackage(fields: dict):
     fileName = os.path.join(dirName,"cmdOptSwitchbord.py")
     with open(fileName,"w") as wf:
         wf.write(cmdOptSwitchbordFileStr)
-    ## write newCmd.py to commands dir from str
-    fileName = os.path.join(dirName,"newCmd.py")
-    with open(fileName,"w") as wf:
-        wf.write(newCmdStr)
-    ## write rmCmd.py to commands dir from str
-    fileName = os.path.join(dirName,"modCmd.py")
-    with open(fileName,"w") as wf:
-        wf.write(modCmdStr)
-    ## write rmCmd.py to commands dir from str
-    fileName = os.path.join(dirName,"rmCmd.py")
-    with open(fileName,"w") as wf:
-        wf.write(rmCmdStr)
+    ## write command python files to commands dir from cmdTemplates
+    cmdTemplates = {"newCmd": newCmdTemplate, 
+                    "modCmd": modCmdTemplate, 
+                    "rmCmd": rmCmdTemplate}
 
+    for cmdName, cmdTemplate in cmdTemplates.items():
+        indent = 0
+        commandJsonDictStr = "commandJsonDict = {\n"
+        indent += 4
+        commandJsonDictStr += " "*indent + f'"{cmdName}": {json.dumps(commandsJsonDict.get(cmdName),indent=8)}'
+        commandJsonDictStr += "\n}"
+        fileName = os.path.join(dirName,f"{cmdName}.py")
+        cmdTemplatesStr = cmdTemplates[cmdName].substitute(commandJsonDict=commandJsonDictStr)
+        if cmdName == "newCmd":
+            newCommandJsonDict = cmdTemplatesStr
+        print('cmdTemplatesStr',cmdTemplatesStr)
+        with open(fileName,"w") as wf:
+            wf.write(str(cmdTemplatesStr))
     # -- commands\templates dir files
-    template_names = ['async', 'classCall', 'newCmd', 'simple']
+    template_names = ['asyncDef', 'classCall', 'newCmd', 'simple']
     template_name_map = {
-        "async": asyncTemplateStr,
+        "asyncDef": asyncDefTemplateStr,
         "classCall": classCallTemplateStr,
         "newCmd": newCmdTemplateStr,
         "simple": simpleTemplateStr,
@@ -99,7 +104,8 @@ def writeCLIPackage(fields: dict):
         fileStr = "from string import Template\n"
         fileStr += "from textwrap import dedent\n\n"
         fileStr += f'cmdDefTemplate = Template(dedent("""{template_name_map.get(template_name)}\n"""))\n\n'
-        fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
+        if template_name == "newCmd":
+            fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
         with open(fileName,"w") as wf:
             wf.write(fileStr)
 

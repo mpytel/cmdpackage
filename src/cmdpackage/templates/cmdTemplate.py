@@ -67,12 +67,14 @@ def cmdSwitchbord(argParse: ArgParse):
 """)
 cmdOptSwitchbordFileStr = dedent("""from ..classes.optSwitches import OptSwitches
 
-def cmdOptSwitchbord(switchFlag: str, switchFlags: str):
+def cmdOptSwitchbord(switchFlag: str, switchFlags: dict):
     optSwitches = OptSwitches(switchFlags)
     optSwitches.toggleSwitchFlag(switchFlag)
 """)
-newCmdTemplateStr = """from ..defs.logIt import printIt, lable, cStr, color
+newCmdTemplateStr = dedent("""from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
+
+${commandJsonDict}
 
 cmdObj = Commands()
 commands = cmdObj.commands
@@ -104,15 +106,17 @@ def ${defName}(argParse):
     if len(theArgs) == 0:
         printIt("no argument(s) entered", lable.INFO)
 
-"""
+""")
 argDefTemplateStr = dedent("""def ${argName}(argParse):
     args = argParse.args
     printIt(args, lable.INFO)
 
 """)
-asyncTemplateStr = """import asyncio
+asyncDefTemplateStr = dedent("""import asyncio
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
+
+${commandJsonDict}
 
 async def ${defName}_async(argParse):
     '''Async implementation of ${defName} command'''
@@ -145,9 +149,11 @@ def ${defName}(argParse):
     '''Entry point for async ${defName} command'''
     asyncio.run(${defName}_async(argParse))
 
-"""
-classCallTemplateStr = """from ..defs.logIt import printIt, lable, cStr, color
+""")
+classCallTemplateStr = dedent("""from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
+
+${commandJsonDict}
 
 class ${defName}Command:
     def __init__(self, argParse):
@@ -183,8 +189,10 @@ def ${defName}(argParse):
     command_instance.execute()
 
 
-"""
-simpleTemplateStr = """from ..defs.logIt import printIt, lable
+""")
+simpleTemplateStr = dedent("""from ..defs.logIt import printIt, lable
+
+${commandJsonDict}
 
 def ${defName}(argParse):
     '''Simple ${defName} command implementation'''
@@ -201,13 +209,19 @@ def ${defName}(argParse):
         printIt(f"Argument {i+1}: {arg}", lable.INFO)
 
 
-"""
-newCmdStr = dedent("""import os, sys, copy
+""")
+newCmdTemplate = Template(dedent("""import os, sys, copy
+import importlib
+import readline
+from json import dumps
 from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
-from .commands import Commands, cmdDescriptionTagStr
+from .commands import Commands
 from .templates.newCmd import cmdDefTemplate, argDefTemplate
-import readline
+from .templates.newCmd import cmdDefTemplate, argDefTemplate
+
+${commandJsonDict}
+
 readline.parse_and_bind('tab: compleat')
 readline.parse_and_bind('set editing-mode vi')
 
@@ -216,30 +230,51 @@ def newCmd(argParse: ArgParse):
 
     # Handle --templates option to list available templates
     if hasattr(argParse, 'cmd_options') and 'templates' in argParse.cmd_options:
-        list_templates()
-        return
-
-    cmdObj = Commands()
-    argsDict = args.arguments
-
-    if len(argsDict) == 0:
-        printIt("Command name required", lable.ERROR)
-        return
+        # If templates option has a value, use it as template name
+        if argParse.cmd_options['templates'] != '__STRING_OPTION__' and argParse.cmd_options['templates'] is not True:
+            # --templates=templatename format, treat as --template
+            pass  # Continue with command creation using the specified template
+        else:
+            # --templates without value, list templates and return
+            list_templates()
+            return
 
     newCmdName = args.arguments[0]
     if newCmdName not in cmdObj.commands.keys():
-        theArgs = verifyArgsWithDiscriptions(cmdObj, argsDict)
-        updateCMDJson(cmdObj, theArgs)
+        # Combine regular arguments with option flags from cmd_options
+        combined_args = list(args.arguments)
+        
+        for option_name, option_value in argParse.cmd_options.items():
+            # Skip newCmd-specific options that aren't part of the command being created
+            if option_name in ['template', 'templates']:
+                continue
+                
+            if isinstance(option_value, bool) and option_value:
+                # Boolean flag (single hyphen)
+                combined_args.append(f'-{option_name}')
+            elif option_value == '__STRING_OPTION__' or not isinstance(option_value, bool):
+                # String option (double hyphen) - either has a value or is marked as string option
+                combined_args.append(f'--{option_name}')
+        
+        theArgs = verifyArgsWithDiscriptions(cmdObj, combined_args)
+        newCommandCMDJson = updateCMDJson(cmdObj, theArgs)
 
         # Determine template to use
         template_name = 'newCmd'  # default
-        if hasattr(argParse, 'cmd_options') and 'template' in argParse.cmd_options:
-            template_name = argParse.cmd_options['template']
-            if not template_exists(template_name):
+        if hasattr(argParse, 'cmd_options'):
+            # Check for --template option
+            if 'template' in argParse.cmd_options:
+                template_name = argParse.cmd_options['template']
+            # Check for --templates=value option
+            elif 'templates' in argParse.cmd_options and argParse.cmd_options['templates'] not in ['__STRING_OPTION__', True]:
+                template_name = argParse.cmd_options['templates']
+            
+            # Validate template exists
+            if template_name != 'newCmd' and not template_exists(template_name):
                 printIt(f"Template '{template_name}' not found. Using default template.", lable.WARN)
                 template_name = 'newCmd'
 
-        writeCodeFile(theArgs, template_name)
+        writeCodeFile(theArgs, newCommandCMDJson, template_name)
         printIt(f'"{newCmdName}" added using {template_name} template.', lable.NewCmd)
     else:
         printIt(f'"{newCmdName}" exists. use modCmd or rmCmd to modify or remove this command.', lable.INFO)
@@ -266,85 +301,138 @@ def template_exists(template_name):
 
 def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
     rtnDict = {}
+    optionFlags = {}
     argIndex = 0
     cmdName = theArgs[argIndex]
+                                 
     while argIndex < len(theArgs):
         argName = theArgs[argIndex]
-        if argName[0] == '-':
-            if len(argName) >= 2:
-                if argName[2] == '-':
-                    printIt("Only single hyphen options allowed.",lable.WARN)
-                    exit(0)
-                else:
-                    theDict = input(f'Enter help description for {argName}:\\n')
-                    if theDict == '': theDict = f'no help for {argName}'
-            else:
-                printIt("Missing ascii letters after hyphen.",lable.WARN)
+        
+        if argName.startswith('--'):
+            # Double hyphen option (stores value)
+            if len(argName) <= 2:
+                printIt("Missing option name after double hyphen.", lable.WARN)
                 exit(0)
+            optionName = argName[2:]  # Remove --
+            theDict = input(f'Enter help description for option {argName} (stores value):\\n')
+            if theDict == '': 
+                theDict = f'Value option {argName}'
+            optionFlags[optionName] = {
+                "description": theDict,
+                "type": "str"
+            }
+        elif argName.startswith('-'):
+            # Single hyphen option (boolean flag)
+            if len(argName) <= 1:
+                printIt("Missing option name after single hyphen.", lable.WARN)
+                exit(0)
+            optionName = argName[1:]  # Remove -
+            theDict = input(f'Enter help description for flag {argName} (true/false):\\n')
+            if theDict == '': 
+                theDict = f'Boolean flag {argName}'
+            optionFlags[optionName] = {
+                "description": theDict,
+                "type": "bool"
+            }
         else:
-            theDict = input(f'Enter help description for {argName}:\\n')
-            if theDict == '': theDict = f'no help for {argName}'
-        rtnDict[argName] = theDict
+            # Regular argument
+            theDict = input(f'Enter help description for argument {argName}:\\n')
+            if theDict == '': 
+                theDict = f'no help for {argName}'
+            rtnDict[argName] = theDict
+        
         argIndex += 1
+    
+    # Store option flags separately for later processing
+    rtnDict['_optionFlags'] = optionFlags
     return rtnDict
 
-def writeCodeFile(theArgs: dict, template_name: str = 'newCmd') -> str:
+def writeCodeFile(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'newCmd') -> str:
     fileDir = os.path.dirname(__file__)
     fileName = os.path.join(fileDir, f'{list(theArgs.keys())[0]}.py')
     if os.path.isfile(fileName):
         rtnStr = lable.EXISTS
     else:
-        ourStr = cmdCodeBlock(theArgs, template_name)
+        ourStr = cmdCodeBlock(theArgs, newCommandCMDJson, template_name)
         with open(fileName, 'w') as fw:
             fw.write(ourStr)
         rtnStr = lable.SAVED
     return rtnStr
 
-def cmdCodeBlock(theArgs: dict, template_name: str = 'newCmd') -> str:
+def cmdCodeBlock(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'newCmd') -> str:
     packName = os.path.basename(sys.argv[0])
     argNames = list(theArgs.keys())
     cmdName = argNames[0]
-
+                                 
     # Import the specified template
     try:
-        template_module = __import__(f'myPack.commands.templates.{template_name}', fromlist=['cmdDefTemplate', 'argDefTemplate'])
+        template_module = __import__(f'tc.commands.templates.{template_name}', fromlist=['cmdDefTemplate', 'argDefTemplate'])
         cmdDefTemplate = template_module.cmdDefTemplate
-        argDefTemplate = template_module.argDefTemplate
+        # Check if argDefTemplate exists, some templates may not need it
+        argDefTemplate = getattr(template_module, 'argDefTemplate', None)
     except ImportError:
         printIt(f"Could not import template '{template_name}', using default", lable.WARN)
         from .templates.newCmd import cmdDefTemplate, argDefTemplate
 
+    cmdCodeBlockJsonDict = {}
+    cmdCodeBlockJsonDict[cmdName] = newCommandCMDJson
+    commandJsonDictStr = 'commandJsonDict = ' + dumps(cmdCodeBlockJsonDict, indent=2)
+
+    # Add regular arguments to the code block (skip _optionFlags)
+    for argName in argNames:
+        if argName != '_optionFlags':
+            cmdCodeBlockJsonDict[argName] = theArgs[argName]
+    
     rtnStr = cmdDefTemplate.substitute(
-        packName=packName, defName=cmdName,
+        packName=packName,
+        defName=cmdName,
+        commandJsonDict=commandJsonDictStr
     )
+    
     argIndex = 1
     while argIndex < len(argNames): # add subarg functions
         argName = argNames[argIndex]
-        rtnStr += argDefTemplate.substitute(argName=argName)
+        # Skip the special _optionFlags entry when generating argument functions
+        if argName != '_optionFlags':
+            # Only add argument functions if template has argDefTemplate
+            if argDefTemplate is not None:
+                rtnStr += argDefTemplate.substitute(argName=argName)
         argIndex += 1
     return rtnStr
 
-def updateCMDJson(cmdObj: Commands, theArgs:  dict) -> None:
+def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
     commands = copy.deepcopy(cmdObj.commands)
     argNames = list(theArgs.keys())
     defName = argNames[0]
     defDiscription = theArgs[argNames[0]]
-    commands[defName] = {}
-    commands[defName][f'{defName}{cmdDescriptionTagStr}'] = defDiscription
+    newCommandCMDJson = {}
+    newCommandCMDJson["description"] = defDiscription
+    
+    # Handle option flags if they exist
+    optionFlags = theArgs.get('_optionFlags', {})
+    newCommandCMDJson["switchFlags"] = optionFlags
+    
     argIndex = 1
     while argIndex < len(theArgs): # add subarg functions
         argName = argNames[argIndex]
-        commands[defName][argName] = theArgs[argName]
+        # Skip the special _optionFlags entry
+        if argName != '_optionFlags':
+            newCommandCMDJson[argName] = theArgs[argName]
         argIndex += 1
+    commands[argNames[0]] = newCommandCMDJson
     cmdObj.commands = commands
+    return newCommandCMDJson
 """)
-
-modCmdStr = dedent("""import os, copy
+)
+modCmdTemplate = Template(dedent("""import os, copy
 from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
-from .commands import Commands, cmdDescriptionTagStr
+from .commands import Commands
 from .templates.newCmd import cmdDefTemplate, argDefTemplate
 import readline
+                   
+${commandJsonDict}
+
 readline.parse_and_bind('tab: compleat')
 readline.parse_and_bind('set editing-mode vi')
 
@@ -438,7 +526,7 @@ def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs:  dict) -> None:
     commands = copy.deepcopy(cmdObj.commands)
     argNames = list(theArgs.keys())
     if modCmdName in argNames:
-        commands[modCmdName][f'{modCmdName}{cmdDescriptionTagStr}'] = theArgs[modCmdName]
+        commands[modCmdName]['description'] = theArgs[modCmdName]
         argIndex = 1
     else: argIndex = 0
     while argIndex < len(theArgs): # add subarg functions
@@ -447,10 +535,13 @@ def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs:  dict) -> None:
         argIndex += 1
     cmdObj.commands = commands
 """)
-rmCmdStr = dedent("""import os, json
+)
+rmCmdTemplate = Template(dedent("""import os, json
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 
+${commandJsonDict}
+                  
 cmdObj = Commands()
 commands = cmdObj.commands
 theDir = os.path.dirname(os.path.realpath(__file__))
@@ -508,20 +599,25 @@ def removeCmd(cmdName):
         os.remove(pyFileName)
     printIt(cmdName,lable.RmCmd)
 """)
+)
 commandsJsonDict = {
-  "switcheFlags": {},
+  "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
+  "_globalSwitcheFlags": {},
   "newCmd": {
-    "newCmd_description": "Add new command <cmdName> with [argNames...]. Also creates a file cmdName.py.",
+    "description": "Add new command <cmdName> with [argNames...]. Also creates a file cmdName.py.",
+    "switchFlags": {},
     "cmdName": "Name of new command",
     "argName": "(argName...), Optional names of argument to associate with the new command."
   },
   "modCmd": {
-    "modCmd_description": "Modify a command or argument discriptions, or add another argument for command. The cmdName.py file will not be modified.",
+    "description": "Modify a command or argument discriptions, or add another argument for command. The cmdName.py file will not be modified.",
+    "switchFlags": {},
     "cmdName": "Name of command being modified",
     "argName": "(argName...) Optional names of argument(s) to modify."
   },
   "rmCmd": {
-    "rmCmd_description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
+    "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
+    "switchFlags": {},
     "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
     "argName": "Optional names of argument to remove.v It is and I am both pi."
   }
@@ -530,21 +626,22 @@ commandsFileStr = dedent("""import json, os
 from copy import copy
 import inspect
 
-cmdDescriptionTagStr = "_description"
-
 class Commands(object):
     def __init__(self) -> None:
         self.cmdFileDir = os.path.dirname(inspect.getfile(self.__class__))
         self.cmdFileName = os.path.join(self.cmdFileDir, "commands.json" )
-        with open(self.cmdFileName, "r") as fr:
-            rawJson = json.load(fr)
-            self._switchFlags = {}
-            try:
-                self._switchFlags["switcheFlags"] = copy(rawJson["switcheFlags"])
-                del rawJson["switcheFlags"]
-            except: self._switchFlags["switcheFlags"] = {}
-            self._commands = rawJson
-        self.checkForUpdates()
+        try:
+            with open(self.cmdFileName, "r") as fr:
+                rawJson = json.load(fr)
+                self._switchFlags = {}
+                try:
+                    self._switchFlags["switcheFlags"] = copy(rawJson["switcheFlags"])
+                    del rawJson["switcheFlags"]
+                except: self._switchFlags["switcheFlags"] = {}
+                self._commands = rawJson
+            self.checkForUpdates()
+        except json.decoder.JSONDecodeError:
+            self.rebuildCommandsJson()
 
     @property
     def commands(self):
@@ -574,10 +671,48 @@ class Commands(object):
     def checkForUpdates(self):
         dirList = os.listdir(self.cmdFileDir)
         for aFile in dirList:
-            if aFile[:-2] == "py":
-                chkName = aFile[:-3]
-                if chkName not in self.commands and chkName != "commands":
-                    self.commands[chkName] = [" - No argument"]
+            if not aFile in ["commands.py", "__init__.py", "cmdOptSwitchboard.py", "cmdSwitchboard.py"]:
+                if aFile[:-2] == "py":
+                    chkName = aFile[:-3]
+                    if chkName not in self.commands and chkName != "commands":
+                        commandJsonDict = self.extractCommandJsonDict(aFile)
+                        self._commands[chkName] = commandJsonDict
+        self._writeCmdJsonFile()
+
+    def rebuildCommandsJson(self):
+        dirList = os.listdir(self.cmdFileDir)
+        self._commands = {}
+        for aFile in dirList:
+            if not aFile in ["commands.py", "__init__.py", "cmdOptSwitchboard.py", "cmdSwitchboard.py"]:
+                if aFile[:-2] == "py":
+                    chkName = aFile[:-3]
+                    commandJsonDict = self.extractCommandJsonDict(aFile)
+                    self._commands[chkName] = commandJsonDict
+        self._writeCmdJsonFile()
+
+    def extractCommandJsonDict(self, fileName: str) -> dict:
+        cmdJsonDict = {}
+        filePath = os.path.join(self.cmdFileDir, fileName)
+        with open(filePath, "r") as fr:
+            fileLines = fr.readlines()
+        inCmdJsonDict = False
+        cmdJsonLines = []
+        for line in fileLines:
+            if line.strip().startswith("commandJsonDict = {"):
+                inCmdJsonDict = True
+            if inCmdJsonDict:
+                cmdJsonLines.append(line)
+            if inCmdJsonDict and line.strip().endswith("}"):
+                inCmdJsonDict = False
+                break
+        cmdJsonStr = "".join(cmdJsonLines).replace("commandJsonDict =", "").strip()
+        try:
+            cmdJsonDict = json.loads(cmdJsonStr)
+            cmdName = list(cmdJsonDict.keys())[0]
+            self._commands[cmdName] = cmdJsonDict[cmdName]
+        except json.JSONDecodeError:
+            pass
+        return cmdJsonDict
 """)
 optSwitchesTemplate = Template(dedent("""import json
 from pathlib import Path
@@ -631,7 +766,8 @@ def writeOptJson(optSwitches: dict, switchFlags: dict) -> dict:
     printIt(formatOptStr(rawRC["switcheFlags"]), lable.INFO)
     with open(rcFileName, 'w') as wf:
         json.dump(rawRC, wf, indent=2)
-
+    return rawRC
+                                      
 def formatOptStr(optSwitches: dict) -> str:
     rtnStr = "Current option values: "
     for cmdOpt in optSwitches:
@@ -641,7 +777,7 @@ def formatOptStr(optSwitches: dict) -> str:
 """))
 argParseTemplate = Template(dedent("""import os, sys, argparse, shlex
 from ..defs.logIt import color, cStr
-from ..commands.commands import Commands, cmdDescriptionTagStr
+from ..commands.commands import Commands
 
 class PiHelpFormatter(argparse.RawTextHelpFormatter):
     # Corrected _max_action_length for the indenting of subactions
@@ -699,12 +835,16 @@ class ArgParse():
             commands = theCmds.commands
             switchFlag = theCmds.switchFlags["switcheFlags"]
             for cmdName in commands:
+                # Skip metadata entries that are not actual commands
+                if cmdName in ["description", "_globalSwitcheFlags"] or not isinstance(commands[cmdName], dict):
+                    continue
+
                 needCmdDescription = True
                 needArgDescription = True
                 arguments = commands[cmdName]
                 argumentsHelp += cStr(cmdName, color.YELLOW) + ': \\n'
                 for argName in arguments:
-                    if argName[-len(cmdDescriptionTagStr):] == cmdDescriptionTagStr:
+                    if argName == "description":
                         cmdHelp = cStr(cmdName, color.YELLOW) + ': ' + f'{arguments[argName]}'
                         if len(cmdHelp) > tCols:
                             indentPad = len(cmdName) + 2
@@ -713,7 +853,8 @@ class ArgParse():
                             cmdHelp += '\\n'
                         commandsHelp += cmdHelp
                         needCmdDescription = False
-                    else:
+                    elif argName not in ["switchFlags"]:
+                        # Only process actual arguments, not metadata
                         argHelp = cStr(f'  <{argName}> ', color.CYAN) + f'{arguments[argName]}'
                         if len(argHelp) > tCols:
                             indentPad = len(argName) + 5
@@ -752,20 +893,43 @@ class ArgParse():
             self.args = self.parser.parse_args(self.filtered_args)
 
     def _extract_cmd_options(self, args):
-        '''Extract command-specific options(--option) from arguments'''
+        '''Extract command-specific options(--option and -option) from arguments'''
+        # Get global switch flags to differentiate from command-specific flags
+        theCmds = Commands()
+        global_switch_flags = theCmds.switchFlags.get("switcheFlags", {})                           
+
         filtered_args = []
         i = 0
         while i < len(args):
             arg = args[i]
             if arg.startswith('--'):
-                # Handle command-specific options
-                option_name = arg[2:]  # Remove --
-                if i + 1 < len(args) and not args[i + 1].startswith('-'):
-                    # Option with value
-                    self.cmd_options[option_name] = args[i + 1]
-                    i += 2  # Skip both option and value
+                # Handle command-specific options with double hyphen
+                if '=' in arg:
+                    # Handle --option=value format
+                    option_name, option_value = arg[2:].split('=', 1)  # Remove -- and split on first =
+                    self.cmd_options[option_name] = option_value
+                    i += 1
                 else:
-                    # Option without value (flag)
+                    option_name = arg[2:]  # Remove --
+                    if i + 1 < len(args) and not args[i + 1].startswith('-'):
+                        # Option with value
+                        self.cmd_options[option_name] = args[i + 1]
+                        i += 2  # Skip both option and value
+                    else:
+                        # Double hyphen option without value - still treat as string type
+                        # Mark it specially so we know it's a string option during command creation
+                        self.cmd_options[option_name] = '__STRING_OPTION__'
+                        i += 1
+            elif arg.startswith('-') and len(arg) > 1:
+                # Handle single-hyphen options that might be command-specific
+                # Check if this is a known global flag first
+                option_name = arg[1:]
+                if option_name in global_switch_flags:
+                    # This is a global flag, let argparse handle it
+                    filtered_args.append(arg)
+                    i += 1
+                else:
+                    # This might be a command-specific flag, treat as such
                     self.cmd_options[option_name] = True
                     i += 1
             else:

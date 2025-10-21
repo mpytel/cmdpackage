@@ -15,7 +15,7 @@ ${packName} is a Python package that provides a framework for building extensibl
 ## Features
 
 - **Dynamic Command Creation**: Add new commands with custom arguments on-the-fly
-- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, async)
+- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, asyncDef)
 - **Interactive Help System**: Colored, formatted help text that adapts to terminal width
 - **Command Management**: Modify or remove existing commands and their arguments
 - **Flexible Argument Parsing**: Support for both string and integer arguments
@@ -62,7 +62,7 @@ ${packName} newCmd <cmdName> [argName1] [argName2] ...
 - `newCmd` (default): Standard template with argument handling
 - `simple`: Minimal template for basic commands
 - `classCall`: Object-oriented template using classes
-- `async`: Asynchronous template for async operations
+- `asyncDef`: Asynchronous template for asyncDef operations
 
 Examples:
 ```bash
@@ -72,8 +72,8 @@ ${packName} newCmd deploy server port
 # Create command with specific template
 ${packName} newCmd --template classCall chatBot message response
 
-# Create async command
-${packName} newCmd --template async fileProcessor input output
+# Create asyncDef command
+${packName} newCmd --template asyncDef fileProcessor input output
 
 # List available templates
 ${packName} newCmd --templates
@@ -158,7 +158,7 @@ ${packName}/
 │       │       ├── newCmd.py    # Default template
 │       │       ├── simple.py    # Simple template
 │       │       ├── classCall.py # Class-based template
-│       │       └── async.py     # Async template
+│       │       └── asyncDef.py     # asyncDef template
 │       └── defs/
 │           └── logIt.py         # Colored logging and output utilities
 ├── pyproject.toml               # Package configuration
@@ -193,7 +193,7 @@ The template system allows you to generate different styles of command implement
 - Method-based argument handling
 - Better for complex commands with shared state
 
-#### Async Template (`async`)
+#### asyncDef Template (`asyncDef`)
 - Asynchronous command implementation
 - Suitable for I/O intensive operations
 - Uses asyncio for concurrent processing
@@ -267,10 +267,10 @@ ${packName} newCmd --template classCall database connect query
 # Creates an object-oriented database command
 ```
 
-#### Async Command
+#### asyncDef Command
 ```bash
-${packName} newCmd --template async downloader url destination
-# Creates an async file downloader command
+${packName} newCmd --template asyncDef downloader url destination
+# Creates an asyncDef file downloader command
 ```
 
 ### Using the Generated Commands
@@ -284,7 +284,7 @@ ${packName} greet "John Doe"
 # Class-based command
 ${packName} database localhost "SELECT * FROM users"
 
-# Async command
+# asyncDef command
 ${packName} downloader "https://example.com/file.zip" "/downloads/"
 ```
 
@@ -295,7 +295,7 @@ ${packName} downloader "https://example.com/file.zip" "/downloads/"
 ${packName} newCmd --templates
 
 # Use specific template
-${packName} newCmd --template async processor input output
+${packName} newCmd --template asyncDef processor input output
 
 # Fallback to default if template doesn't exist
 ${packName} newCmd --template nonexistent fallback arg1

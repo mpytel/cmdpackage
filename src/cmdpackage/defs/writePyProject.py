@@ -5,7 +5,7 @@ from cmdpackage.templates.pyprojectTemplate import (
     classifiers_template)
 from cmdpackage.templates.readmeTemplate import readme_template
 from sys import version_info
-from cmdpackage.defs.runSubProc import runSubProc
+from cmdpackage.defs.runSubProc import runSubProc, CompletedProcess
 from subprocess import Popen, PIPE
 from getpass import getuser
 import os
@@ -51,7 +51,7 @@ def writePyProject() -> dict[str,str]:
     if with_gitignore.lower() == 'y':
         with open('.gitignore', 'w') as gitignore_file:
             write_content(gitignore_file, gitignore_content)
-        initGitRepo()
+        rtnCP = initGitRepo()
     return rtnDict
 
 
@@ -72,15 +72,19 @@ def gen_classifiers():
     return classifiers_template.substitute(classifiers=classifiers_lines)
 
 
-def initGitRepo():
-    rtnStr = runSubProc('ls .git')
-    if rtnStr.returncode != 0:
-        rtnStr = runSubProc(f'git init')
-    if rtnStr.returncode == 0:
-        rtnStr = runSubProc(f'git add .')
-    if rtnStr.returncode == 0:
-        rtnStr = runSubProc(f'git commit -m "inital commit"', noOutput=False)
+def initGitRepo(commit_msg="initial commit") -> CompletedProcess:
+    rtnCP: CompletedProcess = runSubProc('ls .git')
+    if rtnCP.returncode != 0:
+        rtnCP = runSubProc(f'git init')
+    if rtnCP.returncode == 0:
+        rtnCP = commitGitRepo(commit_msg)
+    return rtnCP
 
+def commitGitRepo(commit_msg="commit") -> CompletedProcess:
+    rtnCP: CompletedProcess = runSubProc(f'git add .')
+    if rtnCP.returncode == 0:
+        rtnCP = runSubProc(f'git commit -m "{commit_msg}"', noOutput=False)
+    return rtnCP
 
 def get_username():
     '''Get git config values.'''
