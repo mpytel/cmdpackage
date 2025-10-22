@@ -4,7 +4,7 @@ from string import Template
 from textwrap import dedent
 
 readme_template = Template(dedent("""# ${packName}
-version - ${version}
+version - 0.1.0
 
 A dynamic command-line tool for creating, modifying, and managing custom commands with interactive help and argument parsing.
 
@@ -15,13 +15,15 @@ ${packName} is a Python package that provides a framework for building extensibl
 ## Features
 
 - **Dynamic Command Creation**: Add new commands with custom arguments on-the-fly
-- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, asyncDef)
+- **Command-Specific Option Flags**: Create boolean and string option flags for commands
+- **Persistent Flag Storage**: Command flags are automatically saved to `.tcrc` configuration file
+- **Flag Toggle Syntax**: Use `+flag` and `-flag` syntax to enable/disable boolean flags
+- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, async)
 - **Interactive Help System**: Colored, formatted help text that adapts to terminal width
 - **Command Management**: Modify or remove existing commands and their arguments
 - **Flexible Argument Parsing**: Support for both string and integer arguments
 - **Template-Based Code Generation**: Automatically generates Python files for new commands
 - **JSON-Based Configuration**: Commands and their descriptions stored in JSON format
-- **Command-Specific Options**: Use double-hyphen options for command-specific functionality
 
 ## Installation
 
@@ -48,36 +50,43 @@ ${packName} <command> [arguments...] [options]
 ### Available Commands
 
 #### `newCmd` - Create New Command
-Add a new command with optional arguments:
+Add a new command with optional arguments and option flags:
 
 ```bash
-${packName} newCmd <cmdName> [argName1] [argName2] ...
+${packName} newCmd <cmdName> [argName1] [argName2] ... [--flagName] [-flagName]
 ```
+
+**Creating Commands with Option Flags:**
+```bash
+# Create command with boolean and string flags
+${packName} newCmd deploy server --config -verbose
+
+# Create command using specific template
+${packName} newCmd --template simple processor input --output -debug
+
+# Create command with template specification using = syntax
+${packName} newCmd --templates=simple backup source --destination -compress
+```
+
+**Option Flag Types:**
+- **String Options** (`--flagName`): Store text values, specified with double hyphens
+- **Boolean Flags** (`-flagName`): Store true/false values, specified with single hyphens
+
+During command creation, you'll be prompted to provide descriptions for:
+- The command itself
+- Each regular argument
+- Each option flag (with type indication)
 
 **Command-Specific Options:**
 - `--template <templateName>`: Specify which template to use for code generation
 - `--templates`: List all available templates
+- `--templates=<templateName>`: Alternative syntax for specifying template
 
 **Available Templates:**
 - `newCmd` (default): Standard template with argument handling
 - `simple`: Minimal template for basic commands
 - `classCall`: Object-oriented template using classes
-- `asyncDef`: Asynchronous template for asyncDef operations
-
-Examples:
-```bash
-# Create command with default template
-${packName} newCmd deploy server port
-
-# Create command with specific template
-${packName} newCmd --template classCall chatBot message response
-
-# Create asyncDef command
-${packName} newCmd --template asyncDef fileProcessor input output
-
-# List available templates
-${packName} newCmd --templates
-```
+- `async`: Asynchronous template for async operations
 
 This will:
 - Create a new command with the specified name
@@ -125,7 +134,7 @@ ${packName} <command> -h
 
 ## Option Types
 
-${packName} supports two types of options:
+${packName} supports multiple types of options:
 
 ### Global Options (Single Hyphen)
 - Format: `-<letter>` or `+<letter>`
@@ -134,8 +143,118 @@ ${packName} supports two types of options:
 
 ### Command-Specific Options (Double Hyphen)
 - Format: `--<word>`
-- Scope: Apply only to specific commands
+- Scope: Apply only to specific commands during command creation
 - Example: `--template classCall` for the newCmd command
+
+## Command Option Flags
+
+Commands can define their own option flags that are created during command definition and persist between runs.
+
+### Creating Option Flags
+
+When creating a command with `newCmd`, you can specify option flags:
+
+```bash
+# Create command with string and boolean flags
+${packName} newCmd backup source --destination -compress -verbose
+
+# This creates:
+# - source: regular argument
+# - --destination: string option flag
+# - -compress: boolean flag
+# - -verbose: boolean flag
+```
+
+During creation, you'll be prompted for descriptions:
+```
+Enter help description for argument source:
+> Source directory to backup
+
+Enter help description for option --destination (stores value):
+> Destination path for backup files
+
+Enter help description for flag -compress (true/false):
+> Enable compression for backup
+
+Enter help description for flag -verbose (true/false):
+> Show detailed backup progress
+```
+
+### Using Option Flags
+
+#### String Options (Double Hyphen `--`)
+String options store text values and can be used in multiple ways:
+
+```bash
+# Provide value as separate argument
+${packName} backup /home/user --destination /backup/location
+
+# Provide value using equals syntax
+${packName} backup /home/user --destination=/backup/location
+
+# Use without value (stores empty string)
+${packName} backup /home/user --destination
+```
+
+#### Boolean Flags (Single Hyphen `-`)
+Boolean flags are toggled using `+` (enable) and `-` (disable) syntax:
+
+```bash
+# Enable compression flag
+${packName} backup +compress
+
+# Disable compression flag  
+${packName} backup -compress
+
+# Enable verbose mode
+${packName} backup +verbose
+
+# Multiple flag operations
+${packName} backup +compress +verbose
+${packName} backup -compress -verbose
+```
+
+### Flag Persistence
+
+All command flags are automatically saved to `.tcrc` configuration file:
+
+```json
+{
+  "switcheFlags": {},
+  "commandFlags": {
+    "backup": {
+      "destination": "/backup/location",
+      "compress": true,
+      "verbose": false
+    }
+  }
+}
+```
+
+### Flag Behavior
+
+- **String flags**: Values persist until explicitly changed
+- **Boolean flags**: State persists until toggled with `+` or `-`
+- **Command execution**: Flags are saved before the command runs
+- **Multiple flags**: Can combine multiple flags in single command
+
+### Examples
+
+```bash
+# Create a deployment command with flags
+${packName} newCmd deploy app --config --environment -verbose -dry-run
+
+# Use the command with various flag combinations
+${packName} deploy myapp --config /path/config.yml --environment production +verbose
+${packName} deploy myapp --environment staging +dry-run
+${packName} deploy myapp +verbose -dry-run
+${packName} deploy myapp --config=/new/config.json
+
+# Toggle flags independently
+${packName} deploy +verbose    # Enable verbose mode
+${packName} deploy -verbose    # Disable verbose mode
+${packName} deploy +dry-run    # Enable dry run mode
+```
 
 ## Project Structure
 
@@ -146,11 +265,11 @@ ${packName}/
 │       ├── main.py              # Entry point
 │       ├── classes/
 │       │   ├── argParse.py      # Custom argument parser with colored help
-│       │   └── optSwitches.py   # Option switch handling
+│       │   └── optSwitches.py   # Option flag persistence and management
 │       ├── commands/
-│       │   ├── commands.json    # Command definitions and descriptions
+│       │   ├── commands.json    # Command definitions and option flag schemas
 │       │   ├── commands.py      # Command loading and management
-│       │   ├── cmdSwitchbord.py # Command routing and execution
+│       │   ├── cmdSwitchbord.py # Command routing and flag processing
 │       │   ├── newCmd.py        # New command creation logic
 │       │   ├── modCmd.py        # Command modification logic
 │       │   ├── rmCmd.py         # Command removal logic
@@ -158,11 +277,30 @@ ${packName}/
 │       │       ├── newCmd.py    # Default template
 │       │       ├── simple.py    # Simple template
 │       │       ├── classCall.py # Class-based template
-│       │       └── asyncDef.py     # asyncDef template
+│       │       └── async.py     # Async template
 │       └── defs/
 │           └── logIt.py         # Colored logging and output utilities
+├── .tcrc                        # Configuration file (auto-generated)
 ├── pyproject.toml               # Package configuration
 └── README.md                    # This file
+```
+
+## Configuration File
+
+The `.tcrc` file stores persistent configuration:
+
+```json
+{
+  "switcheFlags": {
+    "globalFlag": false
+  },
+  "commandFlags": {
+    "commandName": {
+      "stringOption": "value",
+      "booleanFlag": true
+    }
+  }
+}
 ```
 
 ## Development
@@ -172,9 +310,61 @@ ${packName}/
 When you create a new command using `${packName} newCmd`, the system:
 
 1. Prompts for descriptions of the command and its arguments
-2. Updates the `commands.json` file with the new command definition
-3. Generates a Python file in the `commands/` directory using the specified template
-4. Makes the command immediately available for use
+2. Prompts for descriptions of any option flags (string options and boolean flags)
+3. Updates the `commands.json` file with the new command definition and flag schema
+4. Generates a Python file in the `commands/` directory using the specified template
+5. Makes the command immediately available for use
+
+### Accessing Option Flags in Commands
+
+Commands can access their stored flags using the `optSwitches` module:
+
+```python
+from ..classes.optSwitches import getCmdSwitchFlags
+
+def mycommand(argParse):
+    args = argParse.args
+    arguments = args.arguments
+    
+    # Get stored command flags from .tcrc
+    stored_flags = getCmdSwitchFlags('mycommand')
+    
+    # Get current run flags from command line
+    current_flags = getattr(argParse, 'cmd_options', {})
+    
+    # Merge current run flags with stored flags (current takes precedence)
+    all_flags = {**stored_flags, **current_flags}
+    
+    # Use the flags
+    if all_flags.get('verbose', False):
+        printIt("Verbose mode enabled", lable.INFO)
+    
+    config_file = all_flags.get('config', 'default.conf')
+    printIt(f"Using config: {config_file}", lable.INFO)
+```
+
+### Command Flag Schema
+
+The `commands.json` file stores the flag definitions:
+
+```json
+{
+  "mycommand": {
+    "description": "My custom command",
+    "switchFlags": {
+      "config": {
+        "description": "Configuration file path",
+        "type": "str"
+      },
+      "verbose": {
+        "description": "Enable verbose output",
+        "type": "bool"
+      }
+    },
+    "arg1": "Description of first argument"
+  }
+}
+```
 
 ### Template System
 
@@ -323,4 +513,4 @@ pip install -e .
 
 ### Terminal Width Issues
 The help system automatically adapts to terminal width. If formatting looks odd, try resizing your terminal or using a standard terminal width (80+ characters recommended).
-    """))
+"""))

@@ -17,36 +17,174 @@ if __name__ == '__main__':
 """)
 cmdSwitchbordFileStr = dedent("""import sys, traceback
 from argparse import Namespace
-from ..defs.logIt import printIt, lable
+from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 from .cmdOptSwitchbord import cmdOptSwitchbord
 from ..classes.argParse import ArgParse
+from ..classes.optSwitches import saveCmdSwitchFlags, toggleCmdSwitchFlag
 
 cmdObj = Commands()
 commands = cmdObj.commands
 switchFlags = cmdObj.switchFlags["switcheFlags"]
+                              
+def printCommandHelp(cmdName: str):
+    """Print help for a specific command"""
+    if cmdName not in commands:
+        printIt(f"Command '{cmdName}' not found", lable.ERROR)
+        return
+    
+    cmdInfo = commands[cmdName]
+    
+    # Print command description
+    description = cmdInfo.get('description', 'No description available')
+    printIt(f"\n{cStr(cmdName, color.YELLOW)}: {description}\n", lable.INFO)
+    
+    # Build usage line
+    usage_parts = [f"tc {cmdName}"]
+    
+    # Add arguments
+    args = []
+    for key, value in cmdInfo.items():
+        if key not in ['description', 'switchFlags'] and isinstance(value, str):
+            args.append(f"<{key}>")
+    
+    if args:
+        usage_parts.extend(args)
+    
+    # Add option flags
+    switchFlags = cmdInfo.get('switchFlags', {})
+    if switchFlags:
+        flag_parts = []
+        for flagName, flagInfo in switchFlags.items():
+            if flagInfo.get('type') == 'bool':
+                flag_parts.append(f"[+{flagName}|-{flagName}]")
+            elif flagInfo.get('type') == 'str':
+                flag_parts.append(f"[--{flagName} <value>]")
+        usage_parts.extend(flag_parts)
+    
+    # Print usage
+    usage = " ".join(usage_parts)
+    printIt(f"{cStr('Usage:', color.CYAN)} {usage}\n", lable.INFO)
+    
+    # Print arguments section
+    if args:
+        printIt(f"{cStr('Arguments:', color.CYAN)}", lable.INFO)
+        for key, value in cmdInfo.items():
+            if key not in ['description', 'switchFlags'] and isinstance(value, str):
+                printIt(f"  {cStr(f'<{key}>', color.WHITE)}  {value}", lable.INFO)
+        print()  # Extra line
+    
+    # Print option flags section
+    if switchFlags:
+        printIt(f"{cStr('Option Flags:', color.CYAN)}", lable.INFO)
+        for flagName, flagInfo in switchFlags.items():
+            flagType = flagInfo.get('type', 'unknown')
+            flagDesc = flagInfo.get('description', 'No description')
+            
+            if flagType == 'bool':
+                printIt(f"  {cStr(f'+{flagName}', color.GREEN)}   Enable: {flagDesc}", lable.INFO)
+                printIt(f"  {cStr(f'-{flagName}', color.RED)}   Disable: {flagDesc}", lable.INFO)
+            elif flagType == 'str':
+                printIt(f"  {cStr(f'--{flagName}', color.YELLOW)} <value>  {flagDesc}", lable.INFO)
+        print()  # Extra line
+    
+    # Print examples if the command has flags
+    if switchFlags:
+        printIt(f"{cStr('Examples:', color.CYAN)}", lable.INFO)
+        example_parts = [f"tc {cmdName}"]
+        if args:
+            example_parts.append("arg1")
+        
+        # Show flag examples
+        bool_flags = [name for name, info in switchFlags.items() if info.get('type') == 'bool']
+        str_flags = [name for name, info in switchFlags.items() if info.get('type') == 'str']
+        
+        if str_flags:
+            example_parts.append(f"--{str_flags[0]} value")
+        if bool_flags:
+            example_parts.append(f"+{bool_flags[0]}")
+        
+        printIt(f"  {' '.join(example_parts)}", lable.INFO)
+        
+        if bool_flags:
+            printIt(f"  tc {cmdName} -{bool_flags[0]}  # Disable {bool_flags[0]} flag", lable.INFO)
 
 def cmdSwitchbord(argParse: ArgParse):
     global commands
     theCmd = 'notSet'
+    flag_toggle_occurred = False  # Track if a flag toggle happened
     try:
         if len(sys.argv) > 1:
+            # Handle direct help flags like 'tc -h'
+            if len(sys.argv) == 2 and sys.argv[1] in ["-h", "--help"]:
+                argParse.parser.print_help()
+                exit()
+            
             if len(sys.argv) > 2:
+                # Handle command-specific help: tc command -h or tc command --help
+                if sys.argv[2] in ["-h", "--help"]:
+                    cmdName = sys.argv[1]
+                    printCommandHelp(cmdName)
+                    exit()
+                
+                # Check for flag toggle operations anywhere in the arguments
+                cmdName = sys.argv[1]
+                for i in range(2, len(sys.argv)):
+                    arg = sys.argv[i]
+                    if arg[0] in '-+?' and not arg.startswith('--') and len(arg) > 1:
+                        flagName = arg[1:]
+                        
+                        # Check if it's a global switch flag first
+                        if flagName in switchFlags.keys():
+                            cmdOptSwitchbord(arg, switchFlags)
+                        
+                        # Check if it's a command-specific flag
+                        if cmdName in commands and 'switchFlags' in commands[cmdName]:
+                            cmdSwitchFlags = commands[cmdName]['switchFlags']
+                            if flagName in cmdSwitchFlags and cmdSwitchFlags[flagName].get('type') == 'bool':
+                                # This is a command-specific boolean flag
+                                setValue = arg[0] == '+'
+                                toggleCmdSwitchFlag(cmdName, flagName, setValue)
+                                flag_toggle_occurred = True
+                
+                # Handle old logic for backward compatibility
                 switchFlagChk = sys.argv[2]
                 # Only handle single hyphen options here, let double hyphen pass through
                 if len(sys.argv) == 3 and switchFlagChk[0] in '-+?' and not switchFlagChk.startswith('--'):
-                    if switchFlagChk[1:] in switchFlags.keys():
-                        print(f'00001: {switchFlagChk}')
+                    flagName = switchFlagChk[1:]
+                    
+                    # Check if it's a global switch flag first
+                    if flagName in switchFlags.keys():
                         cmdOptSwitchbord(switchFlagChk, switchFlags)
+                    
+                    # Check if it's a command-specific flag
+                    cmdName = sys.argv[1]
+                    if cmdName in commands and 'switchFlags' in commands[cmdName]:
+                        cmdSwitchFlags = commands[cmdName]['switchFlags']
+                        if flagName in cmdSwitchFlags and cmdSwitchFlags[flagName].get('type') == 'bool':
+                            # This is a command-specific boolean flag
+                            setValue = switchFlagChk[0] == '+'
+                            toggleCmdSwitchFlag(cmdName, flagName, setValue)
+                            flag_toggle_occurred = True
+                            exit()
+                    
+                    # Not a recognized flag
+                    if switchFlagChk not in ["-h", "--help"]:
+                        printIt(f'{switchFlagChk} not defined',lable.WARN)
                     else:
-                        if switchFlagChk not in ["-h", "--help"]:
-                            printIt(f'{switchFlagChk} not defined',lable.WARN)
-                        else:
-                            argParse.parser.print_help()
+                        argParse.parser.print_help()
                     exit()
+
             args: Namespace = argParse.args
             theCmd = args.commands[0]
             if theCmd in commands.keys():
+                # Save command-specific switch flags before executing command
+                # Skip if a flag toggle already occurred to avoid overwriting the toggle
+                if hasattr(argParse, 'cmd_options') and argParse.cmd_options and not flag_toggle_occurred:
+                    cmdSwitchFlags = commands[theCmd].get('switchFlags', {})
+                    if cmdSwitchFlags:
+                        saveCmdSwitchFlags(theCmd, argParse.cmd_options, cmdSwitchFlags)
+              
                 exec(f'from ..commands.{theCmd} import {theCmd}')
                 exec(f'{theCmd}(argParse)')
             else:
@@ -741,6 +879,86 @@ class OptSwitches():
             print('here')
             self.optSwitches["switcheFlags"][currSwitchFlag] = True
         writeOptJson(self.optSwitches, self.switchFlags)
+                                      
+def saveCmdSwitchFlags(cmdName: str, cmdOptions: dict, cmdSwitchFlags: dict):
+    \"\"\"Save command-specific switch flags to .tcrc\"\"\"
+    rcData = readOptSwitches()
+    
+    # Initialize command flags section if it doesn't exist
+    if 'commandFlags' not in rcData:
+        rcData['commandFlags'] = {}
+    if cmdName not in rcData['commandFlags']:
+        rcData['commandFlags'][cmdName] = {}
+    
+    # Process each command option
+    for optionName, optionValue in cmdOptions.items():
+        if optionName in cmdSwitchFlags:
+            flagDef = cmdSwitchFlags[optionName]
+            if flagDef['type'] == 'bool':
+                # Boolean flag - store true/false
+                rcData['commandFlags'][cmdName][optionName] = bool(optionValue)
+            elif flagDef['type'] == 'str':
+                # String option - store the value (or empty string if not provided)
+                if optionValue == '__STRING_OPTION__':
+                    rcData['commandFlags'][cmdName][optionName] = ""
+                else:
+                    rcData['commandFlags'][cmdName][optionName] = str(optionValue)
+    
+    # Write back to file
+    with open(rcFileName, 'w') as wf:
+        json.dump(rcData, wf, indent=2)
+    
+    printIt(f"Command flags saved for '{cmdName}'", lable.INFO)
+
+def toggleCmdSwitchFlag(cmdName: str, flagName: str, setValue: bool):
+    \"\"\"Toggle a command-specific boolean flag in .tcrc\"\"\"
+    rcData = readOptSwitches()
+    
+    # Initialize command flags section if it doesn't exist
+    if 'commandFlags' not in rcData:
+        rcData['commandFlags'] = {}
+    if cmdName not in rcData['commandFlags']:
+        rcData['commandFlags'][cmdName] = {}
+    
+    # Set the flag value
+    rcData['commandFlags'][cmdName][flagName] = setValue
+    
+    # Write back to file
+    with open(rcFileName, 'w') as wf:
+        json.dump(rcData, wf, indent=2)
+    
+    status = "enabled" if setValue else "disabled"
+    printIt(f"Command flag '{flagName}' {status} for '{cmdName}'", lable.INFO)
+
+def getCmdSwitchFlags(cmdName: str) -> dict:
+    \"\"\"Get stored command-specific switch flags from .tcrc\"\"\"
+    rcData = readOptSwitches()
+    return rcData.get('commandFlags', {}).get(cmdName, {})
+                                      
+def removeCmdSwitchFlags(cmdName: str):
+    \"\"\"Remove command-specific switch flags from .tcrc when command is deleted\"\"\"
+    rcData = readOptSwitches()
+    
+    # Check if command exists in commandFlags
+    if 'commandFlags' in rcData and cmdName in rcData['commandFlags']:
+        del rcData['commandFlags'][cmdName]
+        
+        # If commandFlags is now empty, we can remove the whole section
+        if not rcData['commandFlags']:
+            del rcData['commandFlags']
+        
+        # If the entire file would be empty or only has empty sections, delete the file
+        if not rcData.get('switcheFlags') and not rcData.get('commandFlags'):
+            if rcFileName.is_file():
+                rcFileName.unlink()
+                printIt(f"Removed '{cmdName}' flags and deleted empty .tcrc file", lable.INFO)
+        else:
+            # Write back the updated file
+            with open(rcFileName, 'w') as wf:
+                json.dump(rcData, wf, indent=2)
+            printIt(f"Removed '{cmdName}' flags from .tcrc", lable.INFO)
+    else:
+        printIt(f"No flags found for '{cmdName}' in .tcrc", lable.INFO)
 
 def readOptSwitches() -> dict:
     global rcFileName
@@ -903,8 +1121,17 @@ class ArgParse():
         while i < len(args):
             arg = args[i]
             if arg.startswith('--'):
+                # Handle help flags - only preserve for general help (when no command specified)
+                if arg == '--help':
+                    # If this is the first argument, it's general help (tc --help)
+                    if i == 0:
+                        filtered_args.append(arg)
+                        i += 1
+                    else:
+                        # This is command-specific help (tc command --help), don't pass to argparse
+                        i += 1
                 # Handle command-specific options with double hyphen
-                if '=' in arg:
+                elif '=' in arg:
                     # Handle --option=value format
                     option_name, option_value = arg[2:].split('=', 1)  # Remove -- and split on first =
                     self.cmd_options[option_name] = option_value
@@ -924,7 +1151,17 @@ class ArgParse():
                 # Handle single-hyphen options that might be command-specific
                 # Check if this is a known global flag first
                 option_name = arg[1:]
-                if option_name in global_switch_flags:
+                
+                # Handle help flags - only preserve for general help (when no command specified)
+                if option_name in ['h']:
+                    # If this is the first argument, it's general help (tc -h)
+                    if i == 0:
+                        filtered_args.append(arg)
+                        i += 1
+                    else:
+                        # This is command-specific help (tc command -h), don't pass to argparse
+                        i += 1
+                elif option_name in global_switch_flags:
                     # This is a global flag, let argparse handle it
                     filtered_args.append(arg)
                     i += 1
