@@ -220,7 +220,7 @@ All command flags are automatically saved to `.tcrc` configuration file:
 
 ```json
 {
-  "switcheFlags": {},
+  "switchFlags": {},
   "commandFlags": {
     "backup": {
       "destination": "/backup/location",
@@ -291,7 +291,7 @@ The `.tcrc` file stores persistent configuration:
 
 ```json
 {
-  "switcheFlags": {
+  "switchFlags": {
     "globalFlag": false
   },
   "commandFlags": {

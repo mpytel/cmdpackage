@@ -4,6 +4,7 @@ import os
 from cmdpackage.defs.writePyProject import writePyProject, commitGitRepo
 from cmdpackage.defs.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
+from cmdpackage.defs.writeTestScript import writeTestScript
 import argparse
 from pathlib import Path
 
@@ -46,6 +47,8 @@ def main():
     writeCLIPackage(fields)
     commitGitRepo("finalize package setup")
     createzVirtualEnv(fields)
+    writeTestScript(fields)
+
 
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
@@ -185,6 +188,8 @@ def test_generated_package(project_name: str) -> bool:
                         print("  ⚠️  Generated command runs but may have issues")
                         # Don't fail the test for this as it's expected behavior
                 else:
+                    print("result.returncode",result.returncode)
+                    print("result.stdout",result.stdout)
                     print("  ❌ newCmd functionality failed")
                     if shutil.which(project_name):
                         print(f"      This is likely due to system command conflict with '{project_name}'")

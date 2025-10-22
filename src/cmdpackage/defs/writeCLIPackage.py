@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os, json
+from cmdpackage.defs.utilities import chkDir
 from cmdpackage.templates.cmdTemplate import \
     mainFile, logPrintTemplate, \
     commandsFileStr, commandsJsonDict, \
@@ -81,10 +82,10 @@ def writeCLIPackage(fields: dict):
         commandJsonDictStr += " "*indent + f'"{cmdName}": {json.dumps(commandsJsonDict.get(cmdName),indent=8)}'
         commandJsonDictStr += "\n}"
         fileName = os.path.join(dirName,f"{cmdName}.py")
-        cmdTemplatesStr = cmdTemplates[cmdName].substitute(commandJsonDict=commandJsonDictStr)
         if cmdName == "newCmd":
-            newCommandJsonDict = cmdTemplatesStr
-        print('cmdTemplatesStr',cmdTemplatesStr)
+            cmdTemplatesStr = cmdTemplates[cmdName].substitute(commandJsonDict=commandJsonDictStr,name=programName)
+        else:
+            cmdTemplatesStr = cmdTemplates[cmdName].substitute(commandJsonDict=commandJsonDictStr)
         with open(fileName,"w") as wf:
             wf.write(str(cmdTemplatesStr))
     # -- commands\templates dir files
@@ -108,9 +109,5 @@ def writeCLIPackage(fields: dict):
             fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
         with open(fileName,"w") as wf:
             wf.write(fileStr)
-
-def chkDir(dirName: str):
-    if not os.path.isdir(dirName):
-        os.makedirs(dirName, exist_ok=True)
 
 
