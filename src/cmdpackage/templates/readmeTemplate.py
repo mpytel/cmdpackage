@@ -4,7 +4,24 @@ from string import Template
 from textwrap import dedent
 
 readme_template = Template(dedent("""# ${packName}
-version - 0.1.0
+version: ${version}
+framework information and overview for adding commands to ${packName} are provided in README_Command_modifications.md
+
+${description}   
+## Overview
+TBD
+                                     
+## Installation
+### From Source
+```bash
+git clone <repository-url>
+cd ${packName}
+pip install -e .
+```
+"""))
+
+readme_cmd_template = Template(dedent("""# ${packName}
+version - ${version}
 
 A dynamic command-line tool for creating, modifying, and managing custom commands with interactive help and argument parsing.
 
@@ -16,9 +33,9 @@ ${packName} is a Python package that provides a framework for building extensibl
 
 - **Dynamic Command Creation**: Add new commands with custom arguments on-the-fly
 - **Command-Specific Option Flags**: Create boolean and string option flags for commands
-- **Persistent Flag Storage**: Command flags are automatically saved to `.tcrc` configuration file
+- **Persistent Flag Storage**: Command flags are automatically saved to `.${packName}rc` configuration file
 - **Flag Toggle Syntax**: Use `+flag` and `-flag` syntax to enable/disable boolean flags
-- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, async)
+- **Multiple Code Templates**: Choose from different templates when creating commands (simple, class-based, asyncDef)
 - **Interactive Help System**: Colored, formatted help text that adapts to terminal width
 - **Command Management**: Modify or remove existing commands and their arguments
 - **Flexible Argument Parsing**: Support for both string and integer arguments
@@ -83,10 +100,10 @@ During command creation, you'll be prompted to provide descriptions for:
 - `--templates=<templateName>`: Alternative syntax for specifying template
 
 **Available Templates:**
-- `newCmd` (default): Standard template with argument handling
+- `argCmdDef` (default): Standard template with argument handling
 - `simple`: Minimal template for basic commands
 - `classCall`: Object-oriented template using classes
-- `async`: Asynchronous template for async operations
+- `asyncDef`: Asynchronous template for async operations
 
 This will:
 - Create a new command with the specified name
@@ -95,32 +112,74 @@ This will:
 - Prompt for descriptions of the command and each argument
 
 #### `modCmd` - Modify Existing Command
-Modify command or argument descriptions, or add new arguments:
+Modify command or argument descriptions, or add new arguments and option flags:
 
 ```bash
-${packName} modCmd <cmdName> [argName...]
+${packName} modCmd <cmdName> [argName...] [--flagName] [-flagName]
 ```
+
+**Modifying Commands with Option Flags:**
+```bash
+# Modify command description only
+${packName} modCmd deploy
+
+# Modify existing argument description
+${packName} modCmd deploy timeout
+
+# Add new argument to existing command
+${packName} modCmd deploy newarg
+
+# Add boolean and string flags to existing command
+${packName} modCmd deploy -verbose --config
+
+# Combine argument and flag modifications
+${packName} modCmd deploy newarg -debug --output
+```
+
+**Option Flag Types in modCmd:**
+- **String Options** (`--flagName`): Add string value options to existing commands
+- **Boolean Flags** (`-flagName`): Add true/false flags to existing commands
+
+During modification, you'll be prompted to:
+- Confirm changes to command or argument descriptions
+- Provide descriptions for new arguments
+- Provide descriptions for new option flags (with type indication)
+
+The `modCmd` command will:
+- Update existing descriptions if you choose to modify them
+- Add new arguments with descriptions
+- Add new option flags to both `commands.json` and `.${packName}rc` configuration
+- Leave the command's `.py` file unchanged (only modifies metadata)
 
 Example:
 ```bash
+# Modify existing argument description
 ${packName} modCmd deploy timeout
+
+# Add new flags to existing command
+${packName} modCmd deploy -verbose --config-file
+```
 ```
 
 #### `rmCmd` - Remove Command
-Remove a command and its associated file, or remove specific arguments:
+Remove a command and its associated file and flags, or remove specific arguments:
 
 ```bash
 ${packName} rmCmd <cmdName> [argName...]
 ```
 
-Example:
+**Removing Commands:**
 ```bash
-# Remove entire command
+# Remove entire command (removes .py file, command definition, and associated flags from .${packName}rc)
 ${packName} rmCmd deploy
 
-# Remove specific argument
+# Remove specific argument from command (leaves command intact)
 ${packName} rmCmd deploy timeout
 ```
+
+**What gets removed:**
+- **Entire command removal**: Deletes the `.py` file, removes entry from `commands.json`, and cleans up associated flags in `.${packName}rc`
+- **Argument removal**: Only removes the argument definition from `commands.json` (command and file remain)
 
 ### Getting Help
 
@@ -216,7 +275,7 @@ ${packName} backup -compress -verbose
 
 ### Flag Persistence
 
-All command flags are automatically saved to `.tcrc` configuration file:
+All command flags are automatically saved to `.${packName}rc` configuration file:
 
 ```json
 {
@@ -274,20 +333,20 @@ ${packName}/
 │       │   ├── modCmd.py        # Command modification logic
 │       │   ├── rmCmd.py         # Command removal logic
 │       │   └── templates/       # Code templates for new commands
-│       │       ├── newCmd.py    # Default template
+│       │       ├── argCmdDef.py    # Default template
 │       │       ├── simple.py    # Simple template
 │       │       ├── classCall.py # Class-based template
-│       │       └── async.py     # Async template
+│       │       └── asyncDef.py  # Async template
 │       └── defs/
 │           └── logIt.py         # Colored logging and output utilities
-├── .tcrc                        # Configuration file (auto-generated)
+├── .${packName}rc                        # Configuration file (auto-generated)
 ├── pyproject.toml               # Package configuration
 └── README.md                    # This file
 ```
 
 ## Configuration File
 
-The `.tcrc` file stores persistent configuration:
+The `.${packName}rc` file stores persistent configuration:
 
 ```json
 {
@@ -325,20 +384,20 @@ from ..classes.optSwitches import getCmdSwitchFlags
 def mycommand(argParse):
     args = argParse.args
     arguments = args.arguments
-    
-    # Get stored command flags from .tcrc
+
+    # Get stored command flags from .${packName}rc
     stored_flags = getCmdSwitchFlags('mycommand')
-    
+
     # Get current run flags from command line
     current_flags = getattr(argParse, 'cmd_options', {})
-    
+
     # Merge current run flags with stored flags (current takes precedence)
     all_flags = {**stored_flags, **current_flags}
-    
+
     # Use the flags
     if all_flags.get('verbose', False):
         printIt("Verbose mode enabled", lable.INFO)
-    
+
     config_file = all_flags.get('config', 'default.conf')
     printIt(f"Using config: {config_file}", lable.INFO)
 ```
@@ -370,13 +429,15 @@ The `commands.json` file stores the flag definitions:
 
 The template system allows you to generate different styles of command implementations:
 
-#### Default Template (`newCmd`)
-- Standard argument processing with exec-based function calls
-- Suitable for most general-purpose commands
-
-#### Simple Template (`simple`)
+#### Simple Template (`simple`) - Default
 - Minimal implementation for basic commands
 - Direct argument processing without complex logic
+
+#### Argumment command Template (`argCmdDef`)
+- The argument calles a function in the command file with the same name
+  - Argument processing with exec-based function calls: exec(f"{anArg}(argParse)")
+- Suitable for lauching general-purpose commands from command line that are complex
+  - Custum argument handling logic can be implemented to uses other arguments during processing
 
 #### Class-Based Template (`classCall`)
 - Object-oriented approach using classes
@@ -474,9 +535,43 @@ ${packName} greet "John Doe"
 # Class-based command
 ${packName} database localhost "SELECT * FROM users"
 
-# asyncDef command
+# Async command
 ${packName} downloader "https://example.com/file.zip" "/downloads/"
 ```
+
+### Modifying Existing Commands
+
+You can enhance existing commands by adding new arguments and option flags:
+
+```bash
+# Add new arguments to existing command
+${packName} modCmd greet surname
+# Prompts: "New argument description for surname"
+
+# Add boolean flags to existing command
+${packName} modCmd greet -formal -uppercase
+# Prompts for descriptions of each flag
+
+# Add string options to existing command  
+${packName} modCmd greet --prefix --greeting
+# Prompts for descriptions of each option
+
+# Modify existing descriptions
+${packName} modCmd greet name
+# Prompts: "Replace description for name (y/N): "
+
+# Combined modifications
+${packName} modCmd database host query -verbose --timeout
+# Adds new args and flags in one command
+```
+
+**Key modCmd Features:**
+- Modify command and argument descriptions
+- Add new arguments to existing commands
+- Add option flags (boolean `-flag` and string `--option`) 
+- Flags are automatically saved to `.${packName}rc` configuration
+- Command `.py` files remain unchanged (metadata only)
+- Interactive prompts guide you through the process
 
 ### Template Management
 

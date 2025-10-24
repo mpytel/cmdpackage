@@ -5,7 +5,6 @@ from textwrap import dedent
 
 test_newCmd_roundtrip_template = Template(dedent("""#!/usr/bin/env python3
 \"\"\"
-Python version of test_newCmd_roundtrip.sh
 Test script for newCmd round trip functionality
 Tests command creation with various flags and templates, then cleanup with rmCmd
 \"\"\"
@@ -20,12 +19,12 @@ from typing import Tuple
 
 class Colors:
     \"\"\"ANSI color codes for terminal output\"\"\"
-    RED = '\033[0;31m'
-    GREEN = '\033[0;32m'
-    YELLOW = '\033[1;33m'
-    BLUE = '\033[0;34m'
-    MAGENTA = '\033[35m'
-    NC = '\033[0m'  # No Color
+    RED = '\\033[0;31m'
+    GREEN = '\\033[0;32m'
+    YELLOW = '\\033[1;33m'
+    BLUE = '\\033[0;34m'
+    MAGENTA = '\\033[35m'
+    NC = '\\033[0m'  # No Color
 
 
 class TestResult:
@@ -44,13 +43,13 @@ class TestResult:
 
     def print_summary(self):
         total = self.passed + self.failed
-        print(f"\n{Colors.BLUE}TEST SUMMARY:{Colors.NC}")
+        print(f"\\n{Colors.BLUE}TEST SUMMARY:{Colors.NC}")
         print(f"Total tests: {total}")
         print(f"{Colors.GREEN}Passed: {self.passed}{Colors.NC}")
         print(f"{Colors.RED}Failed: {self.failed}{Colors.NC}")
         
         if self.failed > 0:
-            print(f"\n{Colors.RED}Failed tests:{Colors.NC}")
+            print(f"\\n{Colors.RED}Failed tests:{Colors.NC}")
             for test_name, passed, message in self.tests:
                 if not passed:
                     print(f"  - {test_name}: {message}")
@@ -165,7 +164,7 @@ def cleanup_test_commands():
     test_commands = ["testCmd01", "testCmd02", "testCmd03", "invalidTest"]
     
     # Add template-based test commands
-    template_dir = Path(__file__).parent.parent / "src" / "{packName}" / "commands" / "templates"
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
             template_name = template_file.stem
@@ -196,7 +195,7 @@ def test_basic_command(result: TestResult) -> bool:
     print_test("Test 1: Basic command creation with default template")
     
     # Create basic command
-    input_text = "Test command description\nFirst argument description"
+    input_text = "Test command description\\nFirst argument description"
     returncode, stdout, stderr = run_command("${packName} newCmd testCmd01 arg1", input_text)
     
     if not check_command_exists("testCmd01"):
@@ -220,7 +219,7 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
     \"\"\"Test 2: Command creation with boolean flags\"\"\"
     print_test("Test 2: Command creation with boolean flags")
     
-    input_text = "Command with flags\nArgument description\nEnable verbose mode\nEnable debug mode"
+    input_text = "Command with flags\\nArgument description\\nEnable verbose mode\\nEnable debug mode"
     returncode, stdout, stderr = run_command("${packName} newCmd testCmd02 arg1 -verbose -debug", input_text)
     
     if not check_command_exists("testCmd02"):
@@ -253,7 +252,7 @@ def test_command_with_string_options(result: TestResult) -> bool:
     \"\"\"Test 3: Command creation with string options and template\"\"\"
     print_test("Test 3: Command creation with string options and template")
     
-    input_text = "Simple command\nArgument description\nOutput file path"
+    input_text = "Simple command\\nArgument description\\nOutput file path"
     returncode, stdout, stderr = run_command("${packName} newCmd testCmd03 arg1 --output --template=simple", input_text)
     
     if not check_command_exists("testCmd03"):
@@ -365,7 +364,7 @@ def test_error_handling(result: TestResult) -> bool:
     print_test("Test 7: Error handling")
     
     # Test invalid template
-    input_text = "Test command\nArgument description"
+    input_text = "Test command\\nArgument description"
     returncode, stdout, stderr = run_command("${packName} newCmd invalidTest arg1 --template=nonexistent", input_text)
     
     if check_command_exists("invalidTest"):
@@ -414,7 +413,7 @@ def test_all_templates(result: TestResult) -> bool:
     print_test("Test 9: All template functionality")
     
     # Get list of available templates
-    template_dir = Path(__file__).parent.parent / "src" / "{packName}" / "commands" / "templates"
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     templates = []
     
     for file in template_dir.iterdir():
@@ -441,8 +440,8 @@ def test_all_templates(result: TestResult) -> bool:
         
         try:
             # Create command with this template
-            input_text = f"Test command using {template_name} template\nTest argument"
-            cmd = f"{packName} newCmd {test_cmd_name} arg1 --template={template_name}"
+            input_text = f"Test command using {template_name} template\\nTest argument"
+            cmd = f"${packName} newCmd {test_cmd_name} arg1 --template={template_name}"
             returncode, stdout, stderr = run_command(cmd, input_text)
             
             # Check if command was created
@@ -451,7 +450,7 @@ def test_all_templates(result: TestResult) -> bool:
                 continue
             
             # Check if Python file was created
-            py_file = f"src/{packName}/commands/{test_cmd_name}.py"
+            py_file = f"src/${packName}/commands/{test_cmd_name}.py"
             if not file_exists(py_file):
                 print_fail(f"Python file {test_cmd_name}.py was not created with template {template_name}")
                 continue
@@ -472,7 +471,7 @@ def test_all_templates(result: TestResult) -> bool:
         finally:
             # Clean up the test command
             if check_command_exists(test_cmd_name):
-                run_command(f'echo "y" | {packName} rmCmd {test_cmd_name}')
+                run_command(f'echo "y" | ${packName} rmCmd {test_cmd_name}')
     
     # Summary
     if template_tests_passed == template_tests_total:
@@ -494,7 +493,7 @@ def test_complete_cleanup(result: TestResult) -> bool:
     for cmd in remaining_commands:
         if check_command_exists(cmd):
             run_command(f'echo "y" | ${packName} rmCmd {cmd}')
-        
+
     # Verify all test commands are gone (including template test commands)
     test_commands = ["testCmd01", "testCmd02", "testCmd03"]
     

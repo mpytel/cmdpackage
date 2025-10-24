@@ -209,7 +209,7 @@ def cmdOptSwitchbord(switchFlag: str, switchFlags: dict):
     optSwitches = OptSwitches(switchFlags)
     optSwitches.toggleSwitchFlag(switchFlag)
 """)
-newCmdTemplateStr = dedent("""# Generated using newCmd template
+argCmdDefTemplateStr = dedent("""# Generated using argCmdDef template
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 
@@ -223,10 +223,12 @@ def ${defName}(argParse):
     args = argParse.args
     theCmd = args.commands[0]
     theArgNames = list(commands[theCmd].keys())
+    # filter out 'description'a 'switchFlags' from argument names
+    theArgNames = [arg for arg in theArgNames if arg not in ['description', 'switchFlags']]
     theArgs = args.arguments
     argIndex = 0
     nonCmdArg = True
-    printIt("Modify default behavour in src/${packName}/commands/${defName}.py", lable.DEBUG)
+    # printIt("Modify default behavour in src/${packName}/commands/${defName}.py", lable.DEBUG)
     # delete place holder code bellow that loops though arguments provided
     # when this command is called when not needed.
     # Note: that function having a name that is entered as an argument part
@@ -236,11 +238,12 @@ def ${defName}(argParse):
         if anArg in commands[theCmd]:
             nonCmdArg = False
             exec(f"{anArg}(argParse)")
-        elif nonCmdArg:  # not a know aregument for this {packName} {defName} command
-            if len(theArgNames) > 1:
-                printIt(f"{theArgNames[argIndex+1]}: {anArg}",lable.INFO)
-            else:
+        # process know and unknown aregument for this {packName} {defName} command
+        elif nonCmdArg:
+            if argIndex+1 > len(theArgNames):
                 printIt(f"unknown argument: {anArg}", lable.INFO)
+            else:
+                printIt(f"{theArgNames[argIndex]}: {anArg}", lable.INFO)
         argIndex += 1
     if len(theArgs) == 0:
         printIt("no argument(s) entered", lable.INFO)
@@ -248,7 +251,9 @@ def ${defName}(argParse):
 """)
 argDefTemplateStr = dedent("""def ${argName}(argParse):
     args = argParse.args
-    printIt(args, lable.INFO)
+    printIt("def ${defName} executed.", lable.INFO)
+    printIt("Modify default behavour in src/${packName}/commands/${defName}.py", lable.INFO)
+    printIt(str(args), lable.INFO)
 
 """)
 asyncDefTemplateStr = dedent("""# Generated using asyncDef template
@@ -360,8 +365,8 @@ from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
 from ..classes.optSwitches import saveCmdSwitchFlags
 from .commands import Commands
-from .templates.newCmd import cmdDefTemplate, argDefTemplate
-from .templates.newCmd import cmdDefTemplate, argDefTemplate
+from .templates.argCmdDef import cmdDefTemplate, argDefTemplate
+from .templates.argCmdDef import cmdDefTemplate, argDefTemplate
 
 ${commandJsonDict}
 
@@ -392,7 +397,7 @@ def newCmd(argParse: ArgParse):
     newCmdName = args.arguments[0]
     if newCmdName not in cmdObj.commands.keys():
         # Determine and validate template FIRST before any other processing
-        template_name = 'newCmd'  # default
+        template_name = 'argCmdDef'  # default
         if hasattr(argParse, 'cmd_options'):
             # Check for --template option
             if 'template' in argParse.cmd_options:
@@ -402,7 +407,7 @@ def newCmd(argParse: ArgParse):
                 template_name = argParse.cmd_options['templates']
             
             # Validate template exists - EXIT with error if invalid
-            if template_name != 'newCmd' and not template_exists(template_name):
+            if template_name != 'argCmdDef' and not template_exists(template_name):
                 printIt(f"ERROR: Template '{template_name}' not found.", lable.ERROR)
                 list_templates()
                 return
@@ -427,7 +432,7 @@ def newCmd(argParse: ArgParse):
 
         writeCodeFile(theArgs, newCommandCMDJson, template_name)
         
-        # Save newCmd-specific options to .pirc for the newCmd command itself
+        # Save newCmd-specific options to .${packName}rc for the newCmd command itself
         if hasattr(argParse, 'cmd_options') and argParse.cmd_options:
             # Save newCmd-specific options like --template
             newcmd_flags = {}
@@ -537,7 +542,7 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
     rtnDict['_optionFlags'] = optionFlags
     return rtnDict
 
-def writeCodeFile(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'newCmd') -> str:
+def writeCodeFile(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'simple') -> str:
     fileDir = os.path.dirname(__file__)
     fileName = os.path.join(fileDir, f'{list(theArgs.keys())[0]}.py')
     if os.path.isfile(fileName):
@@ -549,20 +554,20 @@ def writeCodeFile(theArgs: dict, newCommandCMDJson: dict, template_name: str = '
         rtnStr = lable.SAVED
     return rtnStr
 
-def cmdCodeBlock(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'newCmd') -> str:
+def cmdCodeBlock(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'simple') -> str:
     packName = os.path.basename(sys.argv[0])
     argNames = list(theArgs.keys())
     cmdName = argNames[0]
                                  
     # Import the specified template
     try:
-        template_module = __import__(f'${name}.commands.templates.{template_name}', fromlist=['cmdDefTemplate', 'argDefTemplate'])
+        template_module = __import__(f'${packName}.commands.templates.{template_name}', fromlist=['cmdDefTemplate', 'argDefTemplate'])
         cmdDefTemplate = template_module.cmdDefTemplate
         # Check if argDefTemplate exists, some templates may not need it
         argDefTemplate = getattr(template_module, 'argDefTemplate', None)
     except ImportError:
         printIt(f"Could not import template '{template_name}', using default", lable.WARN)
-        from .templates.newCmd import cmdDefTemplate, argDefTemplate
+        from .templates.argCmdDef import cmdDefTemplate, argDefTemplate
 
     cmdCodeBlockJsonDict = {}
     cmdCodeBlockJsonDict[cmdName] = newCommandCMDJson
@@ -586,7 +591,7 @@ def cmdCodeBlock(theArgs: dict, newCommandCMDJson: dict, template_name: str = 'n
         if argName != '_optionFlags':
             # Only add argument functions if template has argDefTemplate
             if argDefTemplate is not None:
-                rtnStr += argDefTemplate.substitute(argName=argName)
+                rtnStr += argDefTemplate.substitute(argName=argName, defName=cmdName, packName=packName)
         argIndex += 1
     return rtnStr
 
@@ -614,12 +619,12 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
     return newCommandCMDJson
 """)
 )
-modCmdTemplate = Template(dedent("""import os, copy
+modCmdTemplate = Template(dedent("""import os, copy, json, re
 from ..defs.logIt import printIt, lable
 from ..classes.argParse import ArgParse
 from ..classes.optSwitches import saveCmdSwitchFlags
 from .commands import Commands
-from .templates.newCmd import cmdDefTemplate, argDefTemplate
+from .templates.argCmdDef import cmdDefTemplate, argDefTemplate
 import readline
                    
 ${commandJsonDict}
@@ -658,7 +663,7 @@ def modCmd(argParse: ArgParse):
         if len(theArgs.keys()) > 0:
             updateCMDJson(cmdObj, modCmdName, theArgs)
             
-            # Save new option flags to .pirc if any were added
+            # Save new option flags to .${packName}rc if any were added
             if hasattr(argParse, 'cmd_options') and argParse.cmd_options:
                 # Extract flags for the command being modified
                 new_cmd_flags = {}
@@ -808,7 +813,65 @@ def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs: dict) -> None:
         argIndex += 1
     
     cmdObj.commands = commands
+    
+    # Also update the source file's commandJsonDict
+    updateSourceFileCommandJsonDict(modCmdName, commands[modCmdName])
 
+def updateSourceFileCommandJsonDict(cmdName: str, cmdDict: dict) -> None:
+    \"\"\"Update the commandJsonDict in the source file\"\"\"
+    fileDir = os.path.dirname(__file__)
+    fileName = os.path.join(fileDir, f'{cmdName}.py')
+
+    if not os.path.isfile(fileName):
+        printIt(f"Source file {fileName} not found", lable.WARN)
+        return
+
+    # Read the current file content
+    with open(fileName, 'r') as fr:
+        fileContent = fr.read()
+
+    # Create the new commandJsonDict string
+    newCommandJsonDict = {cmdName: cmdDict}
+    jsonStr = json.dumps(newCommandJsonDict, indent=2)
+
+    # Pattern to match the existing commandJsonDict
+    pattern = r'commandJsonDict\\s*=\\s*\\{[^}]*\\}'
+
+    # Check if it's a simple dict or nested dict
+    if '{' in fileContent and '}' in fileContent:
+        # Look for the commandJsonDict pattern with proper nesting
+        lines = fileContent.split('\\n')
+        start_line = -1
+        end_line = -1
+        brace_count = 0
+        in_dict = False
+
+        for i, line in enumerate(lines):
+            if 'commandJsonDict' in line and '=' in line and '{' in line:
+                start_line = i
+                in_dict = True
+                brace_count = line.count('{') - line.count('}')
+            elif in_dict:
+                brace_count += line.count('{') - line.count('}')
+                if brace_count == 0:
+                    end_line = i
+                    break
+
+        if start_line != -1 and end_line != -1:
+            # Replace the commandJsonDict section
+            before_lines = lines[:start_line]
+            after_lines = lines[end_line + 1:]
+
+            new_lines = before_lines + [f'commandJsonDict = {jsonStr}'] + after_lines
+
+            # Write the updated content back to the file
+            with open(fileName, 'w') as fw:
+                fw.write('\\n'.join(new_lines))
+
+            printIt(f"Updated commandJsonDict in {fileName}", lable.INFO)
+        else:
+            printIt(
+                f"Could not find commandJsonDict pattern in {fileName}", lable.WARN) 
 """)
 )
 rmCmdTemplate = Template(dedent("""import os, json
@@ -824,34 +887,78 @@ theDir = os.path.dirname(os.path.realpath(__file__))
 jsonFileName = os.path.join(theDir,'commands.json')
 
 def rmCmd(argParse):
-    global commands
+    # Reload commands to get current state
+    cmdObj = Commands()
+    commands = cmdObj.commands
+    
     args = argParse.args
     theArgs = args.arguments
-    argIndex = 0
-    cmdName = theArgs[argIndex]
-    while argIndex < len(theArgs):
-        anArg = theArgs[argIndex]
-        if anArg in commands and len(theArgs) == 1:
-            if anArg == cmdName:
-                if anArg in ["newCmd", "modCmd", "rmCmd"]:
-                    printIt(f'Permission denied for "{anArg}".',lable.WARN)
-                    exit(0)
-                chkRm: str = input(f"Perminantly delete {anArg} (y/N): ")
-                if chkRm == '': chkRm = 'N'
-                if chkRm.lower() == 'y':
-                    removeCmd(anArg)
+                                
+    if len(theArgs) == 0:
+        printIt("Command name required", lable.ERROR)
+        return
+        
+    cmdName = theArgs[0]
+    
+    # If only one argument provided, remove the entire command
+    if len(theArgs) == 1:
+        if cmdName in commands:
+            if cmdName in ["newCmd", "modCmd", "rmCmd"]:
+                printIt(f'Permission denied for "{cmdName}".', lable.WARN)
+                return
+            chkRm: str = input(f"Permanently delete {cmdName} (y/N):\\n")
+            if chkRm == '': chkRm = 'N'
+            if chkRm[0].lower() == 'y':
+                removeCmd(cmdName)
+                printIt(cmdName, lable.RmCmd)
             else:
-                printIt(f'Command "{anArg}" must be removed seperataly from "{cmdName}".',lable.WARN)
-        elif cmdName in commands:
-            if anArg in commands[cmdName]:
-                chkRm: str = input(f"Perminantly delete {anArg} (y/N): ")
-                if chkRm == '': chkRm = 'N'
-                if chkRm.lower() == 'y':
-                    removeCmdArg(cmdName, anArg)
+                printIt(f'Command "{cmdName}" not removed.', lable.INFO)
         else:
-            printIt(f'"{cmdName}" is not currently a Command.',lable.WARN)
-            argIndex = len(theArgs)
-        argIndex += 1
+            printIt(f'"{cmdName}" is not currently a Command.', lable.WARN)
+    else:
+        # Multiple arguments - remove specific items from the command
+        if cmdName not in commands:
+            printIt(f'"{cmdName}" is not currently a Command.', lable.WARN)
+            return
+            
+        for argIndex in range(1, len(theArgs)):
+            anArg = theArgs[argIndex]
+            
+            # Check if anArg is a switch flag name (check if it exists in switchFlags)
+            if 'switchFlags' in commands[cmdName] and anArg in commands[cmdName]['switchFlags']:
+                # Handle switch flag removal by flag name (without -)
+                chkRm: str = input(f"Permanently delete switch flag '-{anArg}' from {cmdName} (y/N):\\n")                               
+                if chkRm == '': chkRm = 'N'
+                if chkRm[0].lower() == 'y':
+                    removeCmdSwitchFlag(cmdName, anArg)
+                    printIt(f'Switch flag "-{anArg}" removed from command "{cmdName}"', lable.RmArg)
+                else:
+                    printIt(f'Switch flag "-{anArg}" not removed from command "{cmdName}"', lable.INFO)
+            # Check if anArg is a switch flag (starts with -) - legacy support
+            elif anArg.startswith('-'):
+                # Handle switch flag removal with dash prefix
+                flagName = anArg.lstrip('-')  # Remove - or -- prefix
+                if 'switchFlags' in commands[cmdName] and flagName in commands[cmdName]['switchFlags']:
+                    chkRm: str = input(f"Permanently delete switch flag {anArg} from {cmdName} (y/N):\\n")
+                    if chkRm == '': chkRm = 'N'
+                    if chkRm[0].lower() == 'y':
+                        removeCmdSwitchFlag(cmdName, flagName)
+                        printIt(f'Switch flag "{anArg}" removed from command "{cmdName}"', lable.RmArg)
+                    else:
+                        printIt(f'Switch flag "{anArg}" not removed from command "{cmdName}"', lable.INFO)
+                else:
+                    printIt(f'Switch flag "{anArg}" is not defined for command "{cmdName}"', lable.WARN)
+            elif anArg in commands[cmdName]:
+                chkRm: str = input(f"Permanently delete argument {anArg} (y/N):\\n")
+                if chkRm == '': chkRm = 'N'
+                if chkRm[0].lower() == 'y':
+                    removeCmdArg(cmdName, anArg)
+                    printIt(anArg, lable.RmArg)
+                else:
+                    printIt(f'Argument "{anArg}" not removed from command "{cmdName}".', lable.INFO)
+            else:
+                printIt(f'"{anArg}" is not an argument or switch flag for command "{cmdName}".', lable.WARN)
+
 
 def removeCmdArg(cmdName, argName):
     global jsonFileName
@@ -860,7 +967,102 @@ def removeCmdArg(cmdName, argName):
         del theJson[cmdName][argName]
     with open(jsonFileName, 'w') as wf:
         json.dump(theJson, wf, indent=2)
-    printIt(argName,lable.RmArg)
+    
+    # Update source file's commandJsonDict
+    updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
+
+def removeCmdSwitchFlag(cmdName, flagName):
+    \"\"\"Remove a switch flag from commands.json, .${packName}rc, and source file\"\"\"
+    global jsonFileName
+    with open(jsonFileName, 'r') as rf:
+        theJson = json.load(rf)
+        if 'switchFlags' in theJson[cmdName] and flagName in theJson[cmdName]['switchFlags']:
+            del theJson[cmdName]['switchFlags'][flagName]
+            # If switchFlags becomes empty, we can leave it empty
+            if not theJson[cmdName]['switchFlags']:
+                theJson[cmdName]['switchFlags'] = {}
+    with open(jsonFileName, 'w') as wf:
+        json.dump(theJson, wf, indent=2)
+    
+    # Remove flag from .${packName}rc file
+    ${packName}rc_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(jsonFileName))), '.${packName}rc')
+    
+    if os.path.exists(${packName}rc_file):
+        try:
+            with open(${packName}rc_file, 'r') as pf:
+                ${packName}rc_data = json.load(pf)
+            
+            # Remove the flag from commandFlags if it exists
+            if ('commandFlags' in ${packName}rc_data and 
+                cmdName in ${packName}rc_data['commandFlags'] and 
+                flagName in ${packName}rc_data['commandFlags'][cmdName]):
+                
+                del ${packName}rc_data['commandFlags'][cmdName][flagName]
+                
+                # If command has no more flags, remove the command entry
+                if not ${packName}rc_data['commandFlags'][cmdName]:
+                    del ${packName}rc_data['commandFlags'][cmdName]
+                
+                with open(${packName}rc_file, 'w') as pf:
+                    json.dump(${packName}rc_data, pf, indent=2)
+                
+                printIt(f"Removed flag '{flagName}' from .${packName}rc", lable.INFO)
+                
+        except (json.JSONDecodeError, KeyError) as e:
+            printIt(f"Warning: Could not update .${packName}rc file: {e}", lable.WARN)
+    
+    # Update source file's commandJsonDict
+    updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
+
+def updateSourceFileAfterRemoval(cmdName: str, cmdDict: dict) -> None:
+    \"\"\"Update the commandJsonDict in the source file after removing an argument or switch flag\"\"\"
+    fileDir = os.path.dirname(__file__)
+    fileName = os.path.join(fileDir, f'{cmdName}.py')
+    
+    if not os.path.isfile(fileName):
+        printIt(f"Source file {fileName} not found", lable.WARN)
+        return
+    
+    # Read the current file content
+    with open(fileName, 'r') as fr:
+        fileContent = fr.read()
+    
+    # Create the new commandJsonDict string
+    newCommandJsonDict = {cmdName: cmdDict}
+    jsonStr = json.dumps(newCommandJsonDict, indent=2)
+    
+    # Look for the commandJsonDict pattern with proper nesting
+    lines = fileContent.split('\\n')
+    start_line = -1
+    end_line = -1
+    brace_count = 0
+    in_dict = False
+    
+    for i, line in enumerate(lines):
+        if 'commandJsonDict' in line and '=' in line and '{' in line:
+            start_line = i
+            in_dict = True
+            brace_count = line.count('{') - line.count('}')
+        elif in_dict:
+            brace_count += line.count('{') - line.count('}')
+            if brace_count == 0:
+                end_line = i
+                break
+    
+    if start_line != -1 and end_line != -1:
+        # Replace the commandJsonDict section
+        before_lines = lines[:start_line]
+        after_lines = lines[end_line + 1:]
+        
+        new_lines = before_lines + [f'commandJsonDict = {jsonStr}'] + after_lines
+        
+        # Write the updated content back to the file
+        with open(fileName, 'w') as fw:
+            fw.write('\\n'.join(new_lines))
+        
+        printIt(f"Updated commandJsonDict in {fileName}", lable.INFO)
+    else:
+        printIt(f"Could not find commandJsonDict pattern in {fileName}", lable.WARN)
 
 def removeCmd(cmdName):
     global jsonFileName
@@ -874,10 +1076,8 @@ def removeCmd(cmdName):
     if os.path.isfile(pyFileName):
         os.remove(pyFileName)
 
-    # Remove command flags from .tcrc
+    # Remove command flags from .${packName}rc
     removeCmdSwitchFlags(cmdName)
-    
-    printIt(cmdName,lable.RmCmd)
 """)
 )
 commandsJsonDict = {
@@ -900,7 +1100,7 @@ commandsJsonDict = {
     "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
     "switchFlags": {},
     "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
-    "argName": "Optional names of argument to remove.v It is and I am both pi."
+    "argName": "Optional names of argument to remove."
   }
 }
 commandsFileStr = dedent("""import json, os
@@ -1001,7 +1201,7 @@ from ..defs.logIt import printIt, lable
 
 
 rcFileDir = Path(__file__).resolve().parents[2]
-rcFileName = rcFileDir.joinpath(f'.${name}rc')
+rcFileName = rcFileDir.joinpath(f'.${packName}rc')
 
 class OptSwitches():
     def __init__(self, switchFlags: dict) -> None:
@@ -1024,7 +1224,7 @@ class OptSwitches():
         writeOptJson(self.optSwitches, self.switchFlags)
                                       
 def saveCmdSwitchFlags(cmdName: str, cmdOptions: dict, cmdSwitchFlags: dict):
-    \"\"\"Save command-specific switch flags to .tcrc\"\"\"
+    \"\"\"Save command-specific switch flags to .${packName}rc\"\"\"
     rcData = readOptSwitches()
     
     # Initialize command flags section if it doesn't exist
@@ -1054,7 +1254,7 @@ def saveCmdSwitchFlags(cmdName: str, cmdOptions: dict, cmdSwitchFlags: dict):
     printIt(f"Command flags saved for '{cmdName}'", lable.INFO)
 
 def toggleCmdSwitchFlag(cmdName: str, flagName: str, setValue: bool):
-    \"\"\"Toggle a command-specific boolean flag in .tcrc\"\"\"
+    \"\"\"Toggle a command-specific boolean flag in .${packName}rc\"\"\"
     rcData = readOptSwitches()
     
     # Initialize command flags section if it doesn't exist
@@ -1074,12 +1274,12 @@ def toggleCmdSwitchFlag(cmdName: str, flagName: str, setValue: bool):
     printIt(f"Command flag '{flagName}' {status} for '{cmdName}'", lable.INFO)
 
 def getCmdSwitchFlags(cmdName: str) -> dict:
-    \"\"\"Get stored command-specific switch flags from .tcrc\"\"\"
+    \"\"\"Get stored command-specific switch flags from .${packName}rc\"\"\"
     rcData = readOptSwitches()
     return rcData.get('commandFlags', {}).get(cmdName, {})
                                       
 def removeCmdSwitchFlags(cmdName: str):
-    \"\"\"Remove command-specific switch flags from .tcrc when command is deleted\"\"\"
+    \"\"\"Remove command-specific switch flags from .${packName}rc when command is deleted\"\"\"
     rcData = readOptSwitches()
     
     # Check if command exists in commandFlags
@@ -1094,14 +1294,15 @@ def removeCmdSwitchFlags(cmdName: str):
         if not rcData.get('switchFlags') and not rcData.get('commandFlags'):
             if rcFileName.is_file():
                 rcFileName.unlink()
-                printIt(f"Removed '{cmdName}' flags and deleted empty .tcrc file", lable.INFO)
+                # printIt(f"Removed '{cmdName}' flags and deleted empty .${packName}rc file", lable.INFO)
         else:
             # Write back the updated file
             with open(rcFileName, 'w') as wf:
                 json.dump(rcData, wf, indent=2)
-            printIt(f"Removed '{cmdName}' flags from .tcrc", lable.INFO)
+            # printIt(f"Removed '{cmdName}' flags from .${packName}rc", lable.INFO)
     else:
-        printIt(f"No flags found for '{cmdName}' in .tcrc", lable.INFO)
+        # printIt(f"No flags found for '{cmdName}' in .${packName}rc", lable.INFO)
+        pass
 
 def readOptSwitches() -> dict:
     global rcFileName
@@ -1126,7 +1327,7 @@ def writeOptJson(optSwitches: dict, switchFlags: dict) -> dict:
     for switchFlag in switchFlags.keys(): # fill in missing items'
         try: _ = rawRC["switchFlags"][switchFlag]
         except: rawRC["switchFlags"][switchFlag] = False
-    printIt(formatOptStr(rawRC["switchFlags"]), lable.INFO)
+    # printIt(formatOptStr(rawRC["switchFlags"]), lable.INFO)
     with open(rcFileName, 'w') as wf:
         json.dump(rawRC, wf, indent=2)
     return rawRC
@@ -1234,7 +1435,7 @@ class ArgParse():
             #   commandsHelp = commandsHelp[:-1]
 
             self.parser = argparse.ArgumentParser(
-                description = "pi pip package pip package pip package",
+                description = "Command Line Tool for creating and managing commands.",
                 epilog="Have Fun!", formatter_class=formatter_class)
 
             self.parser.add_argument("commands",
@@ -1441,7 +1642,7 @@ class lable():
 
 
 # log function
-def logIt(*message, logFileName="${name}.log"):
+def logIt(*message, logFileName="${packName}.log"):
     # write log
     now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -1497,7 +1698,7 @@ def printIt(*message, asStr: bool = False) -> str:
 def cStr(inStr:str, cVal:str):
     return cVal + inStr + color.RESET
 
-def deleteLog(logFileName="${name}.log"):
+def deleteLog(logFileName="${packName}.log"):
     if os.path.isfile(logFileName): os.remove(logFileName)
 
 def getCodeFile():

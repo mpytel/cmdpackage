@@ -3,7 +3,7 @@
 from cmdpackage.templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
-from cmdpackage.templates.readmeTemplate import readme_template
+from cmdpackage.templates.readmeTemplate import readme_cmd_template, readme_template
 from sys import version_info
 from cmdpackage.defs.runSubProc import runSubProc, CompletedProcess
 from subprocess import Popen, PIPE
@@ -11,18 +11,22 @@ from getpass import getuser
 import os
 
 
-def writePyProject() -> dict[str,str]:
+def writePyProject(usedefaults: bool) -> dict[str, str]:
     rtnDict = {}
     fields = ['name', 'version', 'description', 'readme',
               'license', 'authors', 'authorsEmail', 'maintainers', 'maintainersEmail', 'classifiers']
 
     for field_name in fields:
         default_value = default_values(field_name, rtnDict)
-        if field_name == 'description':
-            default_value = default_value.replace('name', rtnDict['name'])
-        input_msg = input_message(field_name, default_value)
-        input_value = get_input(input_msg, default=default_value)
-        rtnDict[field_name] = input_value
+        if usedefaults:
+            rtnDict[field_name] = default_value
+            continue
+        else:
+            if field_name == 'description':
+                default_value = default_value.replace('name', rtnDict['name'])
+            input_msg = input_message(field_name, default_value)
+            input_value = get_input(input_msg, default=default_value)
+            rtnDict[field_name] = input_value
 
     pyproject_content = pyproject_base_template.substitute(
         name=rtnDict['name'],
@@ -41,17 +45,32 @@ def writePyProject() -> dict[str,str]:
         write_content(pyproject_file, pyproject_content)
 
     readme_content = readme_template.substitute(
-        packName=rtnDict['name'], version=rtnDict['version'])
-
-    with open(rtnDict['readme'], 'w') as readme_file:
+        packName=rtnDict['name'], version=rtnDict['version'], description=rtnDict['description'])
+    field_name = rtnDict['readme']
+    with open(field_name, 'w') as readme_file:
         write_content(readme_file, readme_content)
 
-    with_gitignore = get_input('commit a git repo [Y/n]?: ',
-                               default='y')
+    readme_content = readme_cmd_template.substitute(
+        packName=rtnDict['name'], version=rtnDict['version'])
+    field_name = rtnDict['readme'].replace('.md', '_Command_modifications.md')
+    with open(field_name, 'w') as readme_file:
+        write_content(readme_file, readme_content)
+
+    if usedefaults:
+        with_gitignore = 'y'
+    else:
+        with_gitignore = get_input('commit a git repo [Y/n]?: ', default='y')
     if with_gitignore.lower() == 'y':
         with open('.gitignore', 'w') as gitignore_file:
             write_content(gitignore_file, gitignore_content)
         rtnCP = initGitRepo()
+        if rtnCP.returncode == 0:
+            rtnDict['gitInitialized'] = True
+            print("✅ Initialized git repository")
+        else:
+            rtnDict['gitInitialized'] = False
+            print("❌ Failed to initialize git repository")
+            print(f"{rtnCP.returncode}    {rtnCP.stdout}")
     return rtnDict
 
 
@@ -76,8 +95,6 @@ def initGitRepo(commit_msg="initial commit") -> CompletedProcess:
     rtnCP: CompletedProcess = runSubProc('ls .git')
     if rtnCP.returncode != 0:
         rtnCP = runSubProc(f'git init')
-    if rtnCP.returncode == 0:
-        rtnCP = commitGitRepo(commit_msg)
     return rtnCP
 
 def commitGitRepo(commit_msg="commit") -> CompletedProcess:
@@ -120,7 +137,7 @@ def default_values(field_name, rtnDict=None):
     if field_name == 'version':
         return '0.1.0'
     elif field_name == 'description':
-        return 'name pip package'
+        return 'name related project'
     elif field_name == 'readme':
         return 'README.md'
     elif field_name == 'license':

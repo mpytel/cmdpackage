@@ -21,18 +21,23 @@ def main():
     parser.add_argument(
         'project_name',
         nargs='?',
-        help='Name of the project to create (optional, defaults to current directory name)'
+        help='Name of the project to create (optional). Defaults to current directory name.'
     )
     parser.add_argument(
         '-t', '--test',
         action='store_true',
         help='Run tests on the generated package to verify it works properly'
     )
+    parser.add_argument(
+        '-d', '--defaults',
+        action='store_true',
+        help='Use default values for all prompts'
+    )
 
     # Parse arguments
     args = parser.parse_args()
 
-    print("--- Inside cmdPack.src.main() ---")
+    # print("--- Inside cmdPack.src.main() ---")
     projName = ''
     askForDirChange = False
 
@@ -42,13 +47,14 @@ def main():
         askForDirChange = ensure_and_cd_to_directory(projName)
     else:
         projName = Path(os.getcwd()).stem
-
-    fields: dict[str, str] = writePyProject()
+    if args.defaults: usedefaults = True
+    else: usedefaults = False
+    fields: dict[str, str] = writePyProject(usedefaults)
     writeCLIPackage(fields)
-    commitGitRepo("finalize package setup")
     createzVirtualEnv(fields)
     writeTestScript(fields)
-
+    if fields['gitInitialized']:
+        commitGitRepo("finalize package setup")
 
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
@@ -178,24 +184,37 @@ def test_generated_package(project_name: str) -> bool:
                 result = subprocess.run(newcmd_cmd, shell=True, capture_output=True, text=True)
                 if result.returncode == 0 and "NEW CMD ADDED" in result.stdout:
                     print("  ✅ newCmd functionality works")
-
                     # Test the created command (expect it to run but may have logic errors)
                     test_cmd = f"{activate_cmd} && {project_name} testCmd testValue"
-                    result = subprocess.run(test_cmd, shell=True, capture_output=True, text=True)
-                    if "DEBUG:" in result.stdout and "Modify default behavour" in result.stdout:
+                    result = subprocess.run(
+                        test_cmd, shell=True, capture_output=True, text=True)
+                    if "INFO:" in result.stdout and "testArg: testValue" in result.stdout:
                         print("  ✅ Generated command executes and logIt.py works")
                     else:
                         print("  ⚠️  Generated command runs but may have issues")
                         # Don't fail the test for this as it's expected behavior
+                        print("result.stdout", result.stdout)
                 else:
-                    print("result.returncode",result.returncode)
-                    print("result.stdout",result.stdout)
                     print("  ❌ newCmd functionality failed")
                     if shutil.which(project_name):
                         print(f"      This is likely due to system command conflict with '{project_name}'")
                         print(f"      Try using a different package name that doesn't conflict with system commands")
                     test_passed = False
 
+                # Test rmCmd functionality
+                cmd_file = Path(f"src/{project_name}/commands/testCmd.py")
+                if cmd_file.exists():
+                    rmcmd_cmd = f"{activate_cmd} && echo 'y\\n' | {project_name} rmCmd testCmd"
+                    result = subprocess.run(
+                        rmcmd_cmd, shell=True, capture_output=True, text=True)
+                if result.returncode == 0 and "CMD REMOVED" in result.stdout:
+                    print("  ✅ rmCmd functionality works")
+                else:
+                    print("  ❌ rmCmd functionality failed")
+                    if shutil.which(project_name):
+                        print(f"      This is likely due to system command conflict with '{project_name}'")
+                        print(f"      Try using a different package name that doesn't conflict with system commands")
+                    test_passed = False
             else:
                 print(f"  ❌ Package installation failed: {result.stderr}")
                 test_passed = False
