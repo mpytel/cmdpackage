@@ -3,14 +3,14 @@
 import os, json
 from cmdpackage.defs.utilities import chkDir
 from cmdpackage.templates.cmdTemplate import \
-    mainFile, logPrintTemplate, \
+    mainFile, logPrintTemplate, validationTemplate, \
     commandsFileStr, commandsJsonDict, \
     cmdSwitchbordFileStr, cmdOptSwitchbordFileStr, \
     argParseTemplate, optSwitchesTemplate, \
     newCmdTemplate, modCmdTemplate, rmCmdTemplate, \
     argCmdDefTemplateStr, argDefTemplateStr, \
     asyncDefTemplateStr, classCallTemplateStr, \
-    simpleTemplateStr
+    simpleTemplateStr, runTestTemplate
 
 def writeCLIPackage(fields: dict):
     print()
@@ -31,6 +31,11 @@ def writeCLIPackage(fields: dict):
     fileName = os.path.join(dirName,"logIt.py")
     fileStr = logPrintTemplate.substitute(packName=programName)
     chkDir(dirName)
+    with open(fileName,"w") as wf:
+        wf.write(fileStr)
+    ## write validation.py to def dir from template
+    fileName = os.path.join(dirName,"validation.py")
+    fileStr = validationTemplate.substitute(packName=programName)
     with open(fileName,"w") as wf:
         wf.write(fileStr)
 
@@ -73,7 +78,8 @@ def writeCLIPackage(fields: dict):
     ## write command python files to commands dir from cmdTemplates
     cmdTemplates = {"newCmd": newCmdTemplate, 
                     "modCmd": modCmdTemplate, 
-                    "rmCmd": rmCmdTemplate}
+                    "rmCmd": rmCmdTemplate,
+                    "runTest": runTestTemplate}
 
     for cmdName, cmdTemplate in cmdTemplates.items():
         indent = 0

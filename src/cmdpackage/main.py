@@ -196,6 +196,7 @@ def test_generated_package(project_name: str) -> bool:
                         print("result.stdout", result.stdout)
                 else:
                     print("  ❌ newCmd functionality failed")
+                    print("result.stdout", result.stdout)
                     if shutil.which(project_name):
                         print(f"      This is likely due to system command conflict with '{project_name}'")
                         print(f"      Try using a different package name that doesn't conflict with system commands")
@@ -211,6 +212,7 @@ def test_generated_package(project_name: str) -> bool:
                     print("  ✅ rmCmd functionality works")
                 else:
                     print("  ❌ rmCmd functionality failed")
+                    print("result.stdout", result.stdout)
                     if shutil.which(project_name):
                         print(f"      This is likely due to system command conflict with '{project_name}'")
                         print(f"      Try using a different package name that doesn't conflict with system commands")

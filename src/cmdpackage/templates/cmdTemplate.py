@@ -362,6 +362,7 @@ import importlib
 import readline
 from json import dumps
 from ..defs.logIt import printIt, lable
+from ..defs.validation import validate_argument_name, check_command_uses_argcmddef_template
 from ..classes.argParse import ArgParse
 from ..classes.optSwitches import saveCmdSwitchFlags
 from .commands import Commands
@@ -427,7 +428,7 @@ def newCmd(argParse: ArgParse):
                 # String option (double hyphen) - either has a value or is marked as string option
                 combined_args.append(f'--{option_name}')
         
-        theArgs = verifyArgsWithDiscriptions(cmdObj, combined_args)
+        theArgs = verifyArgsWithDiscriptions(cmdObj, combined_args, template_name)
         newCommandCMDJson = updateCMDJson(cmdObj, theArgs)
 
         writeCodeFile(theArgs, newCommandCMDJson, template_name)
@@ -494,7 +495,7 @@ def template_exists(template_name):
     template_file = os.path.join(template_dir, f'{template_name}.py')
     return os.path.isfile(template_file)
 
-def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
+def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, template_name: str = 'simple') -> dict:
     rtnDict = {}
     optionFlags = {}
     argIndex = 0
@@ -531,6 +532,12 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
             }
         else:
             # Regular argument
+            # Validate argument name if using argCmdDef template (creates functions)
+            if template_name == 'argCmdDef' and argIndex > 0:  # Skip command name validation
+                if not validate_argument_name(argName, cmdName):
+                    printIt(f"Skipping invalid argument '{argName}' - cannot be used as function name", lable.WARN)
+                    argIndex += 1
+                    continue
             theDict = input(f'Enter help description for argument {argName}:\\n')
             if theDict == '': 
                 theDict = f'no help for {argName}'
@@ -621,6 +628,7 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
 )
 modCmdTemplate = Template(dedent("""import os, copy, json, re
 from ..defs.logIt import printIt, lable
+from ..defs.validation import validate_argument_name, check_command_uses_argcmddef_template
 from ..classes.argParse import ArgParse
 from ..classes.optSwitches import saveCmdSwitchFlags
 from .commands import Commands
@@ -659,8 +667,12 @@ def modCmd(argParse: ArgParse):
                     # String option (double hyphen) - either has a value or is marked as string option
                     combined_args.append(f'--{option_name}')
 
-        theArgs = verifyArgsWithDiscriptions(cmdObj, combined_args)
-        if len(theArgs.keys()) > 0:
+        # Check if command uses argCmdDef template for validation
+        uses_argcmddef = check_command_uses_argcmddef_template(modCmdName)
+        theArgs, tracking = verifyArgsWithDiscriptions(cmdObj, combined_args, uses_argcmddef)
+        # Check if there are actual modifications (excluding _optionFlags)
+        actual_modifications = {k: v for k, v in theArgs.items() if k != '_optionFlags'}
+        if len(actual_modifications) > 0 or (theArgs.get('_optionFlags') and len(theArgs['_optionFlags']) > 0):
             updateCMDJson(cmdObj, modCmdName, theArgs)
             
             # Save new option flags to .${packName}rc if any were added
@@ -682,25 +694,73 @@ def modCmd(argParse: ArgParse):
                             new_cmd_flags[option_name] = str(option_value)
                         new_cmd_switch_flags[option_name] = {"type": "str"}
 
-                # Save the flags if any were found
-                if new_cmd_flags:
-                    saveCmdSwitchFlags(modCmdName, new_cmd_flags, new_cmd_switch_flags)
-
-            printIt(f'"{modCmdName}" modified.',lable.ModCmd)
+            # Print detailed modification results
+            print_modification_results(modCmdName, tracking)
         else:
-            printIt(f'"{modCmdName}" unchanged.',lable.INFO)
+            # Check if anything was requested but all rejected
+            if len(tracking['requested']) > 0:
+                if len(tracking['rejected']) == len(tracking['requested']):
+                    printIt(f'All requested modifications for "{modCmdName}" were rejected.', lable.WARN)
+                else:
+                    printIt(f'"{modCmdName}" unchanged.', lable.INFO)
+            else:
+                printIt(f'"{modCmdName}" unchanged.', lable.INFO)
     else:
         printIt(f'"{modCmdName}" does not exists. use newCmd or add it.',lable.INFO)
+def print_modification_results(cmd_name: str, tracking: dict) -> None:
+    \"\"\"Print detailed results of modification operations\"\"\"
+    modified = tracking.get('modified', [])
+    rejected = tracking.get('rejected', [])
+    requested = tracking.get('requested', [])
+    
+    if len(modified) > 0:
+        if len(modified) == 1:
+            printIt(f'"{cmd_name}" - modified {modified[0]}.', lable.ModCmd)
+        else:
+            mod_list = ', '.join(modified)
+            printIt(f'"{cmd_name}" - modified {mod_list}.', lable.ModCmd)
+    
+    # Only show rejection summary if some items were modified (mixed results)
+    if len(rejected) > 0 and len(modified) > 0:
+        if len(rejected) == 1:
+            printIt(f'Note: {rejected[0]} was rejected.', lable.INFO)
+        else:
+            rej_list = ', '.join(rejected)
+            printIt(f'Note: {rej_list} were rejected.', lable.INFO)
 
-def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
+def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, uses_argcmddef: bool = False) -> tuple[dict, dict]:
     rtnDict = {}
     optionFlags = {}
-    saveDict = False
-    argIndex = 0
-    cmdName = theArgs[argIndex]
+    cmdName = theArgs[0]
     
-    while argIndex < len(theArgs):
+    # Track what was processed vs rejected
+    tracking = {
+        'modified': [],
+        'rejected': [],
+        'requested': []
+    }
+    
+    # First pass: validate all arguments and separate them by type
+    valid_args = []
+    for argIndex in range(len(theArgs)):
         argName = theArgs[argIndex]
+        
+        # Track all requested items (skip command name)
+        if argIndex > 0:
+            tracking['requested'].append(argName)
+            
+            # Pre-validate regular arguments for argCmdDef template
+            if not argName.startswith('-') and uses_argcmddef:
+                if not validate_argument_name(argName, cmdName):
+                    printIt(f"Skipping invalid argument '{argName}' - cannot be used as function name", lable.WARN)
+                    tracking['rejected'].append(f'argument {argName}')
+                    continue
+            
+            valid_args.append((argIndex, argName))
+    
+    # Second pass: process only valid arguments with prompts
+    for argIndex, argName in valid_args:
+        saveDict = False
         
         if argName.startswith('--'):
             # Double hyphen option (stores value)
@@ -715,6 +775,7 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
                 "description": theDict,
                 "type": "str"
             }
+            tracking['modified'].append(f'option {argName}')
         elif argName.startswith('-'):
             # Single hyphen option (boolean flag)
             if len(argName) <= 1:
@@ -728,6 +789,7 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
                 "description": theDict,
                 "type": "bool"
             }
+            tracking['modified'].append(f'flag {argName}')
         else:
             # Regular argument
             theDict = ''
@@ -750,12 +812,14 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs) -> dict:
             if saveDict:
                 # only populate rtnDict with modified descriptions
                 rtnDict[argName] = theDict
+                if argIndex > 0:  # Don't track command name modifications
+                    tracking['modified'].append(f'argument {argName}')
             
         argIndex += 1
     
     # Store option flags separately for later processing
     rtnDict['_optionFlags'] = optionFlags
-    return rtnDict
+    return rtnDict, tracking
 
 def writeCodeFile(theArgs: dict) -> str:
     fileDir = os.path.dirname(__file__)
@@ -967,6 +1031,9 @@ def removeCmdArg(cmdName, argName):
         del theJson[cmdName][argName]
     with open(jsonFileName, 'w') as wf:
         json.dump(theJson, wf, indent=2)
+
+    # Remove the function from the source file
+    removeFunctionFromSourceFile(cmdName, argName)
     
     # Update source file's commandJsonDict
     updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
@@ -1063,6 +1130,77 @@ def updateSourceFileAfterRemoval(cmdName: str, cmdDict: dict) -> None:
         printIt(f"Updated commandJsonDict in {fileName}", lable.INFO)
     else:
         printIt(f"Could not find commandJsonDict pattern in {fileName}", lable.WARN)
+                                
+def removeFunctionFromSourceFile(cmdName: str, argName: str) -> None:
+    \"\"\"Remove a function definition from the source file\"\"\"
+    fileDir = os.path.dirname(__file__)
+    fileName = os.path.join(fileDir, f'{cmdName}.py')
+
+    if not os.path.isfile(fileName):
+        printIt(f"Source file {fileName} not found", lable.WARN)
+        return
+
+    # Read the current file content
+    with open(fileName, 'r') as fr:
+        fileContent = fr.read()
+
+    lines = fileContent.split('\\n')
+    
+    # Find the function definition and its end
+    function_start = -1
+    function_end = -1
+    indent_level = 0
+    
+    for i, line in enumerate(lines):
+        # Look for the function definition
+        if line.strip().startswith(f'def {argName}('):
+            function_start = i
+            # Find the indentation level of this function
+            indent_level = len(line) - len(line.lstrip())
+            continue
+        
+        # If we're inside a function, look for the end
+        if function_start != -1 and i > function_start:
+            # If we hit a non-empty line that's at the same or lesser indent level as the function,
+            # or another function definition, we've found the end
+            if line.strip():  # Non-empty line
+                current_indent = len(line) - len(line.lstrip())
+                if current_indent <= indent_level and not line.strip().startswith('#'):
+                    function_end = i - 1  # Previous line was the end
+                    break
+            # If we reach the end of file
+            elif i == len(lines) - 1:
+                function_end = i
+                break
+
+    # If function was found, remove it
+    if function_start != -1:
+        if function_end == -1:
+            function_end = len(lines) - 1  # Function goes to end of file
+        
+        # Remove the function lines (including any trailing empty lines that belong to it)
+        # Also remove leading empty lines before the function if they exist
+        start_remove = function_start
+        end_remove = function_end
+        
+        # Look backwards for empty lines to remove before function
+        while start_remove > 0 and not lines[start_remove - 1].strip():
+            start_remove -= 1
+            
+        # Look forwards for empty lines to remove after function  
+        while end_remove < len(lines) - 1 and not lines[end_remove + 1].strip():
+            end_remove += 1
+
+        # Create new content without the function
+        new_lines = lines[:start_remove] + lines[end_remove + 1:]
+        
+        # Write the updated content back to the file
+        with open(fileName, 'w') as fw:
+            fw.write('\\n'.join(new_lines))
+        
+        printIt(f"Removed function '{argName}' from {fileName}", lable.INFO)
+    else:
+        printIt(f"Function '{argName}' not found in {fileName}", lable.WARN)
 
 def removeCmd(cmdName):
     global jsonFileName
@@ -1080,6 +1218,60 @@ def removeCmd(cmdName):
     removeCmdSwitchFlags(cmdName)
 """)
 )
+runTestTemplate = Template(dedent("""# Generated using argCmdDef template
+from ..defs.logIt import printIt, lable, cStr, color
+from .commands import Commands
+
+commandJsonDict = {
+  "runTest": {
+    "description": "Run test(s) in ./tests",
+    "switchFlags": {},
+    "listTests": "List all available tests in the tests directory",
+  }
+}
+
+cmdObj = Commands()
+commands = cmdObj.commands
+
+def runTest(argParse):
+    global commands
+    args = argParse.args
+    theCmd = args.commands[0]
+    theArgNames = list(commands[theCmd].keys())
+    # filter out 'description'a 'switchFlags' from argument names
+    theArgNames = [arg for arg in theArgNames if arg not in ['description', 'switchFlags']]
+    theArgs = args.arguments
+    argIndex = 0
+    nonCmdArg = True
+    # printIt("Modify default behavour in src/${packName}/commands/runTest.py", lable.DEBUG)
+    # delete place holder code bellow that loops though arguments provided
+    # when this command is called when not needed.
+    # Note: that function having a name that is entered as an argument part
+    # of this code and is called using the built in exec function. while argIndex < len(theArgs):
+    while argIndex < len(theArgs):
+        anArg = theArgs[argIndex]
+        if anArg in commands[theCmd]:
+            nonCmdArg = False
+            exec(f"{anArg}(argParse)")
+        # process know and unknown aregument for this {packName} {defName} command
+        elif nonCmdArg:
+            if argIndex+1 > len(theArgNames):
+                printIt(f"unknown argument: {anArg}", lable.INFO)
+            else:
+                printIt(f"{theArgNames[argIndex]}: {anArg}", lable.INFO)
+        argIndex += 1
+    if len(theArgs) == 0:
+        printIt("no argument(s) entered", lable.INFO)
+
+
+def listTests(argParse):
+    args = argParse.args
+    printIt("def runTest executed.", lable.INFO)
+    printIt("Modify default behavour in src/${packName}/commands/runTest.py", lable.INFO)
+    printIt(str(args), lable.INFO)
+
+
+"""))
 commandsJsonDict = {
   "switchFlags": {},
   "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
@@ -1101,6 +1293,11 @@ commandsJsonDict = {
     "switchFlags": {},
     "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
     "argName": "Optional names of argument to remove."
+  },
+  "runTest": {
+    "description": "Run test(s) in ./tests",
+    "switchFlags": {},
+    "listTests": "List all available tests in the tests directory",
   }
 }
 commandsFileStr = dedent("""import json, os
@@ -1736,3 +1933,85 @@ def germDbug(loc: str, currPi, nextPi):
     print("--------------------")
 
 """))
+validationTemplate = Template(dedent("""\"\"\"
+Validation utilities for command and argument names
+\"\"\"
+import keyword
+import builtins
+import os
+from .logIt import printIt, lable
+
+def is_python_keyword_or_builtin(name: str) -> bool:
+    \"\"\"Check if a name is a Python keyword or built-in function/type\"\"\"
+    return keyword.iskeyword(name) or hasattr(builtins, name)
+
+def get_reserved_names() -> set:
+    \"\"\"Get all reserved Python names that should not be used as function names\"\"\"
+    reserved = set()
+    
+    # Add Python keywords
+    reserved.update(keyword.kwlist)
+    
+    # Add built-in functions and types
+    reserved.update(dir(builtins))
+    
+    # Add some common problematic names that might not be in builtins
+    additional_reserved = {
+        'exec', 'eval', 'compile', 'globals', 'locals', 'vars',
+        'dir', 'help', 'input', 'print', 'open', 'file',
+        'exit', 'quit', 'license', 'copyright', 'credits'
+    }
+    reserved.update(additional_reserved)
+    
+    return reserved
+
+def validate_argument_name(arg_name: str, cmd_name: str | None = None) -> bool:
+    \"\"\"
+    Validate that an argument name is safe to use as a function name
+    Returns True if valid, False if invalid
+    \"\"\"
+    if not arg_name:
+        printIt("Argument name cannot be empty", lable.ERROR)
+        return False
+    
+    # Check if it's a valid Python identifier
+    if not arg_name.isidentifier():
+        printIt(f"'{arg_name}' is not a valid Python identifier", lable.ERROR)
+        return False
+    
+    # Check if it's a reserved name
+    if is_python_keyword_or_builtin(arg_name):
+        printIt(f"'{arg_name}' is a Python keyword or built-in name and cannot be used as a function name", lable.ERROR)
+        return False
+    
+    return True
+
+def check_command_uses_argcmddef_template(cmd_name: str) -> bool:
+    \"\"\"Check if a command file was generated using argCmdDef template\"\"\"
+    file_dir = os.path.dirname(os.path.dirname(__file__))  # Go up to src/${packName}
+    file_path = os.path.join(file_dir, 'commands', f'{cmd_name}.py')
+    
+    if not os.path.exists(file_path):
+        return False
+    
+    try:
+        with open(file_path, 'r') as f:
+            first_line = f.readline().strip()
+            return 'argCmdDef template' in first_line
+    except Exception:
+        return False
+
+def validate_arguments_for_argcmddef(arg_names: list, cmd_name: str) -> list:
+    \"\"\"
+    Validate argument names for argCmdDef template usage
+    Returns list of valid argument names, prints errors for invalid ones
+    \"\"\"
+    valid_args = []
+    
+    for arg_name in arg_names:
+        if validate_argument_name(arg_name, cmd_name):
+            valid_args.append(arg_name)
+        else:
+            printIt(f"Skipping invalid argument name: '{arg_name}'", lable.WARN)
+    
+    return valid_args"""))
