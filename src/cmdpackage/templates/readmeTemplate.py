@@ -41,7 +41,9 @@ ${packName} is a Python package that provides a framework for building extensibl
 - **Flexible Argument Parsing**: Support for both string and integer arguments
 - **Template-Based Code Generation**: Automatically generates Python files for new commands
 - **JSON-Based Configuration**: Commands and their descriptions stored in JSON format
-
+- **Comprehensive Test Runner**: Built-in test discovery, execution, and reporting with multiple output modes
+- **Round-trip Testing**: Extensive test suite covering command creation, modification, and removal workflows
+                                      
 ## Installation
 
 ### From Source
@@ -180,6 +182,110 @@ ${packName} rmCmd deploy timeout
 **What gets removed:**
 - **Entire command removal**: Deletes the `.py` file, removes entry from `commands.json`, and cleans up associated flags in `.${packName}rc`
 - **Argument removal**: Only removes the argument definition from `commands.json` (command and file remain)
+
+#### `runTest` - Test Runner
+Run and manage tests in the `./tests` directory with comprehensive execution options:
+
+```bash
+${packName} runTest [testName] [listTests] [+verbose|-verbose] [+stop|-stop] [+summary|-summary]
+```
+
+**Test Discovery and Execution:**
+```bash
+# Run all tests
+${packName} runTest
+
+# Run specific test (with or without .py extension)
+${packName} runTest test_modCmd_roundtrip
+${packName} runTest test_newCmd_roundtrip.py
+
+# List all available tests with descriptions
+${packName} runTest listTests
+```
+
+**Execution Control Flags:**
+- **`+verbose/-verbose`**: Show/hide detailed output during test execution including command traces and full test output
+- **`+stop/-stop`**: Stop execution immediately on first test failure (useful for debugging)
+- **`+summary/-summary`**: Show only final summary results, skip individual test progress and output
+
+**Flag Usage Examples:**
+```bash
+# Run all tests with detailed output
+${packName} runTest +verbose
+
+# Run tests and stop on first failure
+${packName} runTest +stop
+
+# Run tests showing only the final summary
+${packName} runTest +summary
+
+# Run specific test with verbose output
+${packName} runTest test_modCmd_roundtrip +verbose
+
+# Combine flags (enable verbose, disable summary)
+${packName} runTest +verbose -summary
+
+# Toggle flags independently
+${packName} runTest +stop    # Enable stop-on-failure for future runs
+${packName} runTest -stop    # Disable stop-on-failure
+```
+
+**Test Runner Features:**
+- **Automatic Discovery**: Finds all `test_*.py` files in the `./tests` directory
+- **Color-coded Results**: Green PASS/Red FAIL status indicators with execution timing
+- **Progress Tracking**: Shows current test progress (e.g., "[2/4] Running test_name...")
+- **Comprehensive Summary**: Displays total tests, passed/failed counts, and total execution time
+- **Error Details**: Shows detailed error information for failed tests (in verbose mode or when tests fail)
+- **Virtual Environment**: Automatically activates the project's virtual environment (`env/${packName}/`)
+- **Exit Codes**: Returns 0 for success, 1 if any tests fail (useful for CI/CD pipelines)
+
+**Test Output Examples:**
+
+*Normal execution (default):*
+```
+INFO: Running 4 test(s)...
+
+INFO: [1/4] Running test_argCmdDef_roundtrip...
+  PASS (0.29s)
+
+INFO: [2/4] Running test_modCmd_roundtrip...
+  PASS (0.75s)
+
+...
+
+============================================================
+INFO: TEST EXECUTION SUMMARY
+============================================================
+Total Tests:  4
+Passed:       4
+Failed:       0
+Total Time:   1.88s
+============================================================
+PASS: 🎉 All tests passed!
+```
+
+*Summary mode (`+summary`):*
+```
+INFO: Running 4 test(s)...
+
+============================================================
+INFO: TEST EXECUTION SUMMARY
+============================================================
+Total Tests:  4
+Passed:       4
+Failed:       0
+Total Time:   1.89s
+============================================================
+PASS: 🎉 All tests passed!
+```
+
+*Verbose mode (`+verbose`):*
+Shows full test output including all test details, setup/teardown messages, and debug information.
+
+**Test File Requirements:**
+- Test files must be named `test_*.py` and located in the `./tests` directory
+- Tests should be executable Python scripts that return appropriate exit codes
+- Test files can include docstrings for automatic description extraction
 
 ### Getting Help
 
@@ -332,16 +438,25 @@ ${packName}/
 │       │   ├── newCmd.py        # New command creation logic
 │       │   ├── modCmd.py        # Command modification logic
 │       │   ├── rmCmd.py         # Command removal logic
+│       │   ├── runTest.py       # Enhanced test runner with execution control
 │       │   └── templates/       # Code templates for new commands
-│       │       ├── argCmdDef.py    # Default template
-│       │       ├── simple.py    # Simple template
-│       │       ├── classCall.py # Class-based template
-│       │       └── asyncDef.py  # Async template
+│       │       ├── argCmdDef.py    # Default template with argument handling
+│       │       ├── simple.py    # Simple template for basic commands
+│       │       ├── classCall.py # Class-based template for OOP commands
+│       │       └── asyncDef.py  # Async template for concurrent operations
 │       └── defs/
-│           └── logIt.py         # Colored logging and output utilities
+│           ├── logIt.py         # Colored logging and output utilities
+│           └── validation.py    # Input validation functions
+├── tests/                       # Round-trip test suite
+│   ├── test_newCmd_roundtrip.py    # Tests for command creation workflows
+│   ├── test_modCmd_roundtrip.py    # Tests for command modification workflows
+│   ├── test_rmCmd_roundtrip.py     # Tests for command removal workflows
+│   └── test_argCmdDef_roundtrip.py # Tests for template functionality
+├── env/${packName}/                      # Virtual environment for development
 ├── .${packName}rc                        # Configuration file (auto-generated)
 ├── pyproject.toml               # Package configuration
-└── README.md                    # This file
+├── README.md                    # Basic documentation
+└── README_Command_modifications.md  # This comprehensive guide
 ```
 
 ## Configuration File
@@ -360,6 +475,68 @@ The `.${packName}rc` file stores persistent configuration:
     }
   }
 }
+```
+
+## Testing and Quality Assurance
+
+The ${packName} framework includes a comprehensive test suite with an enhanced test runner to ensure reliability and quality.
+
+### Running Tests
+
+The `runTest` command provides multiple ways to execute and manage tests:
+
+```bash
+# Run all tests with default output
+${packName} runTest
+
+# Run tests with detailed verbose output (recommended for development)
+${packName} runTest +verbose
+
+# Run tests in summary mode (recommended for CI/CD)
+${packName} runTest +summary
+
+# Run tests and stop on first failure (useful for debugging)
+${packName} runTest +stop
+
+# Run a specific test file
+${packName} runTest test_modCmd_roundtrip
+
+# List all available tests
+${packName} runTest listTests
+```
+
+### Test Suite Coverage
+
+The included test suite provides comprehensive coverage:
+
+- **`test_newCmd_roundtrip.py`**: Tests command creation workflows with various templates and flag combinations
+- **`test_modCmd_roundtrip.py`**: Tests command modification including description updates, argument additions, and flag management
+- **`test_rmCmd_roundtrip.py`**: Tests command and argument removal operations with proper cleanup verification
+- **`test_argCmdDef_roundtrip.py`**: Tests template functionality and code generation processes
+
+### Development Workflow
+
+For developers contributing to ${packName} or creating complex command sets:
+
+1. **Create commands**: Use `${packName} newCmd` to create new functionality
+2. **Test immediately**: Run `${packName} runTest +verbose` to ensure no regressions
+3. **Modify iteratively**: Use `${packName} modCmd` to refine command definitions
+4. **Validate changes**: Run specific tests with `${packName} runTest test_name +verbose`
+5. **Final verification**: Run full test suite with `${packName} runTest +summary`
+
+### Continuous Integration
+
+The test runner is designed for CI/CD environments:
+
+- **Exit codes**: Returns 0 for success, 1 for any failures
+- **Summary mode**: Use `+summary` for clean CI output
+- **Stop on failure**: Use `+stop` to fail fast in CI pipelines
+- **Verbose debugging**: Use `+verbose` when investigating CI failures
+
+Example CI usage:
+```bash
+# In your CI pipeline
+${packName} runTest +summary +stop  # Fast failure with clean output
 ```
 
 ## Development
@@ -539,6 +716,36 @@ ${packName} database localhost "SELECT * FROM users"
 ${packName} downloader "https://example.com/file.zip" "/downloads/"
 ```
 
+### Development and Testing Workflow
+
+Complete example of creating, testing, and refining commands:
+
+```bash
+# 1. Create a new command with flags
+${packName} newCmd backup source --destination -compress -verbose
+
+# 2. Test the command creation
+${packName} runTest test_newCmd_roundtrip +verbose
+
+# 3. Use the command
+${packName} backup /home/data --destination /backup/data +compress +verbose
+
+# 4. Modify the command to add features
+${packName} modCmd backup --encryption -dry-run
+
+# 5. Test modifications
+${packName} runTest test_modCmd_roundtrip
+
+# 6. Run full test suite to ensure no regressions
+${packName} runTest +summary
+
+# 7. List all available tests
+${packName} runTest listTests
+
+# 8. Debug specific test issues
+${packName} runTest test_modCmd_roundtrip +verbose +stop
+```
+
 ### Modifying Existing Commands
 
 You can enhance existing commands by adding new arguments and option flags:
@@ -600,6 +807,21 @@ If template-related errors occur:
 - Check that the template file has proper `cmdDefTemplate` and `argDefTemplate` definitions
 - The system will fall back to the default template if the specified template is not found
 
+### Test Execution Issues
+If tests fail to run or behave unexpectedly:
+- Ensure the virtual environment is properly set up: `source env/${packName}/bin/activate`
+- Check that all test files are in the `./tests` directory and named `test_*.py`
+- Use `${packName} runTest +verbose` to see detailed error output
+- Verify the package is installed in development mode: `pip install -e .`
+- Run `${packName} runTest listTests` to confirm test discovery is working
+
+### Flag and Configuration Issues
+If command flags aren't working properly:
+- Check that flags are defined in the command's `switchFlags` section in `commands.json`
+- Verify the `.${packName}rc` file exists and contains the command's flag definitions
+- Use `+flag` to enable and `-flag` to disable boolean flags
+- Remember that string options use `--option value` syntax
+
 ### Import Errors
 Ensure the package is properly installed:
 ```bash
@@ -608,4 +830,10 @@ pip install -e .
 
 ### Terminal Width Issues
 The help system automatically adapts to terminal width. If formatting looks odd, try resizing your terminal or using a standard terminal width (80+ characters recommended).
+
+### Virtual Environment Issues
+If commands fail to execute properly:
+- Ensure you're in the project directory when running commands
+- The test runner automatically activates `env/${packName}/bin/activate`, but manual command execution may require activation
+- Verify the virtual environment has the correct Python version and dependencies
 """))

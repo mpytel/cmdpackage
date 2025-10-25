@@ -7,7 +7,7 @@ test_modCmd_roundtrip_template = Template(dedent("""# GitHub Copilot Instruction
 
 ## Project Overview
 
-**${packName}** is a dynamic command-line framework for creating, modifying, and managing custom commands with interactive help and argument parsing. It's a Python package (version 0.1.0) that allows users to build extensible CLI applications through an interactive interface.
+**${packName}** is a dynamic command-line framework for creating, modifying, and managing custom commands with interactive help and argument parsing. It's a Python package (version ${version}) that allows users to build extensible CLI applications through an interactive interface.
 
 ## Project Structure
 

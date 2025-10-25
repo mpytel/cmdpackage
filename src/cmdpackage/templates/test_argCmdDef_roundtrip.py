@@ -13,7 +13,10 @@ This test suite validates the enhanced modCmd functionality including:
 2. Input alignment when arguments are rejected during validation
 3. Proper messaging for mixed success/failure scenarios
 4. Switch flag handling alongside argument validation
-5. Template-specific validation(argCmdDef vs simple templates)
+5. Template-specific validation (argCmdDef vs simple templates)
+6. Function definition addition to .py files for argCmdDef templates
+7. Function content verification and template consistency
+8. Round-trip consistency between modCmd and rmCmd for functions
 
 Test scenarios:
 - Valid argument names that should be accepted
@@ -21,7 +24,11 @@ Test scenarios:
 - Mixed valid/invalid arguments with proper input alignment
 - Switch flags combined with arguments
 - All arguments rejected scenario
-- Template-specific behavior(validation only for argCmdDef)
+- Template-specific behavior (validation only for argCmdDef)
+- Function definition addition when arguments are added
+- Function content matching argDefTemplate pattern
+- Multiple argument function addition in single call
+- Complete add/remove cycle maintaining JSON and .py file consistency
 \"\"\"
 
 import os
@@ -168,12 +175,83 @@ def check_template_type(cmd_name: str) -> str:
     except Exception:
         return "error"
 
+                                                    
+def check_function_exists_in_file(file_path: str, function_name: str) -> bool:
+    \"\"\"Check if a function definition exists in a Python file\"\"\"
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+            # Look for function definition pattern
+            import re
+            pattern = rf"^def {re.escape(function_name)}\\s*\\("
+            return bool(re.search(pattern, content, re.MULTILINE))
+    except FileNotFoundError:
+        return False
+
+
+def verify_function_template_content(file_path: str, function_name: str, cmd_name: str) -> bool:
+    \"\"\"Verify that a function matches the expected argDefTemplate pattern\"\"\"
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+            
+        # Check for expected template content in the function
+        expected_patterns = [
+            f"def {function_name}(argParse):",
+            "args = argParse.args",
+            f'printIt("def {cmd_name} executed.", lable.INFO)',
+            f'printIt("Modify default behavour in src/${packName}/commands/{cmd_name}.py", lable.INFO)',
+            "printIt(str(args), lable.INFO)"
+        ]
+        
+        # Find the function in the content
+        import re
+        func_pattern = rf"def {re.escape(function_name)}\\(.*?\\):(.*?)(?=def \\w+\\(|$$)"
+        func_match = re.search(func_pattern, content, re.DOTALL)
+        
+        if not func_match:
+            return False
+            
+        func_content = func_match.group(1)
+        
+        # Check if all expected patterns are in the function content
+        for pattern in expected_patterns[1:]:  # Skip the def line as it's already matched
+            if pattern not in func_content:
+                return False
+                
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def get_all_function_names_in_file(file_path: str) -> list:
+    \"\"\"Get all function names defined in a Python file\"\"\"
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+            
+        import re
+        # Find all function definitions
+        pattern = r"^def (\\w+)\\s*\\("
+        matches = re.findall(pattern, content, re.MULTILINE)
+        return matches
+    except FileNotFoundError:
+        return []
+
+def get_command_file_path(cmd_name: str) -> str:
+    \"\"\"Get the absolute path to a command's .py file\"\"\"
+    import os
+    # Get the current script directory and navigate to the correct location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)  # Go up from tests/ to project root
+    return os.path.join(project_root, "src", "${packName}", "commands", f"{cmd_name}.py")
+
 
 def cleanup_test_commands():
     \"\"\"Clean up any existing test commands\"\"\"
     print_info("Cleaning up any existing test commands...")    
-
-    test_commands = ["testValidation", "testSimple", "testMixed"]
+                                                    
+    test_commands = ["testValidation", "testSimple", "testMixed", "testFunctions", "testMultiple"]
 
     # Remove test commands if they exist
     for cmd in test_commands:
@@ -388,6 +466,166 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
                          f"Failed - while_rejected:{while_rejected}, def_rejected:{def_rejected}, valid_comp:{valid_comp_ok}, modified_msg:{contains_modified}")
         return False
 
+def test_function_definition_addition(result: TestResult) -> bool:
+    \"\"\"Test 8: Verify that modCmd adds function definitions to .py files for argCmdDef commands\"\"\"
+    print_test("Test 8: Function definition addition verification")
+
+    # Create a new test command for function testing
+    input_text = "Test command for function definition testing"
+    returncode, stdout, stderr = run_command("${packName} newCmd testFunctions", input_text)
+
+    if not check_command_exists("testFunctions"):
+        result.add_result("Function definition addition", False, "Failed to create testFunctions command")
+        return False
+
+    # Add arguments and check if corresponding functions are added
+    input_text = "First test argument\\nnSecond test argument"
+    returncode, stdout, stderr = run_command("${packName} modCmd testFunctions firstArg secondArg", input_text)
+
+    # Verify functions were added to the .py file
+    file_path = get_command_file_path("testFunctions")
+    first_func_exists = check_function_exists_in_file(file_path, "firstArg")
+    second_func_exists = check_function_exists_in_file(file_path, "secondArg")
+
+    # Verify output message about function addition
+    contains_function_msg = "Added function definitions for arguments:" in stdout
+
+    # Check JSON metadata was also updated
+    cmd_data = get_command_data("testFunctions")
+    first_arg_in_json = "firstArg" in cmd_data
+    second_arg_in_json = "secondArg" in cmd_data
+
+    all_ok = (first_func_exists and second_func_exists and 
+              contains_function_msg and first_arg_in_json and second_arg_in_json)
+
+    if all_ok:
+        result.add_result("Function definition addition", True, "Functions correctly added to .py file and JSON")
+        return True
+    else:
+        result.add_result("Function definition addition", False, 
+                         f"Failed - firstFunc:{first_func_exists}, secondFunc:{second_func_exists}, "
+                         f"msg:{contains_function_msg}, jsonFirst:{first_arg_in_json}, jsonSecond:{second_arg_in_json}")
+        return False
+
+
+def test_function_content_verification(result: TestResult) -> bool:
+    \"\"\"Test 9: Verify that generated functions contain expected template content\"\"\"
+    print_test("Test 9: Function content template verification")
+
+    # Verify the functions created in the previous test have correct content
+    file_path = get_command_file_path("testFunctions")
+    
+    first_content_ok = verify_function_template_content(file_path, "firstArg", "testFunctions")
+    second_content_ok = verify_function_template_content(file_path, "secondArg", "testFunctions")
+
+    # Also check that the file doesn't have syntax errors by trying to read all functions
+    all_functions = get_all_function_names_in_file(file_path)
+    has_main_function = "testFunctions" in all_functions
+    has_both_args = "firstArg" in all_functions and "secondArg" in all_functions
+
+    all_ok = first_content_ok and second_content_ok and has_main_function and has_both_args
+
+    if all_ok:
+        result.add_result("Function content verification", True, "Generated functions have correct template content")
+        return True
+    else:
+        result.add_result("Function content verification", False, 
+                         f"Failed - firstContent:{first_content_ok}, secondContent:{second_content_ok}, "
+                         f"mainFunc:{has_main_function}, bothArgs:{has_both_args}")
+        return False
+
+
+def test_multiple_argument_functions(result: TestResult) -> bool:
+    \"\"\"Test 10: Test adding multiple arguments in a single modCmd call\"\"\"
+    print_test("Test 10: Multiple argument functions addition")
+
+    # Create a new test command
+    input_text = "Test command for multiple arguments"
+    returncode, stdout, stderr = run_command("${packName} newCmd testMultiple", input_text)
+
+    if not check_command_exists("testMultiple"):
+        result.add_result("Multiple argument functions", False, "Failed to create testMultiple command")
+        return False
+
+    # Add 3 arguments in a single call
+    input_text = "First argument description\\nnSecond argument description\\nThird argument description"
+    returncode, stdout, stderr = run_command("${packName} modCmd testMultiple arg1 arg2 arg3", input_text)
+
+    # Verify all 3 functions were added
+    file_path = get_command_file_path("testMultiple")
+    arg1_exists = check_function_exists_in_file(file_path, "arg1")
+    arg2_exists = check_function_exists_in_file(file_path, "arg2")
+    arg3_exists = check_function_exists_in_file(file_path, "arg3")
+
+    # Verify all 3 are in JSON
+    cmd_data = get_command_data("testMultiple")
+    arg1_in_json = "arg1" in cmd_data
+    arg2_in_json = "arg2" in cmd_data
+    arg3_in_json = "arg3" in cmd_data
+
+    # Check that the output message mentions all arguments
+    contains_all_args = "arg1" in stdout and "arg2" in stdout and "arg3" in stdout
+    contains_function_msg = "Added function definitions for arguments:" in stdout
+
+    all_ok = (arg1_exists and arg2_exists and arg3_exists and 
+              arg1_in_json and arg2_in_json and arg3_in_json and 
+              contains_all_args and contains_function_msg)
+
+    if all_ok:
+        result.add_result("Multiple argument functions", True, "All 3 functions added correctly in single call")
+        return True
+    else:
+        result.add_result("Multiple argument functions", False, 
+                         f"Failed - arg1Func:{arg1_exists}, arg2Func:{arg2_exists}, arg3Func:{arg3_exists}, "
+                         f"json1:{arg1_in_json}, json2:{arg2_in_json}, json3:{arg3_in_json}")
+        return False
+
+
+def test_function_removal_consistency(result: TestResult) -> bool:
+    \"\"\"Test 11: Test complete round-trip: add functions with modCmd, remove with rmCmd\"\"\"
+    print_test("Test 11: Function removal consistency (round-trip)")
+
+    # Use the testMultiple command from previous test (should have arg1, arg2, arg3)
+    file_path = get_command_file_path("testMultiple")
+    
+    # Verify starting state - all 3 functions should exist
+    initial_arg1 = check_function_exists_in_file(file_path, "arg1")
+    initial_arg2 = check_function_exists_in_file(file_path, "arg2")
+    initial_arg3 = check_function_exists_in_file(file_path, "arg3")
+
+    if not (initial_arg1 and initial_arg2 and initial_arg3):
+        result.add_result("Function removal consistency", False, "Starting state incorrect - missing functions")
+        return False
+
+    # Remove arg2 using rmCmd
+    returncode, stdout, stderr = run_command('echo "y" | ${packName} rmCmd testMultiple arg2')
+
+    # Verify arg2 function was removed but others remain
+    after_removal_arg1 = check_function_exists_in_file(file_path, "arg1")
+    after_removal_arg2 = check_function_exists_in_file(file_path, "arg2")
+    after_removal_arg3 = check_function_exists_in_file(file_path, "arg3")
+
+    # Check JSON consistency
+    cmd_data = get_command_data("testMultiple")
+    json_arg1_exists = "arg1" in cmd_data
+    json_arg2_removed = "arg2" not in cmd_data
+    json_arg3_exists = "arg3" in cmd_data
+
+    # Verify output messages
+    contains_removed_msg = "Removed function 'arg2'" in stdout or "ARG REMOVED: arg2" in stdout
+
+    all_ok = (after_removal_arg1 and not after_removal_arg2 and after_removal_arg3 and
+              json_arg1_exists and json_arg2_removed and json_arg3_exists and contains_removed_msg)
+
+    if all_ok:
+        result.add_result("Function removal consistency", True, "Round-trip add/remove maintains consistency")
+        return True
+    else:
+        result.add_result("Function removal consistency", False, 
+                         f"Failed - arg1Still:{after_removal_arg1}, arg2Gone:{not after_removal_arg2}, "
+                         f"arg3Still:{after_removal_arg3}, jsonConsistent:{json_arg2_removed}, msg:{contains_removed_msg}")
+        return False
+
 
 def main():
     \"\"\"Run all tests\"\"\"
@@ -408,7 +646,11 @@ def main():
         test_mixed_valid_invalid_arguments,
         test_switch_flags_with_arguments,
         test_simple_template_bypass,
-        test_comprehensive_scenario
+        test_comprehensive_scenario,
+        test_function_definition_addition,
+        test_function_content_verification,
+        test_multiple_argument_functions,
+        test_function_removal_consistency
     ]
 
     for test_func in tests:

@@ -168,7 +168,6 @@ def get_input(input_msg, default=None):
         return default
     return input_value
 
-
 def write_content(file, content):
     if version_info >= (3, 0):
         file.write(content)

@@ -147,33 +147,36 @@ def cmdSwitchbord(argParse: ArgParse):
                                 toggleCmdSwitchFlag(cmdName, flagName, setValue)
                                 flag_toggle_occurred = True
                 
-                # Handle old logic for backward compatibility
-                switchFlagChk = sys.argv[2]
-                # Only handle single hyphen options here, let double hyphen pass through
-                if len(sys.argv) == 3 and switchFlagChk[0] in '-+?' and not switchFlagChk.startswith('--'):
-                    flagName = switchFlagChk[1:]
+                # Handle old logic for backward compatibility only if flag toggle didn't occur above
+                if not flag_toggle_occurred:
+                    switchFlagChk = sys.argv[2]
+                    # Only handle single hyphen options here, let double hyphen pass through
+                    if len(sys.argv) == 3 and switchFlagChk[0] in '-+?' and not switchFlagChk.startswith('--'):
+                        flagName = switchFlagChk[1:]
                     
-                    # Check if it's a global switch flag first
-                    if flagName in switchFlags.keys():
-                        cmdOptSwitchbord(switchFlagChk, switchFlags)
-                    
-                    # Check if it's a command-specific flag
-                    cmdName = sys.argv[1]
-                    if cmdName in commands and 'switchFlags' in commands[cmdName]:
-                        cmdSwitchFlags = commands[cmdName]['switchFlags']
-                        if flagName in cmdSwitchFlags and cmdSwitchFlags[flagName].get('type') == 'bool':
-                            # This is a command-specific boolean flag
-                            setValue = switchFlagChk[0] == '+'
-                            toggleCmdSwitchFlag(cmdName, flagName, setValue)
-                            flag_toggle_occurred = True
+                         # Check if it's a global switch flag first
+                        if flagName in switchFlags.keys():
+                            cmdOptSwitchbord(switchFlagChk, switchFlags)
                             exit()
                     
-                    # Not a recognized flag
-                    if switchFlagChk not in ["-h", "--help"]:
-                        printIt(f'{switchFlagChk} not defined',lable.WARN)
-                    else:
-                        argParse.parser.print_help()
-                    exit()
+                        # Check if it's a command-specific flag
+                        cmdName = sys.argv[1]
+                        if cmdName in commands and 'switchFlags' in commands[cmdName]:
+                            cmdSwitchFlags = commands[cmdName]['switchFlags']
+                            if flagName in cmdSwitchFlags and cmdSwitchFlags[flagName].get('type') == 'bool':
+                                # This is a command-specific boolean flag
+                                setValue = switchFlagChk[0] == '+'
+                                toggleCmdSwitchFlag(cmdName, flagName, setValue)
+                                flag_toggle_occurred = True
+                                # Don't exit here - let the command execute with the new flag setting
+                    
+                        # Not a recognized flag
+                        if not flag_toggle_occurred:
+                            if switchFlagChk not in ["-h", "--help"]:
+                                printIt(f'{switchFlagChk} not defined',lable.WARN)
+                            else:
+                                argParse.parser.print_help()
+                            exit()
 
             args: Namespace = argParse.args
             theCmd = args.commands[0]
@@ -674,25 +677,29 @@ def modCmd(argParse: ArgParse):
         actual_modifications = {k: v for k, v in theArgs.items() if k != '_optionFlags'}
         if len(actual_modifications) > 0 or (theArgs.get('_optionFlags') and len(theArgs['_optionFlags']) > 0):
             updateCMDJson(cmdObj, modCmdName, theArgs)
-            
+
+            # If command uses argCmdDef template, add new argument functions to the .py file
+            if uses_argcmddef:
+                add_new_argument_functions(modCmdName, theArgs, tracking)
+
             # Save new option flags to .${packName}rc if any were added
-            if hasattr(argParse, 'cmd_options') and argParse.cmd_options:
+            option_flags = theArgs.get('_optionFlags', {})
+            if option_flags:
                 # Extract flags for the command being modified
                 new_cmd_flags = {}
-                new_cmd_switch_flags = {}
-                
-                for option_name, option_value in argParse.cmd_options.items():
-                    if isinstance(option_value, bool):
+                                 
+                for option_name, flag_def in option_flags.items():
+                    flag_type = flag_def.get('type', 'str')
+                    if flag_type == 'bool':
                         # Boolean flag - save with default value False
                         new_cmd_flags[option_name] = False
-                        new_cmd_switch_flags[option_name] = {"type": "bool"}
-                    elif option_value == '__STRING_OPTION__' or not isinstance(option_value, bool):
-                        # String option - save with empty string default or the provided value
-                        if option_value == '__STRING_OPTION__':
-                            new_cmd_flags[option_name] = ""
-                        else:
-                            new_cmd_flags[option_name] = str(option_value)
-                        new_cmd_switch_flags[option_name] = {"type": "str"}
+                    elif flag_type == 'str':
+                        # String option - save with empty string default
+                        new_cmd_flags[option_name] = ""
+
+                # Save the flags to .${packName}rc using the saveCmdSwitchFlags function
+                if new_cmd_flags:
+                    saveCmdSwitchFlags(modCmdName, new_cmd_flags, option_flags)
 
             # Print detailed modification results
             print_modification_results(modCmdName, tracking)
@@ -757,7 +764,18 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, uses_argcmddef: bool =
                     continue
             
             valid_args.append((argIndex, argName))
-    
+                                 
+    # Special case: if only command name provided, handle command description modification
+    if len(theArgs) == 1:
+        cmdName = theArgs[0]
+        chgDisc = input(f'Replace description for {cmdName} (y/N): ')
+        if chgDisc.lower() == 'y':
+            theDict = input(f'Enter help description for argument {cmdName}:\\n')
+            if theDict == '': 
+                theDict = f'no help for {cmdName}'
+            rtnDict[cmdName] = theDict
+            tracking['modified'].append(f'command {cmdName}')
+
     # Second pass: process only valid arguments with prompts
     for argIndex, argName in valid_args:
         saveDict = False
@@ -791,29 +809,24 @@ def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, uses_argcmddef: bool =
             }
             tracking['modified'].append(f'flag {argName}')
         else:
-            # Regular argument
+            # Regular argument (not command description - that's handled above)
             theDict = ''
-            if argIndex == 0 and len(theArgs) == 1:
+            saveDict = False
+            
+            if argName in cmdObj.commands[cmdName].keys():
                 chgDisc = input(f'Replace description for {argName} (y/N): ')
                 if chgDisc.lower() == 'y':
                     saveDict = True
-            elif argIndex > 0:
-                if argName in cmdObj.commands[cmdName].keys():
-                    chgDisc = input(f'Replace description for {argName} (y/N): ')
-                    if chgDisc.lower() == 'y':
-                        saveDict = True
-                else: # add new arg
-                    saveDict = True
-                    newArg = True
+            else: # add new arg
+                saveDict = True
+                newArg = True
+                
             if saveDict:
                 theDict = input(f'Enter help description for argument {argName}:\\n')
                 if theDict == '': theDict = f'no help for {argName}'
-            
-            if saveDict:
                 # only populate rtnDict with modified descriptions
                 rtnDict[argName] = theDict
-                if argIndex > 0:  # Don't track command name modifications
-                    tracking['modified'].append(f'argument {argName}')
+                tracking['modified'].append(f'argument {argName}')
             
         argIndex += 1
     
@@ -847,6 +860,58 @@ def cmdCodeBlock(theArgs: dict) -> str:
         rtnStr += argTemp.substitute(argName=theArgs[argName])
         argIndex += 1
     return rtnStr
+
+def add_new_argument_functions(cmdName: str, theArgs: dict, tracking: dict) -> None:
+    \"\"\"Add new argument functions to the command's .py file if using argCmdDef template\"\"\"
+    
+    # Get list of newly added arguments (exclude command name, _optionFlags, and existing modifications)
+    new_arguments = []
+    modified_items = tracking.get('modified', [])
+    
+    for item in modified_items:
+        if item.startswith('argument ') and not item.startswith('argument ' + cmdName):
+            # Extract argument name from "argument argname" format
+            arg_name = item.replace('argument ', '')
+            # Only add if this is a new argument (not command description modification)
+            if arg_name != cmdName and arg_name in theArgs and arg_name != '_optionFlags':
+                new_arguments.append(arg_name)
+    
+    if not new_arguments:
+        return
+        
+    fileDir = os.path.dirname(__file__)
+    fileName = os.path.join(fileDir, f'{cmdName}.py')
+    
+    if not os.path.isfile(fileName):
+        printIt(f"Source file {fileName} not found", lable.WARN)
+        return
+    
+    # Read the current file content
+    with open(fileName, 'r') as fr:
+        fileContent = fr.read()
+    
+    # Generate new function definitions using argDefTemplate
+    new_functions = ""
+    for argName in new_arguments:
+        # Create function definition using the template
+        argDescription = theArgs.get(argName, f'no help for {argName}')
+        function_code = argDefTemplate.substitute(
+            argName=argName,
+            defName=cmdName,
+            packName="${packName}"  # Use the package name
+        )
+        new_functions += function_code
+    
+    # Append new functions to the end of the file
+    if new_functions:
+        updated_content = fileContent + "\\n" + new_functions
+        
+        # Write the updated content back to the file
+        with open(fileName, 'w') as fw:
+            fw.write(updated_content)
+        
+        arg_list = ', '.join(new_arguments)
+        printIt(f"Added function definitions for arguments: {arg_list}", lable.INFO)
 
 def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs: dict) -> None:
     commands = copy.deepcopy(cmdObj.commands)
@@ -1219,58 +1284,282 @@ def removeCmd(cmdName):
 """)
 )
 runTestTemplate = Template(dedent("""# Generated using argCmdDef template
+import os
+import sys
+import subprocess
+import time
+from pathlib import Path
+from typing import List, Tuple, Dict, Optional
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 
 commandJsonDict = {
   "runTest": {
-    "description": "Run test(s) in ./tests",
-    "switchFlags": {},
-    "listTests": "List all available tests in the tests directory",
+    "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
+    "switchFlags": {
+      "verbose": {
+        "description": "Verbose output flag",
+        "type": "bool"
+      },
+      "stop": {
+        "description": "Stop on failure flag",
+        "type": "bool"
+      },
+      "summary": {
+        "description": "Summary only flag",
+        "type": "bool"
+      }
+    },
+    "testName": "Optional name of specific test to run (without .py extension)",
+    "listTests": "List all available tests in the tests directory"
   }
 }
 
 cmdObj = Commands()
 commands = cmdObj.commands
 
-def runTest(argParse):
-    global commands
-    args = argParse.args
-    theCmd = args.commands[0]
-    theArgNames = list(commands[theCmd].keys())
-    # filter out 'description'a 'switchFlags' from argument names
-    theArgNames = [arg for arg in theArgNames if arg not in ['description', 'switchFlags']]
-    theArgs = args.arguments
-    argIndex = 0
-    nonCmdArg = True
-    # printIt("Modify default behavour in src/${packName}/commands/runTest.py", lable.DEBUG)
-    # delete place holder code bellow that loops though arguments provided
-    # when this command is called when not needed.
-    # Note: that function having a name that is entered as an argument part
-    # of this code and is called using the built in exec function. while argIndex < len(theArgs):
-    while argIndex < len(theArgs):
-        anArg = theArgs[argIndex]
-        if anArg in commands[theCmd]:
-            nonCmdArg = False
-            exec(f"{anArg}(argParse)")
-        # process know and unknown aregument for this {packName} {defName} command
-        elif nonCmdArg:
-            if argIndex+1 > len(theArgNames):
-                printIt(f"unknown argument: {anArg}", lable.INFO)
-            else:
-                printIt(f"{theArgNames[argIndex]}: {anArg}", lable.INFO)
-        argIndex += 1
-    if len(theArgs) == 0:
-        printIt("no argument(s) entered", lable.INFO)
+class TestRunner:
+    \"\"\"Class to handle test discovery and execution\"\"\"
 
+    def __init__(self, verbose: bool = False, stop_on_failure: bool = False, summary_only: bool = False):
+        self.project_root = Path(__file__).parent.parent.parent.parent
+        self.tests_dir = self.project_root / "tests"
+        self.verbose = verbose
+        self.stop_on_failure = stop_on_failure
+        self.summary_only = summary_only
+        self.results: Dict[str, Tuple[bool, str, float]] = {}
+
+    def discover_tests(self) -> List[Path]:
+        \"\"\"Discover all test files in the tests directory\"\"\"
+        if not self.tests_dir.exists():
+            printIt(
+                f"Tests directory not found: {self.tests_dir}", lable.ERROR)
+            return []
+
+        test_files = []
+        for file_path in self.tests_dir.glob("test_*.py"):
+            if file_path.is_file():
+                test_files.append(file_path)
+
+        return sorted(test_files)
+
+    def run_single_test(self, test_file: Path) -> Tuple[bool, str, float]:
+        \"\"\"Run a single test file and return (success, output, duration)\"\"\"
+        start_time = time.time()
+
+        try:
+            # Change to project directory and activate virtual environment
+            cmd = f"cd {self.project_root} && source env/${packName}/bin/activate && python {test_file}"
+
+            if not self.summary_only and self.verbose:
+                printIt(f"Running: {cmd}", lable.DEBUG)
+
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                executable='/bin/bash'
+            )
+
+            duration = time.time() - start_time
+            success = result.returncode == 0
+
+            # Combine stdout and stderr for complete output
+            output = ""
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += f"\\nSTDERR:\\n{result.stderr}"
+
+            return success, output, duration
+
+        except Exception as e:
+            duration = time.time() - start_time
+            return False, f"Exception running test: {str(e)}", duration
+
+    def run_all_tests(self, test_files: List[Path]) -> Dict[str, Tuple[bool, str, float]]:
+        \"\"\"Run all discovered test files\"\"\"
+        results = {}
+
+        printIt(f"Running {len(test_files)} test(s)...", lable.INFO)
+        print()
+
+        for i, test_file in enumerate(test_files, 1):
+            test_name = test_file.stem
+
+            if not self.summary_only:
+                printIt(
+                    f"[{i}/{len(test_files)}] Running {test_name}...", lable.INFO)
+
+            success, output, duration = self.run_single_test(test_file)
+            results[test_name] = (success, output, duration)
+
+            # Show individual test results if not summary only
+            if not self.summary_only:
+                if success:
+                    status = cStr("PASS", color.GREEN)
+                else:
+                    status = cStr("FAIL", color.RED)
+                print(f"  {status} ({duration:.2f}s)")
+
+                if self.verbose or not success:
+                    # Show output for failed tests or when verbose is enabled
+                    if output.strip():
+                        print("  " + "\\n  ".join(output.strip().split('\\n')))
+                print()
+
+            # Stop on first failure if requested
+            if not success and self.stop_on_failure:
+                printIt(
+                    f"Stopping due to test failure in {test_name}", lable.WARN)
+                break
+
+        return results
+
+    def print_summary(self, results: Dict[str, Tuple[bool, str, float]]):
+        \"\"\"Print test execution summary\"\"\"
+        total_tests = len(results)
+        passed_tests = sum(1 for success, _, _ in results.values() if success)
+        failed_tests = total_tests - passed_tests
+        total_time = sum(duration for _, _, duration in results.values())
+
+        print("=" * 60)
+        printIt("TEST EXECUTION SUMMARY", lable.INFO)
+        print("=" * 60)
+
+        print(f"Total Tests:  {total_tests}")
+        print(f"{cStr('Passed:', color.GREEN)}       {passed_tests}")
+        print(f"{cStr('Failed:', color.RED)}       {failed_tests}")
+        print(f"Total Time:   {total_time:.2f}s")
+
+        if failed_tests > 0:
+            print(f"\\n{cStr('Failed Tests:', color.RED)}")
+            for test_name, (success, output, duration) in results.items():
+                if not success:
+                    print(f"  • {test_name} ({duration:.2f}s)")
+                    if self.verbose and output.strip():
+                        # Show first few lines of error output
+                        lines = output.strip().split('\\n')
+                        for line in lines[:5]:  # Show first 5 lines
+                            print(f"    {line}")
+                        if len(lines) > 5:
+                            print(f"    ... ({len(lines) - 5} more lines)")
+
+        print("=" * 60)
+
+        if failed_tests == 0:
+            printIt("🎉 All tests passed!", lable.PASS)
+        else:
+            printIt(f"❌ {failed_tests} test(s) failed", lable.ERROR)
+
+def runTest(argParse):
+    \"\"\"Main runTest function - entry point for the command\"\"\"
+    args = argParse.args
+    # Filter out flag arguments (starting with + or -)
+    theArgs = [arg for arg in args.arguments if not (
+        isinstance(arg, str) and len(arg) > 1 and arg[0] in '+-')]
+
+    # Get command-line flags from .${packName}rc file after flag processing
+    from ..classes.optSwitches import getCmdSwitchFlags
+    cmd_flags = getCmdSwitchFlags('runTest')
+    verbose = cmd_flags.get('verbose', False)
+    stop_on_failure = cmd_flags.get('stop', False)
+    summary_only = cmd_flags.get('summary', False)
+
+    runner = TestRunner(
+        verbose=verbose, stop_on_failure=stop_on_failure, summary_only=summary_only)
+
+    if len(theArgs) == 0:
+        # Run all tests
+        test_files = runner.discover_tests()
+        if not test_files:
+            printIt("No test files found in ./tests directory", lable.WARN)
+            return
+
+        results = runner.run_all_tests(test_files)
+        runner.print_summary(results)
+
+        # Exit with error code if any tests failed
+        failed_count = sum(
+            1 for success, _, _ in results.values() if not success)
+        if failed_count > 0:
+            sys.exit(1)
+
+    elif len(theArgs) == 1:
+        # Check if it's the listTests argument
+        if theArgs[0] == "listTests":
+            listTests(argParse)
+            return
+
+        # Run specific test
+        test_name = theArgs[0]
+        if not test_name.endswith('.py'):
+            test_name += '.py'
+
+        test_file = runner.tests_dir / test_name
+        if not test_file.exists():
+            printIt(f"Test file not found: {test_name}", lable.ERROR)
+            printIt("Use '${packName} runTest listTests' to see available tests", lable.INFO)
+            return
+
+        printIt(f"Running specific test: {test_name}", lable.INFO)
+        success, output, duration = runner.run_single_test(test_file)
+
+        if success:
+            status = cStr("PASSED", color.GREEN)
+        else:
+            status = cStr("FAILED", color.RED)
+        print(f"Test {status} ({duration:.2f}s)")
+
+        if output.strip() and (verbose or not success):
+            print(output)
+
+        if not success:
+            sys.exit(1)
+    else:
+        printIt(
+            "Too many arguments. Usage: ${packName} runTest [testName] or ${packName} runTest listTests", lable.ERROR)
 
 def listTests(argParse):
-    args = argParse.args
-    printIt("def runTest executed.", lable.INFO)
-    printIt("Modify default behavour in src/${packName}/commands/runTest.py", lable.INFO)
-    printIt(str(args), lable.INFO)
+    \"\"\"List all available tests in the tests directory\"\"\"
+    runner = TestRunner()
+    test_files = runner.discover_tests()
 
+    if not test_files:
+        printIt("No test files found in ./tests directory", lable.WARN)
+        return
 
+    printIt(f"Available tests in {runner.tests_dir}:", lable.INFO)
+    print()
+
+    for i, test_file in enumerate(test_files, 1):
+        test_name = test_file.stem
+
+        # Try to get test description from file
+        description = "No description available"
+        try:
+            with open(test_file, 'r') as f:
+                lines = f.readlines()
+                # Look for docstring in first few lines
+                for line in lines[:10]:
+                    if '\"\"\"' in line and line.strip() != '\"\"\"':
+                        description = line.strip().replace('\"\"\"', '').strip()
+                        break
+        except Exception:
+            pass
+
+        print(f"{i:2d}. {cStr(test_name, color.CYAN)}")
+        print(f"    {description}")
+        print(f"    File: {test_file.name}")
+        print()
+
+    print(f"Usage:")
+    print(f"  ${packName} runTest                       # Run all tests")
+    print(f"  ${packName} runTest {test_files[0].stem}  # Run specific test")
+    print(f"  ${packName} runTest -verbose              # Run all tests with verbose output")
+    print(f"  ${packName} runTest -stop                 # Stop on first failure")
+    print(f"  ${packName} runTest -summary              # Show only summary")
 """))
 commandsJsonDict = {
   "switchFlags": {},
@@ -1283,7 +1572,7 @@ commandsJsonDict = {
     "argName": "(argName...), Optional names of argument to associate with the new command."
   },
   "modCmd": {
-    "description": "Modify a command or argument discriptions, or add another argument for command. The cmdName.py file will not be modified.",
+    "description": "Modify a command or argument descriptions, or add another argument for command. The cmdName.py file will not be modified.",
     "switchFlags": {},
     "cmdName": "Name of command being modified",
     "argName": "(argName...) Optional names of argument(s) to modify."
@@ -1295,9 +1584,23 @@ commandsJsonDict = {
     "argName": "Optional names of argument to remove."
   },
   "runTest": {
-    "description": "Run test(s) in ./tests",
-    "switchFlags": {},
-    "listTests": "List all available tests in the tests directory",
+      "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
+      "switchFlags": {
+          "verbose": {
+              "description": "Verbose output flag",
+              "type": "bool"
+          },
+          "stop": {
+              "description": "Stop on failure flag",
+              "type": "bool"
+          },
+          "summary": {
+              "description": "Summary only flag",
+              "type": "bool"
+          }
+      },
+      "testName": "Optional name of specific test to run (without .py extension)",
+      "listTests": "List all available tests in the tests directory"
   }
 }
 commandsFileStr = dedent("""import json, os

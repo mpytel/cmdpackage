@@ -11,6 +11,7 @@ from cmdpackage.templates.cmdTemplate import \
     argCmdDefTemplateStr, argDefTemplateStr, \
     asyncDefTemplateStr, classCallTemplateStr, \
     simpleTemplateStr, runTestTemplate
+from cmdpackage.templates.copilotInstructions_md import test_modCmd_roundtrip_template
 
 def writeCLIPackage(fields: dict):
     print()
@@ -113,5 +114,13 @@ def writeCLIPackage(fields: dict):
             fileStr += f'argDefTemplate = Template(dedent("""{argDefTemplateStr}\n"""))'
         with open(fileName,"w") as wf:
             wf.write(fileStr)
+    # write copliot instructions file
+    dirName = os.path.join(os.path.abspath("."), '.github')
+    fileName = os.path.join(dirName, "copilot-instructions.md")
+    chkDir(dirName)
+    fileStr = test_modCmd_roundtrip_template.substitute(
+        packName=programName, version=fields['version'])
+    with open(fileName,"w") as wf:
+        wf.write(fileStr)
 
 
