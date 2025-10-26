@@ -15,6 +15,7 @@ def main():
 if __name__ == '__main__':
     main()
 """)
+
 cmdSwitchbordFileStr = dedent("""import sys, traceback
 from argparse import Namespace
 from ..defs.logIt import printIt, lable, cStr, color
@@ -206,12 +207,14 @@ def cmdSwitchbord(argParse: ArgParse):
         printIt(f'{theCmd}\\n{tb_str}', lable.ERROR)
         exit()
 """)
+
 cmdOptSwitchbordFileStr = dedent("""from ..classes.optSwitches import OptSwitches
 
 def cmdOptSwitchbord(switchFlag: str, switchFlags: dict):
     optSwitches = OptSwitches(switchFlags)
     optSwitches.toggleSwitchFlag(switchFlag)
 """)
+
 argCmdDefTemplateStr = dedent("""# Generated using argCmdDef template
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
@@ -252,6 +255,7 @@ def ${defName}(argParse):
         printIt("no argument(s) entered", lable.INFO)
 
 """)
+
 argDefTemplateStr = dedent("""def ${argName}(argParse):
     args = argParse.args
     printIt("def ${defName} executed.", lable.INFO)
@@ -259,6 +263,7 @@ argDefTemplateStr = dedent("""def ${argName}(argParse):
     printIt(str(args), lable.INFO)
 
 """)
+
 asyncDefTemplateStr = dedent("""# Generated using asyncDef template
 import asyncio
 from ..defs.logIt import printIt, lable, cStr, color
@@ -298,6 +303,7 @@ def ${defName}(argParse):
     asyncio.run(${defName}_async(argParse))
 
 """)
+
 classCallTemplateStr = dedent("""# Generated using classCall template
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
@@ -339,6 +345,7 @@ def ${defName}(argParse):
 
 
 """)
+
 simpleTemplateStr = dedent("""# Generated using simple template
 from ..defs.logIt import printIt, lable
 
@@ -360,6 +367,7 @@ def ${defName}(argParse):
 
 
 """)
+
 newCmdTemplate = Template(dedent("""import os, sys, copy
 import importlib
 import readline
@@ -629,6 +637,7 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
     return newCommandCMDJson
 """)
 )
+
 modCmdTemplate = Template(dedent("""import os, copy, json, re
 from ..defs.logIt import printIt, lable
 from ..defs.validation import validate_argument_name, check_command_uses_argcmddef_template
@@ -1003,6 +1012,7 @@ def updateSourceFileCommandJsonDict(cmdName: str, cmdDict: dict) -> None:
                 f"Could not find commandJsonDict pattern in {fileName}", lable.WARN) 
 """)
 )
+
 rmCmdTemplate = Template(dedent("""import os, json
 from ..defs.logIt import printIt, lable, cStr, color
 from ..classes.optSwitches import removeCmdSwitchFlags
@@ -1283,6 +1293,7 @@ def removeCmd(cmdName):
     removeCmdSwitchFlags(cmdName)
 """)
 )
+
 runTestTemplate = Template(dedent("""# Generated using argCmdDef template
 import os
 import sys
@@ -1561,6 +1572,7 @@ def listTests(argParse):
     print(f"  ${packName} runTest -stop                 # Stop on first failure")
     print(f"  ${packName} runTest -summary              # Show only summary")
 """))
+
 commandsJsonDict = {
   "switchFlags": {},
   "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
@@ -1603,6 +1615,7 @@ commandsJsonDict = {
       "listTests": "List all available tests in the tests directory"
   }
 }
+
 commandsFileStr = dedent("""import json, os
 from copy import copy
 import inspect
@@ -1695,6 +1708,7 @@ class Commands(object):
             pass
         return cmdJsonDict
 """)
+
 optSwitchesTemplate = Template(dedent("""import json
 from pathlib import Path
 from ..defs.logIt import printIt, lable
@@ -1839,6 +1853,7 @@ def formatOptStr(optSwitches: dict) -> str:
     rtnStr = rtnStr[:-2]
     return rtnStr
 """))
+
 argParseTemplate = Template(dedent("""import os, sys, argparse, shlex
 from ..defs.logIt import color, cStr
 from ..commands.commands import Commands
@@ -2054,6 +2069,7 @@ def formatHelpWidth(theText, tCols, indentPad=1) -> str:
     #rtnStr = rtnStr[:-1]
     return rtnStr
 """))
+
 logPrintTemplate = Template(dedent("""import os, time
 from inspect import currentframe, getframeinfo
 
@@ -2236,6 +2252,7 @@ def germDbug(loc: str, currPi, nextPi):
     print("--------------------")
 
 """))
+
 validationTemplate = Template(dedent("""\"\"\"
 Validation utilities for command and argument names
 \"\"\"

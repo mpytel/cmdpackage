@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 from cmdpackage.defs.writePyProject import writePyProject, commitGitRepo
-from cmdpackage.defs.writeCLIPackage import writeCLIPackage
+from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 from cmdpackage.defs.writeTestScript import writeTestScript
 import argparse
@@ -33,6 +33,11 @@ def main():
         action='store_true',
         help='Use default values for all prompts'
     )
+    parser.add_argument(
+        '-g', '--GenTempSyncDataWrite',
+        action='store_true',
+        help='Write genTempSyncData.json file for tracking generated files'
+    )
 
     # Parse arguments
     args = parser.parse_args()
@@ -50,12 +55,11 @@ def main():
     if args.defaults: usedefaults = True
     else: usedefaults = False
     fields: dict[str, str] = writePyProject(usedefaults)
-    writeCLIPackage(fields)
+    writeCLIPackage(fields, args.GenTempSyncDataWrite)
     createzVirtualEnv(fields)
     writeTestScript(fields)
     if fields['gitInitialized']:
         commitGitRepo("finalize package setup")
-
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
         test_result = test_generated_package(projName)
