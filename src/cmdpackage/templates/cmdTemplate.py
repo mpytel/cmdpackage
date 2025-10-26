@@ -40,7 +40,7 @@ def printCommandHelp(cmdName: str):
     printIt(f"\\n{cStr(cmdName, color.YELLOW)}: {description}\\n", lable.INFO)
     
     # Build usage line
-    usage_parts = [f"tc {cmdName}"]
+    usage_parts = [f"${packName} {cmdName}"]
     
     # Add arguments
     args = []
@@ -91,7 +91,7 @@ def printCommandHelp(cmdName: str):
     # Print examples if the command has flags
     if switchFlags:
         printIt(f"{cStr('Examples:', color.CYAN)}", lable.INFO)
-        example_parts = [f"tc {cmdName}"]
+        example_parts = [f"${packName} {cmdName}"]
         if args:
             example_parts.append("arg1")
         
@@ -107,7 +107,7 @@ def printCommandHelp(cmdName: str):
         printIt(f"  {' '.join(example_parts)}", lable.INFO)
         
         if bool_flags:
-            printIt(f"  tc {cmdName} -{bool_flags[0]}  # Disable {bool_flags[0]} flag", lable.INFO)
+            printIt(f"  ${packName} {cmdName} -{bool_flags[0]}  # Disable {bool_flags[0]} flag", lable.INFO)
 
 def cmdSwitchbord(argParse: ArgParse):
     global commands
@@ -115,13 +115,13 @@ def cmdSwitchbord(argParse: ArgParse):
     flag_toggle_occurred = False  # Track if a flag toggle happened
     try:
         if len(sys.argv) > 1:
-            # Handle direct help flags like 'tc -h'
+            # Handle direct help flags like '${packName} -h'
             if len(sys.argv) == 2 and sys.argv[1] in ["-h", "--help"]:
                 argParse.parser.print_help()
                 exit()
             
             if len(sys.argv) > 2:
-                # Handle command-specific help: tc command -h or tc command --help
+                # Handle command-specific help: ${packName} command -h or ${packName} command --help
                 if sys.argv[2] in ["-h", "--help"]:
                     cmdName = sys.argv[1]
                     printCommandHelp(cmdName)
@@ -1969,12 +1969,12 @@ class ArgParse():
             if arg.startswith('--'):
                 # Handle help flags - only preserve for general help (when no command specified)
                 if arg == '--help':
-                    # If this is the first argument, it's general help (tc --help)
+                    # If this is the first argument, it's general help (${packName} --help)
                     if i == 0:
                         filtered_args.append(arg)
                         i += 1
                     else:
-                        # This is command-specific help (tc command --help), don't pass to argparse
+                        # This is command-specific help (${packName} command --help), don't pass to argparse
                         i += 1
                 # Handle command-specific options with double hyphen
                 elif '=' in arg:
@@ -2000,12 +2000,12 @@ class ArgParse():
                 
                 # Handle help flags - only preserve for general help (when no command specified)
                 if option_name in ['h']:
-                    # If this is the first argument, it's general help (tc -h)
+                    # If this is the first argument, it's general help (${packName} -h)
                     if i == 0:
                         filtered_args.append(arg)
                         i += 1
                     else:
-                        # This is command-specific help (tc command -h), don't pass to argparse
+                        # This is command-specific help (${packName} command -h), don't pass to argparse
                         i += 1
                 elif option_name in global_switch_flags:
                     # This is a global flag, let argparse handle it

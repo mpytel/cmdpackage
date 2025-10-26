@@ -498,7 +498,7 @@ def test_complete_cleanup(result: TestResult) -> bool:
     test_commands = ["testCmd01", "testCmd02", "testCmd03"]
     
     # Add template-based test commands to verification
-    template_dir = Path(__file__).parent.parent / "src" / "pi" / "commands" / "templates"
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
             template_name = template_file.stem
