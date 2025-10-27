@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from templates.setupTemplates import (
+from cmdpackage.templates.setupTemplates import (
     setup_base_template, setup_line, gitignore_content, classifiers_line,
     classifiers_template)
 from sys import version_info
