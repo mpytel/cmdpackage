@@ -74,6 +74,9 @@ def main():
         print(f'{GREEN}execute{RESET}: cd {projName}')
     print(f'{GREEN}execute{RESET}: . env/{projName}/bin/activate')
     print(f'{GREEN}execute{RESET}: pip install -e .')
+    if args.GenTempSyncDataWrite:
+        print(
+            f'{GREEN}execute{RESET}: pip install -e /Users/primwind/proj/python/syncTemps')
 
 
 def test_generated_package(project_name: str) -> bool:
