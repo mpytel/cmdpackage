@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os
-from cmdpackage.defs.writePyProject import writePyProject, commitGitRepo
+from cmdpackage.classes.writePyProject import writePyProject, commitGitRepo
 from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 from cmdpackage.classes.writeTestScript import writeTestScript
@@ -54,7 +54,8 @@ def main():
         projName = Path(os.getcwd()).stem
     if args.defaults: usedefaults = True
     else: usedefaults = False
-    fields: dict[str, str] = writePyProject(usedefaults)
+    fields: dict[str, str | bool] = writePyProject(
+        usedefaults, gen_temp_sync_data_write=False)
     writeCLIPackage(fields, args.GenTempSyncDataWrite)
     createzVirtualEnv(fields)
     writeTestScript(fields, args.GenTempSyncDataWrite)
