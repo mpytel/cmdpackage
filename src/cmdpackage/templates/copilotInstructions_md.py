@@ -3,7 +3,7 @@
 from string import Template
 from textwrap import dedent
 
-test_modCmd_roundtrip_template = Template(dedent("""# GitHub Copilot Instructions for ${packName}
+copilotInstructions_md = Template(dedent("""# GitHub Copilot Instructions for ${packName}
 
 ## Project Overview
 

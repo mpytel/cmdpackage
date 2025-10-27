@@ -16,7 +16,7 @@ if __name__ == '__main__':
     main()
 """)
 
-cmdSwitchbordFileStr = dedent("""import sys, traceback
+cmdSwitchbordFile = Template(dedent("""import sys, traceback
 from argparse import Namespace
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
@@ -206,7 +206,7 @@ def cmdSwitchbord(argParse: ArgParse):
         tb_str = ''.join(traceback.format_exception(None, e, e.__traceback__))
         printIt(f'{theCmd}\\n{tb_str}', lable.ERROR)
         exit()
-""")
+"""))
 
 cmdOptSwitchbordFileStr = dedent("""from ..classes.optSwitches import OptSwitches
 

@@ -22,7 +22,7 @@ def createzVirtualEnv(fields: dict):
             f'  {yellow}{fields[name]} firstCMD firstARG{reset}\n' + \
             f'  {yellow}{fields[name]} rmCmd firstCMD{reset}\n')
     except:
-        print(rtnCompProc)
+        print(rtnCompProc)  # type: ignore
         pass
 
 

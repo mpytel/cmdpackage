@@ -136,9 +136,10 @@ class WriteCLIPackage:
             
         # Write cmdSwitchbord.py
         file_name = os.path.join(dir_name, "cmdSwitchbord.py")
+        file_str = pyTemplate.cmdSwitchbordFile.substitute(packName=self.program_name)
         with open(file_name, "w") as wf:
-            wf.write(pyTemplate.cmdSwitchbordFileStr)
-        self._temp_sync_file_json("cmdSwitchbordFileStr", pyTemplate.__file__, file_name, file_str)
+            wf.write(file_str)
+        self._temp_sync_file_json("cmdSwitchbordFile", pyTemplate.__file__, file_name, file_str)
             
         # Write cmdOptSwitchbord.py
         file_name = os.path.join(dir_name, "cmdOptSwitchbord.py")
@@ -206,11 +207,12 @@ class WriteCLIPackage:
         file_name = os.path.join(dir_name, "copilot-instructions.md")
         chkDir(dir_name)
         
-        file_str = mdTempate.test_modCmd_roundtrip_template.substitute(
+        file_str = mdTempate.copilotInstructions_md.substitute(
             packName=self.program_name, version=self.version)
         with open(file_name, "w") as wf:
             wf.write(file_str)
-        self._temp_sync_file_json("test_modCmd_roundtrip_template", mdTempate.__file__, file_name, file_str)
+        self._temp_sync_file_json(
+            "copilotInstructions_md", mdTempate.__file__, file_name, file_str)
             
     def _write_temp_sync_data(self) -> None:
         """Write temporary sync data JSON file."""

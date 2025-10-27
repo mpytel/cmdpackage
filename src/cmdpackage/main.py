@@ -4,7 +4,7 @@ import os
 from cmdpackage.defs.writePyProject import writePyProject, commitGitRepo
 from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
-from cmdpackage.defs.writeTestScript import writeTestScript
+from cmdpackage.classes.writeTestScript import writeTestScript
 import argparse
 from pathlib import Path
 
@@ -57,7 +57,7 @@ def main():
     fields: dict[str, str] = writePyProject(usedefaults)
     writeCLIPackage(fields, args.GenTempSyncDataWrite)
     createzVirtualEnv(fields)
-    writeTestScript(fields)
+    writeTestScript(fields, args.GenTempSyncDataWrite)
     if fields['gitInitialized']:
         commitGitRepo("finalize package setup")
     if args.test:
