@@ -157,9 +157,8 @@ class WritePyProject:
     def _write_temp_sync_data(self, rtn_dict: dict[str, str | bool]) -> None:
         """Write temporary sync data JSON file by reading existing content and updating it."""
         if self.gen_temp_sync_data_write:
-            # Set up source directory path for sync data file
-            src_dir = os.path.join(os.path.abspath("."), 'src', str(rtn_dict['name']))
-            sync_file_path = os.path.join(src_dir, "genTempSyncData.json")
+            # Write sync data file to current working directory
+            sync_file_path = os.path.join(os.path.abspath("."), "genTempSyncData.json")
             
             # Read existing sync data if it exists
             existing_data = {}
@@ -174,10 +173,7 @@ class WritePyProject:
             # Update existing data with new pyproject data
             existing_data.update(self.temp_sync_files)
             
-            # Ensure the directory exists before writing
-            os.makedirs(os.path.dirname(sync_file_path), exist_ok=True)
-            
-            # Write updated data back to file
+            # Write updated data back to file (no need to create directories since it's in current working directory)
             with open(sync_file_path, "w") as wf:
                 json.dump(existing_data, wf, indent=4)
                 

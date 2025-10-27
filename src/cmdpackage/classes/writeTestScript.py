@@ -128,7 +128,7 @@ class WriteTestScript:
     def _write_temp_sync_data(self) -> None:
         """Write temporary sync data JSON file by reading existing content and updating it."""
         if self.gen_temp_sync_data_write:
-            sync_file_path = os.path.join(self.src_dir, "genTempSyncData.json")
+            sync_file_path = os.path.join(os.path.abspath("."), "genTempSyncData.json")
             
             # Read existing sync data if it exists
             existing_data = {}

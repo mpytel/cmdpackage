@@ -217,7 +217,7 @@ class WriteCLIPackage:
     def _write_temp_sync_data(self) -> None:
         """Write temporary sync data JSON file."""
         if self.gen_temp_sync_data_write:
-            file_name = os.path.join(self.src_dir, "genTempSyncData.json")
+            file_name = os.path.join(os.path.abspath("."), "genTempSyncData.json")
             # print(f'Writing temp sync data to {file_name}')
             with open(file_name, "w") as wf:
                 json.dump(self.temp_sync_files, wf, indent=4)
