@@ -3,7 +3,7 @@
 from hashlib import md5
 import os
 import json
-import cmdpackage.templates.readmeTemplate as readme_template
+import cmdpackage.templates.readmeTemplate as README_template
 from cmdpackage.templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
@@ -100,7 +100,7 @@ class WritePyProject:
     def _write_readme_files(self, rtn_dict: dict[str, str | bool]) -> None:
         """Write README.md and command modifications README files."""
         # Write main README.md
-        readme_content = readme_template.readme_template.substitute(
+        readme_content = README_template.README_template.substitute(
             packName=rtn_dict['name'], 
             version=rtn_dict['version'], 
             description=rtn_dict['description'])
@@ -110,11 +110,11 @@ class WritePyProject:
             self._write_content(readme_file, readme_content)
             
         # Track for sync data
-        self._temp_sync_file_json("readme_template", readme_template.__file__,
+        self._temp_sync_file_json("README_template", README_template.__file__,
                                 os.path.abspath(readme_file_name), readme_content)
         
         # Write command modifications README
-        readme_cmd_content = readme_template.readme_cmd_template.substitute(
+        readme_cmd_content = README_template.README_Command_modifications_template.substitute(
             packName=rtn_dict['name'], 
             version=rtn_dict['version'])
         
@@ -123,7 +123,7 @@ class WritePyProject:
             self._write_content(readme_file, readme_cmd_content)
             
         # Track for sync data
-        self._temp_sync_file_json("readme_cmd_template", readme_template.__file__,
+        self._temp_sync_file_json("README_Command_modifications_template", README_template.__file__,
                                   os.path.abspath(cmd_readme_file_name), readme_cmd_content)
         
     def _write_gitignore_and_init_git(self, rtn_dict: dict[str, str | bool]) -> None:

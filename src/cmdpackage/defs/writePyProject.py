@@ -3,7 +3,7 @@
 from cmdpackage.templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
-from cmdpackage.templates.readmeTemplate import readme_cmd_template, readme_template
+from cmdpackage.templates.readmeTemplate import README_Command_modifications_template, README_template
 from sys import version_info
 from cmdpackage.defs.runSubProc import runSubProc, CompletedProcess
 from subprocess import Popen, PIPE
@@ -44,13 +44,13 @@ def writePyProject(usedefaults: bool) -> dict[str, str]:
     with open('pyproject.toml', 'w') as pyproject_file:
         write_content(pyproject_file, pyproject_content)
 
-    readme_content = readme_template.substitute(
+    readme_content = README_template.substitute(
         packName=rtnDict['name'], version=rtnDict['version'], description=rtnDict['description'])
     field_name = rtnDict['readme']
     with open(field_name, 'w') as readme_file:
         write_content(readme_file, readme_content)
 
-    readme_content = readme_cmd_template.substitute(
+    readme_content = README_Command_modifications_template.substitute(
         packName=rtnDict['name'], version=rtnDict['version'])
     field_name = rtnDict['readme'].replace('.md', '_Command_modifications.md')
     with open(field_name, 'w') as readme_file:

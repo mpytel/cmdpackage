@@ -3,7 +3,7 @@
 from string import Template
 from textwrap import dedent
 
-readme_template = Template(dedent("""# ${packName}
+README_template = Template(dedent("""# ${packName}
 version: ${version}
 framework information and overview for adding commands to ${packName} are provided in README_Command_modifications.md
 
@@ -20,7 +20,7 @@ pip install -e .
 ```
 """))
 
-readme_cmd_template = Template(dedent("""# ${packName}
+README_Command_modifications_template = Template(dedent("""# ${packName}
 version - ${version}
 
 A dynamic command-line tool for creating, modifying, and managing custom commands with interactive help and argument parsing.
