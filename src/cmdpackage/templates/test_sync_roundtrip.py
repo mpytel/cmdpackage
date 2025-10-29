@@ -3,7 +3,9 @@
 from textwrap import dedent
 from string import Template
 
-test_sync_roundtrip_template = Template(dedent("""#!/usr/bin/env python3
+test_sync_roundtrip_template = Template(
+    dedent(
+        """#!/usr/bin/env python3
 \"\"\"
 Comprehensive test script for sync command round trip functionality
 
@@ -930,5 +932,6 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-"""))
-
+"""
+    )
+)

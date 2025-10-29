@@ -3,6 +3,7 @@
 from hashlib import md5
 import os
 import json
+from string import Template
 from cmdpackage.defs.utilities import chkDir
 import cmdpackage.templates.test_newCmd_roundtrip as test_newCmd_roundtrip
 import cmdpackage.templates.test_modCmd_roundtrip as test_modCmd_roundtrip
@@ -55,8 +56,8 @@ class WriteTestScript:
     def _write_new_cmd_test(self) -> None:
         """Write test_newCmd_roundtrip.py test script."""
         file_name = os.path.join(self.test_dir, "test_newCmd_roundtrip.py")
-        file_str = test_newCmd_roundtrip.test_newCmd_roundtrip_template.substitute(
-            packName=self.program_name)
+        template_obj = test_newCmd_roundtrip.test_newCmd_roundtrip_template
+        file_str = template_obj.substitute(packName=self.program_name)
         
         with open(file_name, "w") as wf:
             wf.write(file_str)
@@ -72,8 +73,8 @@ class WriteTestScript:
     def _write_mod_cmd_test(self) -> None:
         """Write test_modCmd_roundtrip.py test script."""
         file_name = os.path.join(self.test_dir, "test_modCmd_roundtrip.py")
-        file_str = test_modCmd_roundtrip.test_modCmd_roundtrip_template.substitute(
-            packName=self.program_name)
+        template_obj = test_modCmd_roundtrip.test_modCmd_roundtrip_template
+        file_str = template_obj.substitute(packName=self.program_name)
         
         with open(file_name, "w") as wf:
             wf.write(file_str)
@@ -106,7 +107,8 @@ class WriteTestScript:
     def _write_arg_cmd_def_test(self) -> None:
         """Write test_argCmdDef_roundtrip.py test script."""
         file_name = os.path.join(self.test_dir, "test_argCmdDef_roundtrip.py")
-        file_str = test_argCmdDef_roundtrip.test_argCmdDef_roundtrip_template.substitute(
+        template_obj = test_argCmdDef_roundtrip.test_argCmdDef_roundtrip_template
+        file_str = template_obj.substitute(
             packName=self.program_name)
         
         with open(file_name, "w") as wf:

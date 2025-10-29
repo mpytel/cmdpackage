@@ -3,11 +3,6 @@
 from textwrap import dedent
 from string import Template
 
-# Template source file mappings
-templateSources = {
-    "README_Command_modifications_template": "README_Command_modifications.md"
-}
-
 README_Command_modifications_template = Template(
     dedent(
         """# ${packName}

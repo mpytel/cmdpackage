@@ -8,6 +8,7 @@ templateSources = {
     "copilotInstructions_md": ".github/copilot-instructions.md",
 }
 
+
 copilotInstructions_md = Template(
     dedent(
         """# GitHub Copilot Instructions for ${packName}

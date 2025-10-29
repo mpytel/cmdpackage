@@ -3,11 +3,6 @@
 from textwrap import dedent
 from string import Template
 
-# Template source file mappings
-templateSources = {
-    "test_fileDiffCmd_roundtrip_template": "tests/test_fileDiffCmd_roundtrip.py"
-}
-
 test_fileDiffCmd_roundtrip_template = Template(
     dedent(
         """#!/usr/bin/env python3
@@ -50,16 +45,18 @@ from typing import Tuple
 
 class Colors:
     \"\"\"ANSI color codes for terminal output\"\"\"
-    RED = '\\033[0;31m'
-    GREEN = '\\033[0;32m'
-    YELLOW = '\\033[1;33m'
-    BLUE = '\\033[0;34m'
-    MAGENTA = '\\033[35m'
-    NC = '\\033[0m'  # No Color
+
+    RED = "\\033[0;31m"
+    GREEN = "\\033[0;32m"
+    YELLOW = "\\033[1;33m"
+    BLUE = "\\033[0;34m"
+    MAGENTA = "\\033[35m"
+    NC = "\\033[0m"  # No Color
 
 
 class TestResult:
     \"\"\"Class to track test results\"\"\"
+
     def __init__(self):
         self.passed = 0
         self.failed = 0
@@ -111,7 +108,9 @@ def print_step(message: str):
     print(f"{Colors.MAGENTA}[STEP]{Colors.NC} {message}")
 
 
-def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> Tuple[int, str, str]:
+def run_command(
+    cmd: str, input_text: str = "", capture_output: bool = True
+) -> Tuple[int, str, str]:
     \"\"\"Run a shell command and return (returncode, stdout, stderr)\"\"\"
     try:
         # Change to project directory
@@ -126,7 +125,7 @@ def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> 
             input=input_text,
             text=True,
             capture_output=capture_output,
-            executable='/bin/bash'
+            executable="/bin/bash",
         )
         return result.returncode, result.stdout, result.stderr
     except Exception as e:
@@ -135,9 +134,15 @@ def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> 
 
 def check_command_exists(cmd_name: str) -> bool:
     \"\"\"Check if command exists in commands.json\"\"\"
-    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
+    commands_file = (
+        Path(__file__).parent.parent
+        / "src"
+        / "${packName}"
+        / "commands"
+        / "commands.json"
+    )
     try:
-        with open(commands_file, 'r') as f:
+        with open(commands_file, "r") as f:
             data = json.load(f)
         return cmd_name in data
     except Exception:
@@ -146,9 +151,15 @@ def check_command_exists(cmd_name: str) -> bool:
 
 def get_command_data(cmd_name: str) -> dict:
     \"\"\"Get command data from commands.json\"\"\"
-    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
+    commands_file = (
+        Path(__file__).parent.parent
+        / "src"
+        / "${packName}"
+        / "commands"
+        / "commands.json"
+    )
     try:
-        with open(commands_file, 'r') as f:
+        with open(commands_file, "r") as f:
             data = json.load(f)
         return data.get(cmd_name, {})
     except Exception:
@@ -159,7 +170,7 @@ def create_test_file(content: str, suffix: str = ".py") -> str:
     \"\"\"Create a temporary test file with given content\"\"\"
     fd, path = tempfile.mkstemp(suffix=suffix, text=True)
     try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)
         return path
     except Exception:
@@ -175,19 +186,21 @@ def create_test_dir() -> str:
 def cleanup_test_files():
     \"\"\"Clean up any existing test files\"\"\"
     print_info("Cleaning up any existing test files...")
-    
+
     # Clean up any temp files that might be left over
     # (tempfile.mkstemp creates files that need manual cleanup)
     temp_dir = Path(tempfile.gettempdir())
     test_files = list(temp_dir.glob("tmp*"))
-    
+
     for file_path in test_files:
         try:
-            if file_path.is_file() and file_path.stat().st_size < 10000:  # Only small test files
+            if (
+                file_path.is_file() and file_path.stat().st_size < 10000
+            ):  # Only small test files
                 file_path.unlink()
         except Exception:
             pass  # Ignore cleanup errors
-    
+
     print_pass("Cleanup completed")
 
 
@@ -197,7 +210,11 @@ def test_command_exists(result: TestResult) -> bool:
 
     if check_command_exists("fileDiff"):
         cmd_data = get_command_data("fileDiff")
-        if cmd_data.get('description') and 'origFile' in cmd_data and 'newFile' in cmd_data:
+        if (
+            cmd_data.get("description")
+            and "origFile" in cmd_data
+            and "newFile" in cmd_data
+        ):
             print_pass("fileDiff command exists with proper structure")
             result.add_result("Command exists", True)
             return True
@@ -238,13 +255,24 @@ if __name__ == "__main__":
 
         # Check results - Note: Current fileDiff implementation shows "Differences" header even for identical files
         # This appears to be a bug in the fileDiff implementation, but we test current behavior
-        if returncode == 0 and ("No differences found" in stdout or ("Differences" in stdout and not ("+" in stdout and "-" in stdout))):
-            print_pass("Identical files handled (note: shows empty diff header - potential bug)")
+        if returncode == 0 and (
+            "No differences found" in stdout
+            or ("Differences" in stdout and not ("+" in stdout and "-" in stdout))
+        ):
+            print_pass(
+                "Identical files handled (note: shows empty diff header - potential bug)"
+            )
             result.add_result("Identical files", True)
             return True
         else:
-            print_fail(f"Identical files test failed. Return code: {returncode}, Output: {stdout}")
-            result.add_result("Identical files", False, f"Unexpected output or return code: {returncode}")
+            print_fail(
+                f"Identical files test failed. Return code: {returncode}, Output: {stdout}"
+            )
+            result.add_result(
+                "Identical files",
+                False,
+                f"Unexpected output or return code: {returncode}",
+            )
             return False
 
     except Exception as e:
@@ -282,13 +310,21 @@ def test_different_files(result: TestResult) -> bool:
         os.unlink(file2)
 
         # Check results
-        if returncode == 0 and "Differences" in stdout and ("+" in stdout or "-" in stdout):
+        if (
+            returncode == 0
+            and "Differences" in stdout
+            and ("+" in stdout or "-" in stdout)
+        ):
             print_pass("Different files correctly identified with diff output")
             result.add_result("Different files", True)
             return True
         else:
             print_fail(f"Different files test failed. Return code: {returncode}")
-            result.add_result("Different files", False, f"No differences shown or wrong return code: {returncode}")
+            result.add_result(
+                "Different files",
+                False,
+                f"No differences shown or wrong return code: {returncode}",
+            )
             return False
 
     except Exception as e:
@@ -308,17 +344,29 @@ def test_file_not_found(result: TestResult) -> bool:
         nonexistent_file = "/nonexistent/path/file.py"
 
         # Test with first file missing
-        returncode1, stdout1, stderr1 = run_command(f"${packName} fileDiff {nonexistent_file} {valid_file}")
-        
-        # Test with second file missing  
-        returncode2, stdout2, stderr2 = run_command(f"${packName} fileDiff {valid_file} {nonexistent_file}")
+        returncode1, stdout1, stderr1 = run_command(
+            f"${packName} fileDiff {nonexistent_file} {valid_file}"
+        )
+
+        # Test with second file missing
+        returncode2, stdout2, stderr2 = run_command(
+            f"${packName} fileDiff {valid_file} {nonexistent_file}"
+        )
 
         # Clean up
         os.unlink(valid_file)
 
         # Check results - should handle error gracefully
-        error_handled1 = returncode1 != 0 or "not found" in stderr1.lower() or "not found" in stdout1.lower()
-        error_handled2 = returncode2 != 0 or "not found" in stderr2.lower() or "not found" in stdout2.lower()
+        error_handled1 = (
+            returncode1 != 0
+            or "not found" in stderr1.lower()
+            or "not found" in stdout1.lower()
+        )
+        error_handled2 = (
+            returncode2 != 0
+            or "not found" in stderr2.lower()
+            or "not found" in stdout2.lower()
+        )
 
         if error_handled1 and error_handled2:
             print_pass("File not found errors handled correctly")
@@ -346,14 +394,20 @@ def test_directory_instead_of_file(result: TestResult) -> bool:
         test_dir = create_test_dir()
 
         # Run fileDiff with directory instead of file
-        returncode, stdout, stderr = run_command(f"${packName} fileDiff {test_dir} {test_file}")
+        returncode, stdout, stderr = run_command(
+            f"${packName} fileDiff {test_dir} {test_file}"
+        )
 
         # Clean up
         os.unlink(test_file)
         os.rmdir(test_dir)
 
         # Check results - should handle error gracefully
-        error_handled = returncode != 0 or "not a file" in stderr.lower() or "not a file" in stdout.lower()
+        error_handled = (
+            returncode != 0
+            or "not a file" in stderr.lower()
+            or "not a file" in stdout.lower()
+        )
 
         if error_handled:
             print_pass("Directory error handled correctly")
@@ -387,13 +441,20 @@ def test_empty_files(result: TestResult) -> bool:
         os.unlink(file2)
 
         # Check results - Note: Current fileDiff implementation shows "Differences" header even for identical files
-        if returncode == 0 and ("No differences found" in stdout or ("Differences" in stdout and not ("+" in stdout and "-" in stdout))):
-            print_pass("Empty files handled (note: shows empty diff header - potential bug)")
+        if returncode == 0 and (
+            "No differences found" in stdout
+            or ("Differences" in stdout and not ("+" in stdout and "-" in stdout))
+        ):
+            print_pass(
+                "Empty files handled (note: shows empty diff header - potential bug)"
+            )
             result.add_result("Empty files", True)
             return True
         else:
             print_fail(f"Empty files test failed. Return code: {returncode}")
-            result.add_result("Empty files", False, f"Unexpected result for empty files: {returncode}")
+            result.add_result(
+                "Empty files", False, f"Unexpected result for empty files: {returncode}"
+            )
             return False
 
     except Exception as e:
@@ -451,13 +512,19 @@ if __name__ == "__main__":
         os.unlink(file2)
 
         # Check results - should show differences
-        if returncode == 0 and "Differences" in stdout and ("+" in stdout or "-" in stdout):
+        if (
+            returncode == 0
+            and "Differences" in stdout
+            and ("+" in stdout or "-" in stdout)
+        ):
             print_pass("Formatting differences detected correctly")
             result.add_result("Formatting differences", True)
             return True
         else:
             print_fail(f"Formatting differences test failed. Return code: {returncode}")
-            result.add_result("Formatting differences", False, "Formatting differences not detected")
+            result.add_result(
+                "Formatting differences", False, "Formatting differences not detected"
+            )
             return False
 
     except Exception as e:
@@ -473,11 +540,11 @@ def test_insufficient_arguments(result: TestResult) -> bool:
     try:
         # Test with no arguments
         returncode1, stdout1, stderr1 = run_command("${packName} fileDiff")
-        
+
         # Test with only one argument
         test_file = create_test_file("test content")
         returncode2, stdout2, stderr2 = run_command(f"${packName} fileDiff {test_file}")
-        
+
         # Clean up
         os.unlink(test_file)
 
@@ -507,8 +574,12 @@ def test_large_files(result: TestResult) -> bool:
 
     try:
         # Create moderately large content (not too big for testing)
-        large_content1 = "# Large test file 1\\n" + "\\n".join([f"# Line {i}: some content here" for i in range(1000)])
-        large_content2 = "# Large test file 2\\n" + "\\n".join([f"# Line {i}: some different content" for i in range(1000)])
+        large_content1 = "# Large test file 1\\n" + "\\n".join(
+            [f"# Line {i}: some content here" for i in range(1000)]
+        )
+        large_content2 = "# Large test file 2\\n" + "\\n".join(
+            [f"# Line {i}: some different content" for i in range(1000)]
+        )
 
         # Create large files
         file1 = create_test_file(large_content1)
@@ -522,7 +593,9 @@ def test_large_files(result: TestResult) -> bool:
         os.unlink(file2)
 
         # Check that it processes without major issues
-        if returncode is not None and not ("memory" in stderr.lower() or "crashed" in stderr.lower()):
+        if returncode is not None and not (
+            "memory" in stderr.lower() or "crashed" in stderr.lower()
+        ):
             print_pass("Large files processed successfully")
             result.add_result("Large files", True)
             return True
@@ -544,18 +617,18 @@ def test_mixed_line_endings(result: TestResult) -> bool:
     try:
         # Content with Unix line endings
         unix_content = "line1\\nline2\\nline3\\n"
-        
+
         # Content with Windows line endings
         windows_content = "line1\\r\\nline2\\r\\nline3\\r\\n"
 
         # Create files with different line endings
         file1 = create_test_file(unix_content)
-        
+
         # For Windows line endings, we need to write in binary mode
         fd, file2 = tempfile.mkstemp(suffix=".txt", text=False)
         try:
-            with os.fdopen(fd, 'wb') as f:
-                f.write(windows_content.encode('utf-8'))
+            with os.fdopen(fd, "wb") as f:
+                f.write(windows_content.encode("utf-8"))
         except Exception:
             os.close(fd)
             raise
@@ -628,7 +701,9 @@ def test_unicode_content(result: TestResult) -> bool:
             return False
         else:
             print_fail(f"Unicode test failed. Return code: {returncode}")
-            result.add_result("Unicode content", False, f"Unexpected result: {returncode}")
+            result.add_result(
+                "Unicode content", False, f"Unexpected result: {returncode}"
+            )
             return False
 
     except Exception as e:
@@ -640,108 +715,144 @@ def test_unicode_content(result: TestResult) -> bool:
 def test_commands_json_dict_completeness(result: TestResult) -> bool:
     \"\"\"Test that commandsJsonDict in cmdTemplate.py includes fileDiff command\"\"\"
     print_test("Testing commandsJsonDict completeness in cmdTemplate.py")
-    
+
     try:
         # First, ensure templates are generated by running sync
         print_info("  Running sync to ensure templates are up to date...")
-        
+
         # Change to project root and run sync
         project_root = Path(__file__).parent.parent
-        cmd = f"cd {project_root} && source env/${packName}/bin/activate && ${packName} sync"
-        
-        sync_result = subprocess.run(
-            cmd, 
-            shell=True, 
-            capture_output=True, 
-            text=True,
-            executable='/bin/bash'
+        cmd = (
+            f"cd {project_root} && source env/${packName}/bin/activate && ${packName} sync"
         )
-        
+
+        sync_result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, executable="/bin/bash"
+        )
+
         if sync_result.returncode != 0:
             print_fail(f"  Sync command failed: {sync_result.stderr}")
-            result.add_result("commandsJsonDict completeness - sync", False, f"Sync failed: {sync_result.stderr}")
+            result.add_result(
+                "commandsJsonDict completeness - sync",
+                False,
+                f"Sync failed: {sync_result.stderr}",
+            )
             return False
-        
+
         # Check if cmdTemplate.py exists
         cmd_template_path = project_root / "newTemplates" / "cmdTemplate.py"
         if not cmd_template_path.exists():
             print_fail(f"  cmdTemplate.py not found at {cmd_template_path}")
-            result.add_result("commandsJsonDict completeness - file exists", False, "cmdTemplate.py not found")
+            result.add_result(
+                "commandsJsonDict completeness - file exists",
+                False,
+                "cmdTemplate.py not found",
+            )
             return False
-        
+
         # Read the cmdTemplate.py file
-        with open(cmd_template_path, 'r', encoding='utf-8') as f:
+        with open(cmd_template_path, "r", encoding="utf-8") as f:
             template_content = f.read()
-        
+
         # Look for the commandsJsonDict definition
         import re
-        
+
         # Find the commandsJsonDict section
-        pattern = r'commandsJsonDict\\s*=\\s*(\\{.*?\\n\\})'
+        pattern = r"commandsJsonDict\\s*=\\s*(\\{.*?\\n\\})"
         match = re.search(pattern, template_content, re.DOTALL)
-        
+
         if not match:
             print_fail("  commandsJsonDict not found in cmdTemplate.py")
-            result.add_result("commandsJsonDict completeness - dict found", False, "commandsJsonDict not found")
+            result.add_result(
+                "commandsJsonDict completeness - dict found",
+                False,
+                "commandsJsonDict not found",
+            )
             return False
-        
+
         # Extract and parse the JSON
         dict_content = match.group(1)
-        
+
         try:
             # Use eval to parse the Python dict syntax (since it's not pure JSON)
             commands_dict = eval(dict_content)
         except Exception as e:
             print_fail(f"  Failed to parse commandsJsonDict: {e}")
-            result.add_result("commandsJsonDict completeness - parse", False, f"Parse error: {e}")
+            result.add_result(
+                "commandsJsonDict completeness - parse", False, f"Parse error: {e}"
+            )
             return False
-        
+
         # Check if fileDiff command is included
-        if 'fileDiff' not in commands_dict:
+        if "fileDiff" not in commands_dict:
             print_fail("  fileDiff command missing from commandsJsonDict")
-            result.add_result("commandsJsonDict completeness - fileDiff missing", False, "fileDiff command not found in commandsJsonDict")
+            result.add_result(
+                "commandsJsonDict completeness - fileDiff missing",
+                False,
+                "fileDiff command not found in commandsJsonDict",
+            )
             return False
-        
+
         # Verify fileDiff command structure
-        file_diff_cmd = commands_dict['fileDiff']
-        
+        file_diff_cmd = commands_dict["fileDiff"]
+
         # Check required fields
-        required_fields = ['description', 'origFile', 'newFile']
+        required_fields = ["description", "origFile", "newFile"]
         for field in required_fields:
             if field not in file_diff_cmd:
                 print_fail(f"  fileDiff command missing required field: {field}")
-                result.add_result("commandsJsonDict completeness - fileDiff structure", False, f"Missing field: {field}")
+                result.add_result(
+                    "commandsJsonDict completeness - fileDiff structure",
+                    False,
+                    f"Missing field: {field}",
+                )
                 return False
-        
+
         # Verify field values
         expected_description = "Show the differnces between two files."
-        if file_diff_cmd['description'] != expected_description:
-            print_fail(f"  fileDiff description mismatch. Expected: '{expected_description}', Got: '{file_diff_cmd['description']}'")
-            result.add_result("commandsJsonDict completeness - fileDiff description", False, "Description mismatch")
+        if file_diff_cmd["description"] != expected_description:
+            print_fail(
+                f"  fileDiff description mismatch. Expected: '{expected_description}', Got: '{file_diff_cmd['description']}'"
+            )
+            result.add_result(
+                "commandsJsonDict completeness - fileDiff description",
+                False,
+                "Description mismatch",
+            )
             return False
-        
+
         # Check that other core commands are also present
-        core_commands = ['newCmd', 'modCmd', 'rmCmd', 'runTest']
+        core_commands = ["newCmd", "modCmd", "rmCmd", "runTest"]
         missing_commands = []
         for cmd in core_commands:
             if cmd not in commands_dict:
                 missing_commands.append(cmd)
-        
+
         if missing_commands:
-            print_fail(f"  Core commands missing from commandsJsonDict: {missing_commands}")
-            result.add_result("commandsJsonDict completeness - core commands", False, f"Missing: {missing_commands}")
+            print_fail(
+                f"  Core commands missing from commandsJsonDict: {missing_commands}"
+            )
+            result.add_result(
+                "commandsJsonDict completeness - core commands",
+                False,
+                f"Missing: {missing_commands}",
+            )
             return False
-        
+
         print_pass("  commandsJsonDict is complete and includes fileDiff command")
         print_info(f"  Found {len(commands_dict)} total commands in commandsJsonDict")
-        
+
         # List all commands found for verification
-        command_names = [k for k in commands_dict.keys() if k not in ['switchFlags', 'description', '_globalSwitcheFlags']]
+        command_names = [
+            k
+            for k in commands_dict.keys()
+            if k not in ["switchFlags", "description", "_globalSwitcheFlags"]
+        ]
         print_info(f"  Commands: {', '.join(sorted(command_names))}")
-        
+
         result.add_result("commandsJsonDict completeness", True)
         return True
-        
+
     except Exception as e:
         print_fail(f"Error in commandsJsonDict completeness test: {e}")
         result.add_result("commandsJsonDict completeness", False, f"Exception: {e}")
@@ -780,7 +891,7 @@ def run_all_tests():
         except Exception as e:
             print_fail(f"Test {test_func.__name__} crashed: {e}")
             result.add_result(test_func.__name__, False, f"Test crashed: {e}")
-        
+
         print()  # Add spacing between tests
 
     # Final cleanup
@@ -788,7 +899,7 @@ def run_all_tests():
 
     # Print summary
     result.print_summary()
-    
+
     return result.failed == 0
 
 
@@ -798,12 +909,13 @@ if __name__ == "__main__":
     print()
 
     success = run_all_tests()
-    
+
     if success:
         print_pass("All tests passed!")
         sys.exit(0)
     else:
         print_fail("Some tests failed!")
-        sys.exit(1)"""
+        sys.exit(1)
+"""
     )
 )
