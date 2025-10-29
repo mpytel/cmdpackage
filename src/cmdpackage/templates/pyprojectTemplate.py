@@ -3,7 +3,9 @@
 from string import Template
 from textwrap import dedent
 
-pyproject_base_template = Template(dedent("""\
+pyproject_base_template = Template(
+    dedent(
+        """\
     [project]
 
     name = "${name}"
@@ -27,17 +29,13 @@ pyproject_base_template = Template(dedent("""\
     where = ["src"]
     [project.scripts]
     ${name} = "${name}.main:main"
-    """))
-
-classifiers_line = Template(
-    '    "${classifier}",\n'
+    """
+    )
 )
 
-classifiers_template = Template(
-    'classifiers=[\n'
-    '${classifiers}'
-    '    ]'
-)
+classifiers_line = Template('    "${classifier}",\n')
+
+classifiers_template = Template("classifiers=[\n" "${classifiers}" "    ]")
 
 gitignore_content = """
 # unmanged package file or directory

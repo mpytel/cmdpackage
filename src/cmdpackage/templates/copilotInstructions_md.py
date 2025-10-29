@@ -8,7 +8,9 @@ templateSources = {
     "copilotInstructions_md": ".github/copilot-instructions.md",
 }
 
-copilotInstructions_md = Template(dedent("""# GitHub Copilot Instructions for ${packName}
+copilotInstructions_md = Template(
+    dedent(
+        """# GitHub Copilot Instructions for ${packName}
 
 ## Project Overview
 
@@ -276,4 +278,6 @@ def test_feature_name(result: TestResult) -> bool:
 - Ensure package is installed in development mode (`pip install -e .`)
 
 This framework emphasizes dynamic command creation, user-friendly interaction, and robust testing to ensure reliable CLI tool development.
-"""))
+"""
+    )
+)

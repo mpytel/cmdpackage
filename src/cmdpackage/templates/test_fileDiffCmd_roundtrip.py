@@ -8,7 +8,9 @@ templateSources = {
     "test_fileDiffCmd_roundtrip_template": "tests/test_fileDiffCmd_roundtrip.py"
 }
 
-test_fileDiffCmd_roundtrip_template = Template(dedent("""#!/usr/bin/env python3
+test_fileDiffCmd_roundtrip_template = Template(
+    dedent(
+        """#!/usr/bin/env python3
 \"\"\"
 Comprehensive test script for fileDiff command functionality
 
@@ -802,5 +804,6 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         print_fail("Some tests failed!")
-        sys.exit(1)"""))
-
+        sys.exit(1)"""
+    )
+)

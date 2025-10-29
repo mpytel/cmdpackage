@@ -3,7 +3,9 @@
 from string import Template
 from textwrap import dedent
 
-setup_base_template = Template(dedent("""\
+setup_base_template = Template(
+    dedent(
+        """\
     # -*- coding: utf-8 -*-
     from setuptools import setup, find_packages
 
@@ -24,21 +26,15 @@ setup_base_template = Template(dedent("""\
         },
     ${classifiers}
     )
-    """))
-
-setup_line = Template(
-    '    ${name}="${value}",\n'
+    """
+    )
 )
 
-classifiers_line = Template(
-    '        "${classifier}",\n'
-)
+setup_line = Template('    ${name}="${value}",\n')
 
-classifiers_template = Template(
-    '    classifiers=[\n'
-    '${classifiers}'
-    '    ]'
-)
+classifiers_line = Template('        "${classifier}",\n')
+
+classifiers_template = Template("    classifiers=[\n" "${classifiers}" "    ]")
 
 gitignore_content = """
 # unmanged package file or directory

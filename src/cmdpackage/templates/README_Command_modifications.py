@@ -8,7 +8,9 @@ templateSources = {
     "README_Command_modifications_template": "README_Command_modifications.md"
 }
 
-README_Command_modifications_template = Template(dedent("""# ${packName}
+README_Command_modifications_template = Template(
+    dedent(
+        """# ${packName}
 version - ${version}
 
 A dynamic command-line tool for creating, modifying, and managing custom commands with interactive help and argument parsing.
@@ -1043,5 +1045,6 @@ If commands fail to execute properly:
 - Ensure you're in the project directory when running commands
 - The test runner automatically activates `env/${packName}/bin/activate`, but manual command execution may require activation
 - Verify the virtual environment has the correct Python version and dependencies
-"""))
-
+"""
+    )
+)

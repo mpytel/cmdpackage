@@ -25,7 +25,8 @@ templateSources = {
     "validationTemplate": "src/${packName}/defs/validation.py",
 }
 
-mainFile = dedent("""import sys, os
+mainFile = dedent(
+    """import sys, os
 from .classes.argParse import ArgParse
 from .commands.cmdSwitchbord import cmdSwitchbord
 
@@ -36,9 +37,12 @@ def main():
 
 if __name__ == '__main__':
     main()
-""")
+"""
+)
 
-cmdSwitchbordFile = Template(dedent("""import sys, traceback
+cmdSwitchbordFile = Template(
+    dedent(
+        """import sys, traceback
 from argparse import Namespace
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
@@ -228,16 +232,21 @@ def cmdSwitchbord(argParse: ArgParse):
         tb_str = ''.join(traceback.format_exception(None, e, e.__traceback__))
         printIt(f'{theCmd}\\n{tb_str}', lable.ERROR)
         exit()
-"""))
+"""
+    )
+)
 
-cmdOptSwitchbordFileStr = dedent("""from ..classes.optSwitches import OptSwitches
+cmdOptSwitchbordFileStr = dedent(
+    """from ..classes.optSwitches import OptSwitches
 
 def cmdOptSwitchbord(switchFlag: str, switchFlags: dict):
     optSwitches = OptSwitches(switchFlags)
     optSwitches.toggleSwitchFlag(switchFlag)
-""")
+"""
+)
 
-argCmdDefTemplateStr = dedent("""# Generated using argCmdDef template
+argCmdDefTemplateStr = dedent(
+    """# Generated using argCmdDef template
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 
@@ -276,17 +285,21 @@ def ${defName}(argParse):
     if len(theArgs) == 0:
         printIt("no argument(s) entered", lable.INFO)
 
-""")
+"""
+)
 
-argDefTemplateStr = dedent("""def ${argName}(argParse):
+argDefTemplateStr = dedent(
+    """def ${argName}(argParse):
     args = argParse.args
     printIt("def ${defName} executed.", lable.INFO)
     printIt("Modify default behavour in src/${packName}/commands/${defName}.py", lable.INFO)
     printIt(str(args), lable.INFO)
 
-""")
+"""
+)
 
-asyncDefTemplateStr = dedent("""# Generated using asyncDef template
+asyncDefTemplateStr = dedent(
+    """# Generated using asyncDef template
 import asyncio
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
@@ -324,9 +337,11 @@ def ${defName}(argParse):
     '''Entry point for async ${defName} command'''
     asyncio.run(${defName}_async(argParse))
 
-""")
+"""
+)
 
-classCallTemplateStr = dedent("""# Generated using classCall template
+classCallTemplateStr = dedent(
+    """# Generated using classCall template
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 
@@ -366,9 +381,11 @@ def ${defName}(argParse):
     command_instance.execute()
 
 
-""")
+"""
+)
 
-simpleTemplateStr = dedent("""# Generated using simple template
+simpleTemplateStr = dedent(
+    """# Generated using simple template
 from ..defs.logIt import printIt, lable
 
 ${commandJsonDict}
@@ -388,9 +405,12 @@ def ${defName}(argParse):
         printIt(f"Argument {i+1}: {arg}", lable.INFO)
 
 
-""")
+"""
+)
 
-newCmdTemplate = Template(dedent("""import os, sys, copy
+newCmdTemplate = Template(
+    dedent(
+        """import os, sys, copy
 import importlib
 import readline
 from json import dumps
@@ -657,10 +677,13 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
     commands[argNames[0]] = newCommandCMDJson
     cmdObj.commands = commands
     return newCommandCMDJson
-""")
+"""
+    )
 )
 
-modCmdTemplate = Template(dedent("""import os, copy, json, re
+modCmdTemplate = Template(
+    dedent(
+        """import os, copy, json, re
 from ..defs.logIt import printIt, lable
 from ..defs.validation import validate_argument_name, check_command_uses_argcmddef_template
 from ..classes.argParse import ArgParse
@@ -1032,10 +1055,13 @@ def updateSourceFileCommandJsonDict(cmdName: str, cmdDict: dict) -> None:
         else:
             printIt(
                 f"Could not find commandJsonDict pattern in {fileName}", lable.WARN) 
-""")
+"""
+    )
 )
 
-rmCmdTemplate = Template(dedent("""import os, json
+rmCmdTemplate = Template(
+    dedent(
+        """import os, json
 from ..defs.logIt import printIt, lable, cStr, color
 from ..classes.optSwitches import removeCmdSwitchFlags
 from .commands import Commands
@@ -1313,10 +1339,13 @@ def removeCmd(cmdName):
 
     # Remove command flags from .${packName}rc
     removeCmdSwitchFlags(cmdName)
-""")
+"""
+    )
 )
 
-runTestTemplate = Template(dedent("""# Generated using argCmdDef template
+runTestTemplate = Template(
+    dedent(
+        """# Generated using argCmdDef template
 import os
 import sys
 import subprocess
@@ -1593,9 +1622,13 @@ def listTests(argParse):
     print(f"  ${packName} runTest -verbose              # Run all tests with verbose output")
     print(f"  ${packName} runTest -stop                 # Stop on first failure")
     print(f"  ${packName} runTest -summary              # Show only summary")
-"""))
+"""
+    )
+)
 
-fileDiffTemplate = Template(dedent("""import sys
+fileDiffTemplate = Template(
+    dedent(
+        """import sys
 import os
 import difflib
 from difflib import unified_diff
@@ -1746,59 +1779,51 @@ def compare_black_diff(origFileName, newFileName):
         return None
     except Exception as e:
         print(f"Error processing {new_file_path}: {e}")
-        return None"""))
+        return None"""
+    )
+)
 
 commandsJsonDict = {
-  "switchFlags": {},
-  "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
-  "_globalSwitcheFlags": {},
-  "newCmd": {
-    "description": "Add new command <cmdName> with [argNames...]. Also creates a file cmdName.py.",
     "switchFlags": {},
-    "cmdName": "Name of new command",
-    "argName": "(argName...), Optional names of argument to associate with the new command."
-  },
-  "modCmd": {
-    "description": "Modify a command or argument descriptions, or add another argument for command. The cmdName.py file will not be modified.",
-    "switchFlags": {},
-    "cmdName": "Name of command being modified",
-    "argName": "(argName...) Optional names of argument(s) to modify."
-  },
-  "rmCmd": {
-    "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
-    "switchFlags": {},
-    "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
-    "argName": "Optional names of argument to remove."
-  },
-  "runTest": {
-    "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
-    "switchFlags": {
-      "verbose": {
-        "description": "Verbose output flag",
-        "type": "bool"
-      },
-      "stop": {
-        "description": "Stop on failure flag",
-        "type": "bool"
-      },
-      "summary": {
-        "description": "Summary only flag",
-        "type": "bool"
-      }
+    "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
+    "_globalSwitcheFlags": {},
+    "newCmd": {
+        "description": "Add new command <cmdName> with [argNames...]. Also creates a file cmdName.py.",
+        "switchFlags": {},
+        "cmdName": "Name of new command",
+        "argName": "(argName...), Optional names of argument to associate with the new command.",
     },
-    "testName": "Optional name of specific test to run (without .py extension)",
-    "listTests": "List all available tests in the tests directory"
-  },
-  "fileDiff": {
-    "description": "Show the differnces between two files.",
-    "origFile": "Original file name",
-    "newFile": "New file name"
-  }
+    "modCmd": {
+        "description": "Modify a command or argument descriptions, or add another argument for command. The cmdName.py file will not be modified.",
+        "switchFlags": {},
+        "cmdName": "Name of command being modified",
+        "argName": "(argName...) Optional names of argument(s) to modify.",
+    },
+    "rmCmd": {
+        "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
+        "switchFlags": {},
+        "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
+        "argName": "Optional names of argument to remove.",
+    },
+    "runTest": {
+        "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
+        "switchFlags": {
+            "verbose": {"description": "Verbose output flag", "type": "bool"},
+            "stop": {"description": "Stop on failure flag", "type": "bool"},
+            "summary": {"description": "Summary only flag", "type": "bool"},
+        },
+        "testName": "Optional name of specific test to run (without .py extension)",
+        "listTests": "List all available tests in the tests directory",
+    },
+    "fileDiff": {
+        "description": "Show the differnces between two files.",
+        "origFile": "Original file name",
+        "newFile": "New file name",
+    },
 }
 
-
-
-commandsFileStr = dedent("""import json, os
+commandsFileStr = dedent(
+    """import json, os
 from copy import copy
 import inspect
 
@@ -1889,9 +1914,12 @@ class Commands(object):
         except json.JSONDecodeError:
             pass
         return cmdJsonDict
-""")
+"""
+)
 
-optSwitchesTemplate = Template(dedent("""import json
+optSwitchesTemplate = Template(
+    dedent(
+        """import json
 from pathlib import Path
 from ..defs.logIt import printIt, lable
 
@@ -2034,9 +2062,13 @@ def formatOptStr(optSwitches: dict) -> str:
         rtnStr += f'-{cmdOpt}={optSwitches[cmdOpt]}, '
     rtnStr = rtnStr[:-2]
     return rtnStr
-"""))
+"""
+    )
+)
 
-argParseTemplate = Template(dedent("""import os, sys, argparse, shlex
+argParseTemplate = Template(
+    dedent(
+        """import os, sys, argparse, shlex
 from ..defs.logIt import color, cStr
 from ..commands.commands import Commands
 
@@ -2250,9 +2282,13 @@ def formatHelpWidth(theText, tCols, indentPad=1) -> str:
     rtnStr += f'{outLine}\\n'
     #rtnStr = rtnStr[:-1]
     return rtnStr
-"""))
+"""
+    )
+)
 
-logPrintTemplate = Template(dedent("""import os, time
+logPrintTemplate = Template(
+    dedent(
+        """import os, time
 from inspect import currentframe, getframeinfo
 
 # Class of different termianl styles
@@ -2433,9 +2469,13 @@ def germDbug(loc: str, currPi, nextPi):
         print("piSD:", currPi.piSD, nextPi.piSD)
     print("--------------------")
 
-"""))
+"""
+    )
+)
 
-validationTemplate = Template(dedent("""\"\"\"
+validationTemplate = Template(
+    dedent(
+        """\"\"\"
 Validation utilities for command and argument names
 \"\"\"
 import keyword
@@ -2516,4 +2556,6 @@ def validate_arguments_for_argcmddef(arg_names: list, cmd_name: str) -> list:
         else:
             printIt(f"Skipping invalid argument name: '{arg_name}'", lable.WARN)
     
-    return valid_args"""))
+    return valid_args"""
+    )
+)
