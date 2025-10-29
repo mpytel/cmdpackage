@@ -1,7 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from string import Template
 from textwrap import dedent
+from string import Template
+
+# Template source file mappings
+templateSources = {
+    "README_Command_modifications_template": "README_Command_modifications.md"
+}
 
 README_Command_modifications_template = Template(dedent("""# ${packName}
 version - ${version}
@@ -26,7 +31,7 @@ ${packName} is a Python package that provides a framework for building extensibl
 - **JSON-Based Configuration**: Commands and their descriptions stored in JSON format
 - **Comprehensive Test Runner**: Built-in test discovery, execution, and reporting with multiple output modes
 - **Round-trip Testing**: Extensive test suite covering command creation, modification, and removal workflows
-                                      
+
 ## Installation
 
 ### From Source
@@ -411,6 +416,7 @@ ${packName}/
 ├── src/
 │   └── ${packName}/
 │       ├── main.py              # Entry point
+│       ├── genTempSyncData.json # Template synchronization tracking (auto-generated)
 │       ├── classes/
 │       │   ├── argParse.py      # Custom argument parser with colored help
 │       │   └── optSwitches.py   # Option flag persistence and management
@@ -422,6 +428,7 @@ ${packName}/
 │       │   ├── modCmd.py        # Command modification logic
 │       │   ├── rmCmd.py         # Command removal logic
 │       │   ├── runTest.py       # Enhanced test runner with execution control
+│       │   ├── sync.py          # Template synchronization command
 │       │   └── templates/       # Code templates for new commands
 │       │       ├── argCmdDef.py    # Default template with argument handling
 │       │       ├── simple.py    # Simple template for basic commands
@@ -435,10 +442,14 @@ ${packName}/
 │   ├── test_modCmd_roundtrip.py    # Tests for command modification workflows
 │   ├── test_rmCmd_roundtrip.py     # Tests for command removal workflows
 │   └── test_argCmdDef_roundtrip.py # Tests for template functionality
+├── newTemplates/                # Generated template files from sync command
+│   ├── cmdTemplate.py          # Shared templates for commands/ directory files
+│   ├── copilotInstructions_md.py # Markdown file templates
+│   └── *.py                    # Individual file templates
 ├── env/${packName}/                      # Virtual environment for development
 ├── .${packName}rc                        # Configuration file (auto-generated)
 ├── pyproject.toml               # Package configuration
-├── README.md                    # Basic documentation
+├── ${readme}                    # Basic documentation
 └── README_Command_modifications.md  # This comprehensive guide
 ```
 
@@ -521,6 +532,219 @@ Example CI usage:
 # In your CI pipeline
 ${packName} runTest +summary +stop  # Fast failure with clean output
 ```
+
+#### `sync` - Template Synchronization
+Synchronize modifications made to files that were generated from templates, creating updated template files in the `newTemplates/` directory:
+
+```bash
+${packName} sync [action] [filePattern] [+dry-run|-dry-run] [+force|-force] [+backup|-backup]
+```
+
+**Available Actions:**
+
+**1. `sync` (default)** - Generate updated templates from modified files
+```bash
+# Sync all modified tracked files
+${packName} sync
+
+# Sync files matching specific patterns
+${packName} sync commands/*.py
+${packName} sync *.json
+
+# Sync specific file
+${packName} sync src/${packName}/commands/newCmd.py
+```
+
+**2. `status`** - Show synchronization status of tracked files
+```bash
+# Display overview of all tracked files
+${packName} sync status
+
+# Output includes:
+# - Total tracked files
+# - Files in sync (unchanged)
+# - Modified files (need syncing)
+# - Missing files (deleted/moved)
+```
+
+**3. `list`** - List all tracked files with their status
+```bash
+# Show detailed list of tracked files
+${packName} sync list
+
+# Displays for each file:
+# - Status: OK (in sync), MODIFIED, or MISSING
+# - File path (relative to project root)
+# - Associated template name
+```
+
+**4. `make`** - Create new template from any file
+```bash
+# Create template from untracked file
+${packName} sync make tests/test_newFile.py
+
+# Create template from tracked file (requires authorization)
+${packName} sync make src/${packName}/commands/sync.py
+```
+
+**Synchronization Control Flags:**
+
+- **`+dry-run/-dry-run`**: Show what would be synced without making changes
+  ```bash
+  # Preview sync operations
+  ${packName} sync +dry-run
+  
+  # Actually perform sync
+  ${packName} sync -dry-run
+  ```
+
+- **`+force/-force`**: Force sync even if files appear to have user modifications
+  ```bash
+  # Force synchronization
+  ${packName} sync +force
+  ```
+
+- **`+backup|-backup`**: Create backup files before syncing
+  ```bash
+  # Create .backup files
+  ${packName} sync +backup
+  ```
+
+**How Sync Works:**
+
+The sync command uses `genTempSyncData.json` to track:
+- Original template file paths
+- Current MD5 checksums
+- Template names and field substitutions
+
+When you modify a tracked file (like `src/${packName}/commands/newCmd.py`), running `${packName} sync` will:
+
+1. Detect the modification by comparing MD5 checksums
+2. Read the current file content
+3. Generate a new template in `newTemplates/` with your modifications
+4. Update the stored MD5 to mark the file as synchronized
+
+**Template File Organization:**
+
+Files from the `commands/` directory share templates in `cmdTemplate.py`:
+```
+newTemplates/
+├── cmdTemplate.py              # Contains templates for all commands/
+├── copilotInstructions_md.py   # Markdown file templates
+├── test_*.py                   # Individual test templates
+└── commands.json               # JSON templates
+```
+
+**Make Action - Creating New Templates:**
+
+The `make` action creates templates for files not currently tracked or to manually generate templates:
+
+```bash
+# Create template from new test file
+${packName} sync make tests/test_setLogPref_roundtrip.py
+# Creates: newTemplates/test_setLogPref_roundtrip.py
+
+# Create template from JSON file
+${packName} sync make src/${packName}/commands/commands.json
+# Creates: newTemplates/commands.json (pure JSON, no Python wrapper)
+
+# Create template from Python file
+${packName} sync make src/${packName}/commands/sync.py
+# Inserts into: newTemplates/cmdTemplate.py (shared template file)
+```
+
+**Authorization for Tracked Files:**
+
+When using `make` on a file already tracked in `genTempSyncData.json`, authorization behavior depends on the `tempFileName` field:
+
+- **`tempFileName: "newMakeTemplate"`** - No authorization required. File is designated for standalone template creation.
+- **`tempFileName: <actual path>`** - Authorization required. Prevents accidentally disrupting existing template synchronization.
+
+Example authorization prompt:
+
+```
+WARNING: File 'src/${packName}/commands/newCmd.py' is already tracked in genTempSyncData.json
+Current template: newCmd
+Current template file: /Users/.../cmdTemplate.py
+Creating a new template could interfere with existing synchronization.
+Do you want to proceed anyway? (yes/no):
+```
+
+**The "newMakeTemplate" Marker:**
+
+Files tracked with `"tempFileName": "newMakeTemplate"` in `genTempSyncData.json` are designated as "make-ready":
+
+```json
+{
+  "/path/to/file.py": {
+    "fileMD5": "abc123...",
+    "template": "myTemplate",
+    "tempFileName": "newMakeTemplate"
+  }
+}
+```
+
+This marker indicates:
+- The file should create a standalone template file when `make` is used
+- No authorization prompt will appear
+- Template will be created in `newTemplates/` directory
+- Useful for files you frequently regenerate templates from
+
+**Template File Formats:**
+
+Different file types generate different template formats:
+
+**Python files** (`.py`):
+- Files ending with `_template` use `Template(dedent(\"\"\"...\"\"\"))` format
+- Other files use `dedent(\"\"\"...\"\"\")` format
+- Automatically includes necessary imports (`textwrap.dedent`, `string.Template`)
+
+**JSON files** (`.json`):
+- Pure JSON content without Python wrappers
+- No variable assignments or imports
+- Direct template-ready format
+
+**Markdown/Text files** (`.md`, `.txt`):
+- Uses `dedent(\"\"\"...\"\"\")` format
+- Escapes special characters for Python string embedding
+
+**Sync Workflow Examples:**
+
+```bash
+# Check what files have been modified
+${packName} sync status
+
+# Preview what would be synced
+${packName} sync +dry-run
+
+# Sync all modified files
+${packName} sync
+
+# Sync only command files
+${packName} sync commands/*.py
+
+# Sync with backup
+${packName} sync +backup
+
+# List all tracked files
+${packName} sync list
+
+# Create template for new test file
+${packName} sync make tests/test_newFeature.py
+```
+
+**Output Information:**
+
+During sync operations, you'll see:
+- Original template location paths
+- Files being processed (unchanged/modified)
+- Template files being generated
+- Success/error messages for each operation
+- Final summary of synced files
+
+**Exit Codes:**
+- `0`: Success - all files synced or already in sync
+- `1`: Errors occurred during synchronization
 
 ## Development
 
@@ -648,11 +872,11 @@ Commands and their metadata are stored in `src/${packName}/commands/commands.jso
 
 ## License
 
-MIT License
+${license}
 
 ## Author
 
-**mpytel** - mpytel@domain.com
+**${authors}** - ${authorsEmail}
 
 ## Contributing
 
@@ -820,3 +1044,4 @@ If commands fail to execute properly:
 - The test runner automatically activates `env/${packName}/bin/activate`, but manual command execution may require activation
 - Verify the virtual environment has the correct Python version and dependencies
 """))
+

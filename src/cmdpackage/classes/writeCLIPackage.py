@@ -148,17 +148,47 @@ class WriteCLIPackage:
             wf.write(file_str)
         self._temp_sync_file_json("cmdOptSwitchbordFileStr", pyTemplate.__file__, file_name, file_str)
             
+    def _discover_command_templates(self) -> dict:
+        """
+        Dynamically discover command templates by checking for function definitions 
+        that match the pattern: def <commandName>(argParse):
+        
+        Returns:
+            dict: Dictionary mapping command names to their template objects
+        """
+        import inspect
+        from string import Template
+        
+        cmd_templates = {}
+        
+        # Get all attributes from the pyTemplate module
+        for name, obj in inspect.getmembers(pyTemplate):
+            # Look for command templates: attributes that end with 'Template' and are Template objects
+            if (name.endswith('Template') and 
+                isinstance(obj, Template)):  # Check if it's actually a Template object
+                
+                # Extract potential command name by removing 'Template' suffix
+                cmd_name = name.replace('Template', '')
+                
+                # Get the template content
+                template_content = obj.template
+                
+                # Check if the template contains the function signature pattern
+                function_signature = f"def {cmd_name}(argParse"
+                if function_signature in template_content:
+                    cmd_templates[cmd_name] = obj
+                    print(f"Found command template: {name} -> {cmd_name}")
+        
+        print(f"Discovered {len(cmd_templates)} command templates")
+        return cmd_templates
+            
     def _write_command_templates(self) -> None:
         """Write command template files."""
         dir_name = os.path.join(self.src_dir, "commands")
         
-        cmd_templates_names = ["newCmd", "modCmd", "rmCmd", "runTest"]
-        cmd_templates = {
-            "newCmd": pyTemplate.newCmdTemplate,
-            "modCmd": pyTemplate.modCmdTemplate,
-            "rmCmd": pyTemplate.rmCmdTemplate,
-            "runTest": pyTemplate.runTestTemplate
-        }
+        # Dynamically discover command templates from the cmdTemplate module
+        cmd_templates = self._discover_command_templates()
+        cmd_templates_names = list(cmd_templates.keys())
         
         for template_name in cmd_templates_names:
             indent = 0

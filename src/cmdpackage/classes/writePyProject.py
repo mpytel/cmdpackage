@@ -3,7 +3,8 @@
 from hashlib import md5
 import os
 import json
-import cmdpackage.templates.readmeTemplate as README_template
+import cmdpackage.templates.README_template as README_template
+import cmdpackage.templates.README_Command_modifications as README_Command_modifications
 from cmdpackage.templates.pyprojectTemplate import (
     pyproject_base_template, gitignore_content, classifiers_line,
     classifiers_template)
@@ -114,9 +115,13 @@ class WritePyProject:
                                 os.path.abspath(readme_file_name), readme_content)
         
         # Write command modifications README
-        readme_cmd_content = README_template.README_Command_modifications_template.substitute(
+        readme_cmd_content = README_Command_modifications.README_Command_modifications_template.substitute(
             packName=rtn_dict['name'], 
-            version=rtn_dict['version'])
+            version=rtn_dict['version'],
+            readme=rtn_dict['readme'],
+            license=rtn_dict['license'],
+            authors=rtn_dict['authors'],
+            authorsEmail=rtn_dict['authorsEmail'])
         
         cmd_readme_file_name = str(rtn_dict['readme']).replace('.md', '_Command_modifications.md')
         with open(cmd_readme_file_name, 'w') as readme_file:

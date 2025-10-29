@@ -3,6 +3,11 @@
 from string import Template
 from textwrap import dedent
 
+# Template source file mappings
+templateSources = {
+    "test_newCmd_roundtrip_template": "tests/test_newCmd_roundtrip.py",
+}
+
 test_newCmd_roundtrip_template = Template(dedent("""#!/usr/bin/env python3
 \"\"\"
 Test script for newCmd round trip functionality

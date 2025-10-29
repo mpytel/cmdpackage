@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 from cmdpackage.classes.writePyProject import writePyProject, commitGitRepo
-from cmdpackage.classes.writeCLIPackage import writeCLIPackage
+from cmdpackage.classes.writeCLIPackage2 import writeCLIPackage2 as writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 from cmdpackage.classes.writeTestScript import writeTestScript
 import argparse

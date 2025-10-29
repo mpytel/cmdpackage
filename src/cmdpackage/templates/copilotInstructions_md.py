@@ -3,6 +3,11 @@
 from string import Template
 from textwrap import dedent
 
+# Template source file mappings
+templateSources = {
+    "copilotInstructions_md": ".github/copilot-instructions.md",
+}
+
 copilotInstructions_md = Template(dedent("""# GitHub Copilot Instructions for ${packName}
 
 ## Project Overview
