@@ -3,11 +3,8 @@
 from hashlib import md5
 import os
 import json
-import cmdpackage.templates.README_template as README_template
-import cmdpackage.templates.README_Command_modifications as README_Command_modifications
-from cmdpackage.templates.pyprojectTemplate import (
-    pyproject_base_template, gitignore_content, classifiers_line,
-    classifiers_template)
+# Template imports are now handled dynamically from the new template structure
+# These will be loaded from the templates/ directory structure
 from sys import version_info
 from cmdpackage.defs.runSubProc import runSubProc, CompletedProcess
 from subprocess import Popen, PIPE
@@ -35,6 +32,46 @@ class WritePyProject:
         self.temp_sync_files = {}
         self.fields = ['name', 'version', 'description', 'readme',
                       'license', 'authors', 'authorsEmail', 'maintainers', 'maintainersEmail', 'classifiers']
+    
+    def _load_template(self, template_file_path: str, template_name: str | None = None):
+        """
+        Load a template dynamically from the new templates directory structure.
+        
+        Args:
+            template_file_path (str): Path to the template file relative to package root
+            template_name (str): Name of the template object to extract (optional)
+            
+        Returns:
+            Template object or content
+        """
+        import importlib.util
+        
+        # Get the cmdpackage directory (templates are now in src/cmdpackage/templates/)
+        package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
+        full_path = os.path.join(package_dir, template_file_path)
+        
+        if not os.path.exists(full_path):
+            raise FileNotFoundError(f"Template file not found: {full_path}")
+            
+        # Load the module
+        module_name = os.path.basename(template_file_path)[:-3]  # Remove .py
+        spec = importlib.util.spec_from_file_location(module_name, full_path)
+        
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load template module from {full_path}")
+            
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # If template_name is specified, return that specific object
+        if template_name:
+            if hasattr(module, template_name):
+                return getattr(module, template_name)
+            else:
+                raise AttributeError(f"Template '{template_name}' not found in {module_name}")
+        
+        # Otherwise, return the module
+        return module
         
     def write_py_project(self) -> dict[str, str | bool]:
         """
@@ -76,6 +113,12 @@ class WritePyProject:
         
     def _write_pyproject_toml(self, rtn_dict: dict[str, str | bool]) -> None:
         """Write the pyproject.toml file."""
+        # Load the pyproject template dynamically
+        pyproject_base_template = self._load_template(
+            "templates/pyproject_base_template.py", 
+            "pyproject_base_template"
+        )
+        
         pyproject_content = pyproject_base_template.substitute(
             name=rtn_dict['name'],
             version=rtn_dict['version'],
@@ -100,8 +143,14 @@ class WritePyProject:
         
     def _write_readme_files(self, rtn_dict: dict[str, str | bool]) -> None:
         """Write README.md and command modifications README files."""
+        # Load README templates dynamically
+        readme_template_obj = self._load_template(
+            "templates/README_template.py", 
+            "README_template"
+        )
+        
         # Write main README.md
-        readme_content = README_template.README_template.substitute(
+        readme_content = readme_template_obj.substitute(
             packName=rtn_dict['name'], 
             version=rtn_dict['version'], 
             description=rtn_dict['description'])
@@ -111,11 +160,17 @@ class WritePyProject:
             self._write_content(readme_file, readme_content)
             
         # Track for sync data
-        self._temp_sync_file_json("README_template", README_template.__file__,
+        self._temp_sync_file_json("README_template", "templates/README_template.py",
                                 os.path.abspath(readme_file_name), readme_content)
         
+        # Load command modifications README template
+        readme_cmd_template_obj = self._load_template(
+            "templates/README_Command_modifications.py", 
+            "README_Command_modifications_template"
+        )
+        
         # Write command modifications README
-        readme_cmd_content = README_Command_modifications.README_Command_modifications_template.substitute(
+        readme_cmd_content = readme_cmd_template_obj.substitute(
             packName=rtn_dict['name'], 
             version=rtn_dict['version'],
             readme=rtn_dict['readme'],
@@ -128,7 +183,7 @@ class WritePyProject:
             self._write_content(readme_file, readme_cmd_content)
             
         # Track for sync data
-        self._temp_sync_file_json("README_Command_modifications_template", README_template.__file__,
+        self._temp_sync_file_json("README_Command_modifications_template", "templates/README_Command_modifications.py",
                                   os.path.abspath(cmd_readme_file_name), readme_cmd_content)
         
     def _write_gitignore_and_init_git(self, rtn_dict: dict[str, str | bool]) -> None:
@@ -139,9 +194,15 @@ class WritePyProject:
             with_gitignore = self._get_input('commit a git repo [Y/n]?: ', default='y')
             
         if with_gitignore.lower() == 'y':
+            # Load gitignore content dynamically (it's a string, not a template)
+            gitignore_content = self._load_template(
+                "templates/gitignore_content.py", 
+                "gitignore_content"
+            )
+            
             gitignore_file_name = '.gitignore'
             with open(gitignore_file_name, 'w') as gitignore_file:
-                self._write_content(gitignore_file, gitignore_content)
+                self._write_content(gitignore_file, str(gitignore_content))
                 
             # Track for sync data
             # self._temp_sync_file_json("gitignore_content",
@@ -214,6 +275,16 @@ class WritePyProject:
         local = "Programming Language :: Python :: {}.{}".format(mayor, minor)
         classifiers = [python, local]
 
+        # Load classifier templates dynamically
+        classifiers_line = self._load_template(
+            "templates/classifiers_line.py", 
+            "classifiers_line"
+        )
+        classifiers_template = self._load_template(
+            "templates/classifiers_template.py", 
+            "classifiers_template"
+        )
+        
         classifiers_lines = ''
         for cls in classifiers:
             classifiers_lines += classifiers_line.substitute(classifier=cls)

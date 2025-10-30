@@ -7,8 +7,6 @@ import importlib
 from string import Template
 from cmdpackage.defs.utilities import chkDir
 
-
-
 class WriteTestScript:
     """
     A class for writing test script files for CLI packages.
@@ -50,9 +48,18 @@ class WriteTestScript:
     
     def _discover_and_write_test_scripts(self) -> None:
         """Discover and process all test templates that begin with 'test_'."""
-        templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
-        template_files = [f for f in os.listdir(templates_dir) 
-                         if f.startswith("test_") and f.endswith(".py") and f != "__init__.py"]
+        # Get the cmdpackage directory and use the new template location
+        package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
+        templates_dir = os.path.join(package_dir, "templates", "tests")
+        if not os.path.exists(templates_dir):
+            print(f"Warning: Template directory not found: {templates_dir}")
+            return
+            
+        # Include any templates containing '_test_' and the cleanup helper script
+        template_files = [
+            f for f in os.listdir(templates_dir)
+            if (f.startswith("test_") and f.endswith(".py") or "_test_" in f) and f != "__init__.py"
+        ]
         
         print(f"Discovered {len(template_files)} test template files: {template_files}")
         
@@ -64,10 +71,21 @@ class WriteTestScript:
         try:
             # Remove .py extension to get module name
             module_name = template_file[:-3]
-            full_module_name = f"cmdpackage.templates.{module_name}"
             
-            # Import the module
-            module = importlib.import_module(full_module_name)
+            # Load the template file directly from the new templates directory
+            package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
+            templates_dir = os.path.join(package_dir, "templates", "tests")
+            template_path = os.path.join(templates_dir, template_file)
+            
+            # Load the template file as a module
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(module_name, template_path)
+            if spec is None or spec.loader is None:
+                print(f"Warning: Could not load template module from {template_path}")
+                return
+                
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
             
             # Look for template attribute - try common naming patterns
             template_attr_name = f"{module_name}_template"

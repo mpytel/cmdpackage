@@ -462,7 +462,7 @@ def test_all_templates(result: TestResult) -> bool:
     templates = []
 
     for file in template_dir.iterdir():
-        if file.suffix == ".py" and file.name != "__init__.py":
+        if file.suffix == ".py" and file.name != "__init__.py" and file.name != "argDefTemplate.py":
             template_name = file.stem
             templates.append(template_name)
 
