@@ -238,7 +238,7 @@ def verify_function_template_content(
             f"def {function_name}(argParse):",
             "args = argParse.args",
             f'printIt("def {cmd_name} executed.", lable.INFO)',
-            f'printIt("Modify default behavour in src/vc/commands/{cmd_name}.py", lable.INFO)',
+            f'printIt("Modify default behavour in src/${packName}/commands/{cmd_name}.py", lable.INFO)',
             "printIt(str(args), lable.INFO)",
         ]
 
@@ -310,7 +310,7 @@ def cleanup_test_commands():
     # Remove test commands if they exist
     for cmd in test_commands:
         if check_command_exists(cmd):
-            run_command(f'echo "y" | vc rmCmd {cmd}')
+            run_command(f'echo "y" | ${packName} rmCmd {cmd}')
 
     # Additional cleanup: directly remove any leftover files and JSON entries
     force_cleanup_test_artifacts()
@@ -325,7 +325,7 @@ def force_cleanup_test_artifacts():
     from pathlib import Path
 
     # Clean up .py files - look for any file starting with "test"
-    commands_dir = Path(__file__).parent.parent / "src" / "vc" / "commands"
+    commands_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands"
     
     if commands_dir.exists():
         for file_path in commands_dir.glob("test*.py"):
