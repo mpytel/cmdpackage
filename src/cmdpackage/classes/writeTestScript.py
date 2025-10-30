@@ -3,12 +3,10 @@
 from hashlib import md5
 import os
 import json
+import importlib
 from string import Template
 from cmdpackage.defs.utilities import chkDir
-import cmdpackage.templates.test_newCmd_roundtrip as test_newCmd_roundtrip
-import cmdpackage.templates.test_modCmd_roundtrip as test_modCmd_roundtrip
-import cmdpackage.templates.test_rmCmd_roundtrip as test_rmCmd_roundtrip
-import cmdpackage.templates.test_argCmdDef_roundtrip as test_argCmdDef_roundtrip
+
 
 
 class WriteTestScript:
@@ -39,89 +37,77 @@ class WriteTestScript:
         
     def write_test_script(self) -> None:
         """
-        Main method to write all test scripts.
+        Main method to write all test scripts using dynamic discovery.
         """
         # Ensure test directory exists
         chkDir(self.test_dir)
         
-        # Write individual test scripts
-        self._write_new_cmd_test()
-        self._write_mod_cmd_test()
-        self._write_rm_cmd_test()
-        self._write_arg_cmd_def_test()
+        # Discover and write all test scripts
+        self._discover_and_write_test_scripts()
         
         # Update temp sync data
         self._write_temp_sync_data()
+    
+    def _discover_and_write_test_scripts(self) -> None:
+        """Discover and process all test templates that begin with 'test_'."""
+        templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
+        template_files = [f for f in os.listdir(templates_dir) 
+                         if f.startswith("test_") and f.endswith(".py") and f != "__init__.py"]
         
-    def _write_new_cmd_test(self) -> None:
-        """Write test_newCmd_roundtrip.py test script."""
-        file_name = os.path.join(self.test_dir, "test_newCmd_roundtrip.py")
-        template_obj = test_newCmd_roundtrip.test_newCmd_roundtrip_template
-        file_str = template_obj.substitute(packName=self.program_name)
+        print(f"Discovered {len(template_files)} test template files: {template_files}")
         
-        with open(file_name, "w") as wf:
-            wf.write(file_str)
-        
-        # Make executable
-        # self._make_executable(file_name)
-        
-        # Track for sync data
-        self._temp_sync_file_json("test_newCmd_roundtrip_template", 
-                                  test_newCmd_roundtrip.__file__,
-                                  file_name, file_str)
-        
-    def _write_mod_cmd_test(self) -> None:
-        """Write test_modCmd_roundtrip.py test script."""
-        file_name = os.path.join(self.test_dir, "test_modCmd_roundtrip.py")
-        template_obj = test_modCmd_roundtrip.test_modCmd_roundtrip_template
-        file_str = template_obj.substitute(packName=self.program_name)
-        
-        with open(file_name, "w") as wf:
-            wf.write(file_str)
-        
-        # Make executable
-        #self._make_executable(file_name)
-        
-        # Track for sync data
-        self._temp_sync_file_json("test_modCmd_roundtrip_template",
-                                  test_modCmd_roundtrip.__file__,
-                                  file_name, file_str)
-        
-    def _write_rm_cmd_test(self) -> None:
-        """Write test_rmCmd_roundtrip.py test script."""
-        file_name = os.path.join(self.test_dir, "test_rmCmd_roundtrip.py")
-        file_str = test_rmCmd_roundtrip.test_rmCmd_roundtrip_template.substitute(
-            packName=self.program_name)
-        
-        with open(file_name, "w") as wf:
-            wf.write(file_str)
-        
-        # Make executable
-        self._make_executable(file_name)
-        
-        # Track for sync data
-        self._temp_sync_file_json("test_rmCmd_roundtrip_template",
-                                  test_rmCmd_roundtrip.__file__,
-                                  file_name, file_str)
-        
-    def _write_arg_cmd_def_test(self) -> None:
-        """Write test_argCmdDef_roundtrip.py test script."""
-        file_name = os.path.join(self.test_dir, "test_argCmdDef_roundtrip.py")
-        template_obj = test_argCmdDef_roundtrip.test_argCmdDef_roundtrip_template
-        file_str = template_obj.substitute(
-            packName=self.program_name)
-        
-        with open(file_name, "w") as wf:
-            wf.write(file_str)
-        
-        # Make executable
-        self._make_executable(file_name)
-        
-        # Track for sync data
-        self._temp_sync_file_json("test_argCmdDef_roundtrip_template",
-                                  test_argCmdDef_roundtrip.__file__,
-                                  file_name, file_str)
-        
+        for template_file in template_files:
+            self._process_test_template(template_file)
+    
+    def _process_test_template(self, template_file: str) -> None:
+        """Process a single test template file."""
+        try:
+            # Remove .py extension to get module name
+            module_name = template_file[:-3]
+            full_module_name = f"cmdpackage.templates.{module_name}"
+            
+            # Import the module
+            module = importlib.import_module(full_module_name)
+            
+            # Look for template attribute - try common naming patterns
+            template_attr_name = f"{module_name}_template"
+            template_obj = getattr(module, template_attr_name, None)
+            
+            if template_obj is None:
+                print(f"Warning: No template attribute '{template_attr_name}' found in {module_name}")
+                return
+            
+            # Generate output filename (remove test_ prefix and add .py)
+            output_filename = f"{module_name}.py"
+            file_path = os.path.join(self.test_dir, output_filename)
+            
+            # Handle both Template objects and strings
+            if hasattr(template_obj, 'substitute'):
+                # It's a Template object
+                file_content = template_obj.substitute(packName=self.program_name)
+            else:
+                # It's a string, wrap it in Template
+                template_wrapper = Template(str(template_obj))
+                file_content = template_wrapper.substitute(packName=self.program_name)
+            
+            # Write the file
+            with open(file_path, "w") as wf:
+                wf.write(file_content)
+            
+            # Make executable for certain test types
+            if "rmCmd" in module_name or "argCmdDef" in module_name:
+                self._make_executable(file_path)
+            
+            # Track for sync data
+            module_file_path = module.__file__ or f"cmdpackage.templates.{module_name}"
+            self._temp_sync_file_json(template_attr_name, module_file_path, file_path, file_content)
+            
+            print(f"Processed test template: {module_name} -> {output_filename}")
+            
+        except Exception as e:
+            print(f"Error processing test template {template_file}: {e}")
+
+
     def _make_executable(self, file_name: str) -> None:
         """Make a file executable by adding execute permissions."""
         st = os.stat(file_name)
