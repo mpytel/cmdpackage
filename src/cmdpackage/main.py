@@ -61,6 +61,7 @@ def main():
     writeTestScript(fields, args.GenTempSyncDataWrite)
     if fields['gitInitialized']:
         commitGitRepo("finalize package setup")
+    intstallModules(projName)
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
         test_result = test_generated_package(projName)
@@ -79,6 +80,24 @@ def main():
         print(
             f'{GREEN}execute{RESET}: pip install -e /Users/primwind/proj/python/syncTemps')
 
+
+def intstallModules(project_name: str) -> None:
+    """Install the generated module in editable mode."""
+    import subprocess
+
+    activate_cmd = f". env/{project_name}/bin/activate"
+    module = "-e ."
+    install_cmd = f"{activate_cmd} && pip install {module} --quiet"
+    result = subprocess.run(
+        install_cmd, shell=True, capture_output=True, text=True)
+    module = "black"
+    install_cmd = f"{activate_cmd} && pip install {module}  --quiet"
+    result = subprocess.run(
+        install_cmd, shell=True, capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"  ✅ {module} Installed ")
+    else:
+        print(f"{RED}❌ Failed to install the module: {result.stderr}{RESET}")
 
 def test_generated_package(project_name: str) -> bool:
     """

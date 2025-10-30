@@ -245,7 +245,7 @@ def verify_function_template_content(
         # Find the function in the content
         import re
 
-        func_pattern = rf"def {re.escape(function_name)}\\(.*?\\):(.*?)(?=def \\w+\\(|$)"
+        func_pattern = rf"def {re.escape(function_name)}\\(.*?\\):(.*?)(?=def \\w+\\(|$$)"
         func_match = re.search(func_pattern, content, re.DOTALL)
 
         if not func_match:
