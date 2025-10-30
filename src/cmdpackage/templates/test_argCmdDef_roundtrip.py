@@ -20,7 +20,7 @@ This test suite validates the enhanced modCmd functionality including:
 2. Input alignment when arguments are rejected during validation
 3. Proper messaging for mixed success/failure scenarios
 4. Switch flag handling alongside argument validation
-5. Template-specific validation (argCmdDef vs simple templates)
+5. Template-specific validation (argCmdDef ${packName} simple templates)
 6. Function definition addition to .py files for argCmdDef templates
 7. Function content verification and template consistency
 8. Round-trip consistency between modCmd and rmCmd for functions
@@ -36,6 +36,18 @@ Test scenarios:
 - Function content matching argDefTemplate pattern
 - Multiple argument function addition in single call
 - Complete add/remove cycle maintaining JSON and .py file consistency
+
+CLEANUP FUNCTIONALITY:
+This test suite includes comprehensive cleanup functionality to ensure no test artifacts
+are left behind, even if tests fail or crash:
+
+- Automatic cleanup before and after test execution
+- Force cleanup in try-finally blocks to guarantee cleanup
+- Pattern-based detection of test files (any file starting with "test")
+- Cleanup of both .py files and commands.json entries
+- Standalone cleanup utility: tests/cleanup_test_artifacts.py
+
+Run cleanup manually: python tests/cleanup_test_artifacts.py
 \"\"\"
 
 import os
@@ -44,7 +56,6 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Tuple
-
 
 class Colors:
     \"\"\"ANSI color codes for terminal output\"\"\"
@@ -229,17 +240,17 @@ def verify_function_template_content(
 
         # Check for expected template content in the function
         expected_patterns = [
-            f"def {{function_name}}(argParse):",
+            f"def {function_name}(argParse):",
             "args = argParse.args",
-            f'printIt("def {{cmd_name}} executed.", lable.INFO)',
-            f'printIt("Modify default behavour in src/${packName}/commands/{{cmd_name}}.py", lable.INFO)',
+            f'printIt("def {cmd_name} executed.", lable.INFO)',
+            f'printIt("Modify default behavour in src/vc/commands/{cmd_name}.py", lable.INFO)',
             "printIt(str(args), lable.INFO)",
         ]
 
         # Find the function in the content
         import re
 
-        func_pattern = rf"def {{{{re.escape(function_name)}}}}\\(.*?\\):(.*?)(?=def \\w+\\(|$$)"
+        func_pattern = rf"def {re.escape(function_name)}\\(.*?\\):(.*?)(?=def \\w+\\(|$)"
         func_match = re.search(func_pattern, content, re.DOTALL)
 
         if not func_match:
@@ -280,8 +291,8 @@ def get_command_file_path(cmd_name: str) -> str:
     import os
 
     # Get the current script directory and navigate to the correct location
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)  # Go up from tests/ to project root
+    script_path = Path(__file__).resolve()
+    project_root = script_path.parent.parent  # Go up from tests/ to project root
     return os.path.join(project_root, "src", "${packName}", "commands", f"{cmd_name}.py")
 
 
@@ -291,18 +302,68 @@ def cleanup_test_commands():
 
     test_commands = [
         "testValidation",
-        "testSimple",
+        "testSimple", 
         "testMixed",
         "testFunctions",
         "testMultiple",
+        "testDebug",
+        "testDebugFunc",
+        "testArgCmdDef",
+        "testRoundtrip",
     ]
 
     # Remove test commands if they exist
     for cmd in test_commands:
         if check_command_exists(cmd):
-            run_command(f'echo "y" | ${packName} rmCmd {{cmd}}')
+            run_command(f'echo "y" | vc rmCmd {cmd}')
+
+    # Additional cleanup: directly remove any leftover files and JSON entries
+    force_cleanup_test_artifacts()
 
     print_pass("Cleanup completed")
+
+
+def force_cleanup_test_artifacts():
+    \"\"\"Force cleanup of test artifacts that might be left behind\"\"\"
+    import os
+    import json
+    from pathlib import Path
+
+    # Clean up .py files - look for any file starting with "test"
+    commands_dir = Path(__file__).parent.parent / "src" / "vc" / "commands"
+    
+    if commands_dir.exists():
+        for file_path in commands_dir.glob("test*.py"):
+            try:
+                file_path.unlink()
+                print_info(f"Removed leftover file: {file_path.name}")
+            except Exception as e:
+                print_fail(f"Could not remove {file_path.name}: {e}")
+
+    # Clean up commands.json entries - look for any key starting with "test"
+    commands_file = commands_dir / "commands.json"
+    if commands_file.exists():
+        try:
+            with open(commands_file, "r") as f:
+                data = json.load(f)
+            
+            # Find all test commands (keys starting with "test")
+            test_commands = [key for key in data.keys() if key.startswith("test")]
+            
+            modified = False
+            for cmd in test_commands:
+                if cmd in data:
+                    del data[cmd]
+                    modified = True
+                    print_info(f"Removed JSON entry: {cmd}")
+            
+            if modified:
+                with open(commands_file, "w") as f:
+                    json.dump(data, f, indent=2)
+                print_info("Updated commands.json")
+                    
+        except Exception as e:
+            print_fail(f"Could not clean commands.json: {e}")
 
 
 def test_create_argcmddef_command(result: TestResult) -> bool:
@@ -350,7 +411,7 @@ def test_valid_argument_acceptance(result: TestResult) -> bool:
     another_valid_ok = "anotherValid" in cmd_data
 
     # Check output messages
-    contains_modified = "CMD MODIFIED:" in stdout
+    contains_modified = "CMD MODIFIED: " in stdout
     contains_both_args = "validArg" in stdout and "anotherValid" in stdout
 
     all_ok = (
@@ -433,7 +494,7 @@ def test_mixed_valid_invalid_arguments(result: TestResult) -> bool:
     int_rejected = "int" not in cmd_data
 
     # Check output messages
-    contains_modified = "CMD MODIFIED:" in stdout and "validMixed" in stdout
+    contains_modified = "CMD MODIFIED: " in stdout and "validMixed" in stdout
     contains_rejected_note = "Note:" in stdout and "were rejected" in stdout
 
     all_ok = (
@@ -476,7 +537,7 @@ def test_switch_flags_with_arguments(result: TestResult) -> bool:
     list_rejected = "list" not in cmd_data
 
     # Check output messages
-    contains_modified = "CMD MODIFIED:" in stdout
+    contains_modified = "CMD MODIFIED: " in stdout
     contains_flag = "flag -verbose" in stdout
     contains_arg = "switchArg" in stdout
     contains_rejected_note = "Note:" in stdout and "list" in stdout
@@ -569,7 +630,7 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
     def_rejected = "def" not in cmd_data
 
     # Check messaging
-    contains_modified = "CMD MODIFIED:" in stdout
+    contains_modified = "CMD MODIFIED: " in stdout
     contains_valid_comp = "validComprehensive" in stdout
     contains_rejected_note = "Note:" in stdout and "rejected" in stdout
 
@@ -838,36 +899,44 @@ def main():
     print(f"{Colors.BLUE}{'='*60}{Colors.NC}")
 
     result = TestResult()
+    success = False
 
-    # Clean up before starting
-    cleanup_test_commands()
+    try:
+        # Clean up before starting
+        cleanup_test_commands()
 
-    # Run tests in sequence
-    tests = [
-        test_create_argcmddef_command,
-        test_valid_argument_acceptance,
-        test_invalid_argument_rejection,
-        test_mixed_valid_invalid_arguments,
-        test_switch_flags_with_arguments,
-        test_simple_template_bypass,
-        test_comprehensive_scenario,
-        test_function_definition_addition,
-        test_function_content_verification,
-        test_multiple_argument_functions,
-        test_function_removal_consistency,
-    ]
+        # Run tests in sequence
+        tests = [
+            test_create_argcmddef_command,
+            test_valid_argument_acceptance,
+            test_invalid_argument_rejection,
+            test_mixed_valid_invalid_arguments,
+            test_switch_flags_with_arguments,
+            test_simple_template_bypass,
+            test_comprehensive_scenario,
+            test_function_definition_addition,
+            test_function_content_verification,
+            test_multiple_argument_functions,
+            test_function_removal_consistency,
+        ]
 
-    for test_func in tests:
-        if not test_func(result):
-            print_fail(
-                f"Test {test_func.__name__} failed, continuing with remaining tests..."
-            )
+        for test_func in tests:
+            if not test_func(result):
+                print_fail(
+                    f"Test {test_func.__name__} failed, continuing with remaining tests..."
+                )
 
-    # Final cleanup
-    cleanup_test_commands()
+        # Print summary
+        success = result.print_summary()
 
-    # Print summary
-    success = result.print_summary()
+    except Exception as e:
+        print_fail(f"Test suite encountered an unexpected error: {e}")
+        success = False
+
+    finally:
+        # Always clean up, even if tests fail or crash
+        print_info("Performing final cleanup...")
+        cleanup_test_commands()
 
     if success:
         print(

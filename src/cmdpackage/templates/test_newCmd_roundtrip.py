@@ -98,7 +98,7 @@ def run_command(
         project_dir = Path(__file__).parent.parent
 
         # Activate virtual environment and run command
-        full_cmd = f"cd {project_dir} && source env/${packName}s/bin/activate && {cmd}"
+        full_cmd = f"cd {project_dir} && source env/${packName}/bin/activate && {cmd}"
 
         result = subprocess.run(
             full_cmd,
@@ -118,7 +118,7 @@ def check_command_exists(cmd_name: str) -> bool:
     commands_file = (
         Path(__file__).parent.parent
         / "src"
-        / "${packName}s"
+        / "${packName}"
         / "commands"
         / "commands.json"
     )
@@ -130,13 +130,13 @@ def check_command_exists(cmd_name: str) -> bool:
         return False
 
 
-def check_flags_in_${packName}src(cmd_name: str) -> bool:
-    \"\"\"Check if flags exist in .${packName}src\"\"\"
-    ${packName}src_file = Path(__file__).parent.parent / "src" / ".${packName}src"
+def check_flags_in_${packName}rc(cmd_name: str) -> bool:
+    \"\"\"Check if flags exist in .${packName}rc\"\"\"
+    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
     try:
-        if not ${packName}src_file.exists():
+        if not ${packName}rc_file.exists():
             return False
-        with open(${packName}src_file, "r") as f:
+        with open(${packName}rc_file, "r") as f:
             data = json.load(f)
         return cmd_name in data.get("commandFlags", {})
     except Exception:
@@ -144,12 +144,12 @@ def check_flags_in_${packName}src(cmd_name: str) -> bool:
 
 
 def check_flag_value(cmd_name: str, flag_name: str, expected_value) -> bool:
-    \"\"\"Check if a specific flag has the expected value in .${packName}src\"\"\"
-    ${packName}src_file = Path(__file__).parent.parent / "src" / ".${packName}src"
+    \"\"\"Check if a specific flag has the expected value in .${packName}rc\"\"\"
+    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
     try:
-        if not ${packName}src_file.exists():
+        if not ${packName}rc_file.exists():
             return False
-        with open(${packName}src_file, "r") as f:
+        with open(${packName}rc_file, "r") as f:
             data = json.load(f)
         command_flags = data.get("commandFlags", {}).get(cmd_name, {})
         return command_flags.get(flag_name) == expected_value
@@ -183,7 +183,7 @@ def cleanup_test_commands():
 
     # Add template-based test commands
     template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}s" / "commands" / "templates"
+        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     )
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
@@ -194,17 +194,17 @@ def cleanup_test_commands():
     # Remove test commands if they exist
     for cmd in test_commands:
         if check_command_exists(cmd):
-            run_command(f'echo "y" | ${packName}s rmCmd {cmd}')
+            run_command(f'echo "y" | ${packName} rmCmd {cmd}')
 
         # Remove .py files if they exist
-        py_file = f"src/${packName}s/commands/{cmd}.py"
+        py_file = f"src/${packName}/commands/{cmd}.py"
         if file_exists(py_file):
             os.remove(Path(__file__).parent.parent / py_file)
 
-    # Clean up .${packName}s if it exists
-    ${packName}src_file = Path(__file__).parent.parent / "src" / ".${packName}src"
-    if ${packName}src_file.exists():
-        ${packName}src_file.unlink()
+    # Clean up .${packName} if it exists
+    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    if ${packName}rc_file.exists():
+        ${packName}rc_file.unlink()
 
     print_pass("Cleanup completed")
 
@@ -214,9 +214,9 @@ def test_basic_command(result: TestResult) -> bool:
     print_test("Test 1: Basic command creation with default template")
 
     # Create basic command
-    input_text = "Test command description\nFirst argument description"
+    input_text = "Test command description\\nFirst argument description"
     returncode, stdout, stderr = run_command(
-        "${packName}s newCmd testCmd01 arg1", input_text
+        "${packName} newCmd testCmd01 arg1", input_text
     )
 
     if not check_command_exists("testCmd01"):
@@ -228,7 +228,7 @@ def test_basic_command(result: TestResult) -> bool:
 
     print_pass("Command testCmd01 created successfully")
 
-    if not file_exists("src/${packName}s/commands/testCmd01.py"):
+    if not file_exists("src/${packName}/commands/testCmd01.py"):
         print_fail("Python file testCmd01.py was not created")
         result.add_result("Basic command creation", False, "Python file not created")
         return False
@@ -242,9 +242,9 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
     \"\"\"Test 2: Command creation with boolean flags\"\"\"
     print_test("Test 2: Command creation with boolean flags")
 
-    input_text = "Command with flags\nArgument description\nEnable verbose mode\nEnable debug mode"
+    input_text = "Command with flags\\nArgument description\\nEnable verbose mode\\nEnable debug mode"
     returncode, stdout, stderr = run_command(
-        "${packName}s newCmd testCmd02 arg1 -verbose -debug", input_text
+        "${packName} newCmd testCmd02 arg1 -verbose -debug", input_text
     )
 
     if not check_command_exists("testCmd02"):
@@ -254,14 +254,14 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
 
     print_pass("Command testCmd02 created successfully")
 
-    if not check_flags_in_${packName}src("testCmd02"):
-        print_fail("Boolean flags were not saved to .${packName}src")
+    if not check_flags_in_${packName}rc("testCmd02"):
+        print_fail("Boolean flags were not saved to .${packName}rc")
         result.add_result(
-            "Boolean flags creation", False, "Flags not saved to .${packName}src"
+            "Boolean flags creation", False, "Flags not saved to .${packName}rc"
         )
         return False
 
-    print_pass("Boolean flags saved to .${packName}src")
+    print_pass("Boolean flags saved to .${packName}rc")
 
     # Check specific flag values
     if not (
@@ -281,9 +281,9 @@ def test_command_with_string_options(result: TestResult) -> bool:
     \"\"\"Test 3: Command creation with string options and template\"\"\"
     print_test("Test 3: Command creation with string options and template")
 
-    input_text = "Simple command\nArgument description\nOutput file path"
+    input_text = "Simple command\\nArgument description\\nOutput file path"
     returncode, stdout, stderr = run_command(
-        "${packName}s newCmd testCmd03 arg1 --output --template=simple", input_text
+        "${packName} newCmd testCmd03 arg1 --output --template=simple", input_text
     )
 
     if not check_command_exists("testCmd03"):
@@ -295,7 +295,7 @@ def test_command_with_string_options(result: TestResult) -> bool:
 
     # Check if template flag was saved for newCmd
     if not (
-        check_flags_in_${packName}src("newCmd")
+        check_flags_in_${packName}rc("newCmd")
         and check_flag_value("newCmd", "template", "simple")
     ):
         print_fail("Template flag was not saved correctly")
@@ -304,11 +304,11 @@ def test_command_with_string_options(result: TestResult) -> bool:
         )
         return False
 
-    print_pass("Template flag saved to .${packName}src under newCmd")
+    print_pass("Template flag saved to .${packName}rc under newCmd")
 
     # Verify the template was actually used by checking the generated file
     if file_contains(
-        "src/${packName}s/commands/testCmd03.py", "# Generated using simple template"
+        "src/${packName}/commands/testCmd03.py", "# Generated using simple template"
     ):
         print_pass("Simple template was used for code generation")
     else:
@@ -323,7 +323,7 @@ def test_flag_toggle(result: TestResult) -> bool:
     print_test("Test 4: Flag toggle operations")
 
     # Toggle verbose flag on
-    returncode, stdout, stderr = run_command("${packName}s testCmd02 arg1 +verbose")
+    returncode, stdout, stderr = run_command("${packName} testCmd02 arg1 +verbose")
 
     if not check_flag_value("testCmd02", "verbose", True):
         print_fail("Flag +verbose was not toggled correctly")
@@ -333,7 +333,7 @@ def test_flag_toggle(result: TestResult) -> bool:
     print_pass("Flag +verbose toggled to true")
 
     # Toggle verbose flag off
-    returncode, stdout, stderr = run_command("${packName}s testCmd02 arg1 -verbose")
+    returncode, stdout, stderr = run_command("${packName} testCmd02 arg1 -verbose")
 
     if not check_flag_value("testCmd02", "verbose", False):
         print_fail("Flag -verbose was not toggled correctly")
@@ -350,7 +350,7 @@ def test_help_system(result: TestResult) -> bool:
     print_test("Test 5: Help system functionality")
 
     # Test command-specific help
-    returncode, stdout, stderr = run_command("${packName}s testCmd02 -h")
+    returncode, stdout, stderr = run_command("${packName} testCmd02 -h")
 
     if returncode != 0:
         print_fail("Command-specific help failed")
@@ -360,23 +360,23 @@ def test_help_system(result: TestResult) -> bool:
     print_pass("Command-specific help works")
 
     # Test that help doesn't create unwanted side effects
-    ${packName}src_file = Path(__file__).parent.parent / "src" / ".${packName}src"
+    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
     flags_before = ""
-    if ${packName}src_file.exists():
-        flags_before = ${packName}src_file.read_text()
+    if ${packName}rc_file.exists():
+        flags_before = ${packName}rc_file.read_text()
 
-    run_command("${packName}s testCmd02 --help")
+    run_command("${packName} testCmd02 --help")
 
     flags_after = ""
-    if ${packName}src_file.exists():
-        flags_after = ${packName}src_file.read_text()
+    if ${packName}rc_file.exists():
+        flags_after = ${packName}rc_file.read_text()
 
     if flags_before != flags_after:
-        print_fail("Help command unexpectedly modified .${packName}src")
-        result.add_result("Help system", False, "Help modified .${packName}src")
+        print_fail("Help command unexpectedly modified .${packName}rc")
+        result.add_result("Help system", False, "Help modified .${packName}rc")
         return False
 
-    print_pass("Help command doesn't modify .${packName}src")
+    print_pass("Help command doesn't modify .${packName}rc")
     result.add_result("Help system", True)
     return True
 
@@ -385,7 +385,7 @@ def test_template_listing(result: TestResult) -> bool:
     \"\"\"Test 6: Template listing functionality\"\"\"
     print_test("Test 6: Template listing functionality")
 
-    returncode, stdout, stderr = run_command("${packName}s newCmd --templates")
+    returncode, stdout, stderr = run_command("${packName} newCmd --templates")
 
     if returncode != 0:
         print_fail("Template listing failed")
@@ -402,9 +402,9 @@ def test_error_handling(result: TestResult) -> bool:
     print_test("Test 7: Error handling")
 
     # Test invalid template
-    input_text = "Test command\nArgument description"
+    input_text = "Test command\\nArgument description"
     returncode, stdout, stderr = run_command(
-        "${packName}s newCmd invalidTest arg1 --template=nonexistent", input_text
+        "${packName} newCmd invalidTest arg1 --template=nonexistent", input_text
     )
 
     if check_command_exists("invalidTest"):
@@ -423,8 +423,8 @@ def test_rmcmd_cleanup(result: TestResult) -> bool:
     \"\"\"Test 8: Cleanup with rmCmd\"\"\"
     print_test("Test 8: Cleanup with rmCmd")
 
-    # Remove testCmd02 (which has flags in .${packName}src)
-    returncode, stdout, stderr = run_command('echo "y" | ${packName}s rmCmd testCmd02')
+    # Remove testCmd02 (which has flags in .${packName}rc)
+    returncode, stdout, stderr = run_command('echo "y" | ${packName} rmCmd testCmd02')
 
     if check_command_exists("testCmd02"):
         print_fail("Command testCmd02 was not removed from commands.json")
@@ -433,19 +433,19 @@ def test_rmcmd_cleanup(result: TestResult) -> bool:
 
     print_pass("Command testCmd02 removed from commands.json")
 
-    if file_exists("src/${packName}s/commands/testCmd02.py"):
+    if file_exists("src/${packName}/commands/testCmd02.py"):
         print_fail("Python file testCmd02.py was not removed")
         result.add_result("rmCmd cleanup", False, "Python file not removed")
         return False
 
     print_pass("Python file testCmd02.py removed")
 
-    if check_flags_in_${packName}src("testCmd02"):
-        print_fail("Command flags were not removed from .${packName}src")
-        result.add_result("rmCmd cleanup", False, "Flags not removed from .${packName}src")
+    if check_flags_in_${packName}rc("testCmd02"):
+        print_fail("Command flags were not removed from .${packName}rc")
+        result.add_result("rmCmd cleanup", False, "Flags not removed from .${packName}rc")
         return False
 
-    print_pass("Command flags removed from .${packName}src")
+    print_pass("Command flags removed from .${packName}rc")
     result.add_result("rmCmd cleanup", True)
     return True
 
@@ -456,7 +456,7 @@ def test_all_templates(result: TestResult) -> bool:
 
     # Get list of available templates
     template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}s" / "commands" / "templates"
+        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     )
     templates = []
 
@@ -484,8 +484,8 @@ def test_all_templates(result: TestResult) -> bool:
 
         try:
             # Create command with this template
-            input_text = f"Test command using {template_name} template\nTest argument"
-            cmd = f"${packName}s newCmd {test_cmd_name} arg1 --template={template_name}"
+            input_text = f"Test command using {template_name} template\\nTest argument"
+            cmd = f"${packName} newCmd {test_cmd_name} arg1 --template={template_name}"
             returncode, stdout, stderr = run_command(cmd, input_text)
 
             # Check if command was created
@@ -496,7 +496,7 @@ def test_all_templates(result: TestResult) -> bool:
                 continue
 
             # Check if Python file was created
-            py_file = f"src/${packName}s/commands/{test_cmd_name}.py"
+            py_file = f"src/${packName}/commands/{test_cmd_name}.py"
             if not file_exists(py_file):
                 print_fail(
                     f"Python file {test_cmd_name}.py was not created with template {template_name}"
@@ -521,7 +521,7 @@ def test_all_templates(result: TestResult) -> bool:
         finally:
             # Clean up the test command
             if check_command_exists(test_cmd_name):
-                run_command(f'echo "y" | ${packName}s rmCmd {test_cmd_name}')
+                run_command(f'echo "y" | ${packName} rmCmd {test_cmd_name}')
 
     # Summary
     if template_tests_passed == template_tests_total:
@@ -548,14 +548,14 @@ def test_complete_cleanup(result: TestResult) -> bool:
     remaining_commands = ["testCmd01", "testCmd03"]
     for cmd in remaining_commands:
         if check_command_exists(cmd):
-            run_command(f'echo "y" | ${packName}s rmCmd {cmd}')
+            run_command(f'echo "y" | ${packName} rmCmd {cmd}')
 
     # Verify all test commands are gone (including template test commands)
     test_commands = ["testCmd01", "testCmd02", "testCmd03"]
 
     # Add template-based test commands to verification
     template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}s" / "commands" / "templates"
+        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     )
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
@@ -574,16 +574,16 @@ def test_complete_cleanup(result: TestResult) -> bool:
 
     print_pass("All test commands removed")
 
-    # Check if .${packName}src is cleaned up appropriately
-    ${packName}src_file = Path(__file__).parent.parent / "src" / ".${packName}src"
-    if ${packName}src_file.exists():
-        content = ${packName}src_file.read_text()
+    # Check if .${packName}rc is cleaned up appropriately
+    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    if ${packName}rc_file.exists():
+        content = ${packName}rc_file.read_text()
         if any(cmd in content for cmd in test_commands):
-            print_fail(".${packName}src still contains test command flags")
-            result.add_result("Complete cleanup", False, ".${packName}src not cleaned")
+            print_fail(".${packName}rc still contains test command flags")
+            result.add_result("Complete cleanup", False, ".${packName}rc not cleaned")
             return False
 
-    print_pass(".${packName}src cleaned up (no test command flags remain)")
+    print_pass(".${packName}rc cleaned up (no test command flags remain)")
     result.add_result("Complete cleanup", True)
     return True
 
@@ -591,20 +591,20 @@ def test_complete_cleanup(result: TestResult) -> bool:
 def main():
     \"\"\"Main test execution\"\"\"
     print("=" * 48)
-    print("${packName}s NewCmd Round Trip Test (Python Version)")
+    print("${packName} NewCmd Round Trip Test (Python Version)")
     print("=" * 48)
 
     # Check if we're in the right directory
     project_dir = Path(__file__).parent.parent
-    if not (project_dir / "src" / "${packName}s").exists():
-        print_fail("Error: Not in ${packName}s project directory")
+    if not (project_dir / "src" / "${packName}").exists():
+        print_fail("Error: Not in ${packName} project directory")
         return 1
 
     # Check virtual environment
-    venv_activate = project_dir / "env" / "${packName}s" / "bin" / "activate"
+    venv_activate = project_dir / "env" / "${packName}" / "bin" / "activate"
     if not venv_activate.exists():
         print_fail(
-            "Warning: Virtual environment not found at env/${packName}s/bin/activate"
+            "Warning: Virtual environment not found at env/${packName}/bin/activate"
         )
         print_info("Please ensure the virtual environment is set up correctly")
         return 1
