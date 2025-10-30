@@ -9,8 +9,9 @@ templateSources = {
 }
 
 
-test_modCmd_roundtrip_template = Template(dedent(
-    """#!/usr/bin/env python3
+test_modCmd_roundtrip_template = Template(
+    dedent(
+        """#!/usr/bin/env python3
 \"\"\"
 Comprehensive test script for modCmd round trip functionality
 
@@ -795,5 +796,6 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-""")
+"""
+    )
 )

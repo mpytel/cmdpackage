@@ -3,14 +3,9 @@
 from string import Template
 from textwrap import dedent
 
-# Template source file mappings
-templateSources = {
-    "test_argCmdDef_roundtrip_template": "tests/test_argCmdDef_roundtrip.py",
-}
-
-
-test_argCmdDef_roundtrip_template = Template(dedent(
-    """#!/usr/bin/env python3
+test_argCmdDef_roundtrip_template = Template(
+    dedent(
+        """#!/usr/bin/env python3
 \"\"\"
 Comprehensive test script for argCmdDef template validation and modCmd functionality
 
@@ -952,5 +947,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-""")
+"""
+    )
 )

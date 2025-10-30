@@ -8,7 +8,9 @@ templateSources = {
     "cleanup_test_artifacts_template": "tests/cleanup_test_artifacts.py",
 }
 
-cleanup_test_artifacts_template = Template(dedent("""#!/usr/bin/env python3
+cleanup_test_artifacts_template = Template(
+    dedent(
+        """#!/usr/bin/env python3
 \"\"\"
 Utility script to clean up test artifacts that might be left behind during testing.
 
@@ -85,4 +87,6 @@ def cleanup_test_artifacts():
 
 
 if __name__ == "__main__":
-    cleanup_test_artifacts()"""))
+    cleanup_test_artifacts()"""
+    )
+)
