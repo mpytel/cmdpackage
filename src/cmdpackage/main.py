@@ -1,10 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os
-from cmdpackage.classes.writePyProject import writePyProject, commitGitRepo
+from cmdpackage.classes.writePyProject import writePyProject
 from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 from cmdpackage.classes.writeTestScript import writeTestScript
+from cmdpackage.defs.utilities import commitGitRepo
 import argparse
 from pathlib import Path
 
@@ -54,9 +55,10 @@ def main():
         projName = Path(os.getcwd()).stem
     if args.defaults: usedefaults = True
     else: usedefaults = False
-    fields: dict[str, str | bool] = writePyProject(
+    fields: dict[str, str] = writePyProject(
         usedefaults, gen_temp_sync_data_write=False)
     writeCLIPackage(fields, args.GenTempSyncDataWrite)
+    exit()
     createzVirtualEnv(fields)
     writeTestScript(fields, args.GenTempSyncDataWrite)
     if fields['gitInitialized']:

@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from hashlib import md5
 import os
 import json
 import inspect
+import traceback
 from string import Template
-from cmdpackage.defs.utilities import chkDir
+from hashlib import md5
+from cmdpackage.defs.logIt import printIt, lable
+from cmdpackage.defs.utilities import chkDir, list_files_os_walk, load_template, sanitize_var_name
 # Note: Template imports are now handled dynamically from the new template structure
 # Old static imports have been replaced with dynamic template discovery
 
@@ -41,8 +43,22 @@ class WriteCLIPackage:
         self.repl_strings = self._create_replacement_strings()
         
         # Discover all template modules
-        self.template_modules = self._discover_template_modules()
-        
+        self.template_modules = self._discover_template_sources()
+
+    def write_cli_package(self) -> None:
+        """
+        Main method to write the complete CLI package structure using templateSources.
+        """
+
+        # Process each template source
+        for source_name, source_info in self.template_modules.items():
+            self._process_template_source(source_name, source_info)
+
+        # Write temp sync data
+        self._write_temp_sync_data()
+
+        print("CLI package generation completed!")
+
     def _create_replacement_strings(self) -> dict:
         """
         Create replacement strings dictionary from fields for template substitution.
@@ -61,20 +77,10 @@ class WriteCLIPackage:
         repl_strings.update(self.fields)
         
         return repl_strings
-    
-    def _discover_template_modules(self) -> list:
-        """
-        Discover all available template modules.
-        Note: This method is now deprecated in favor of the new template structure.
-        
-        Returns:
-            list: Empty list as templates are now loaded dynamically
-        """
-        return []
-    
+
     def _discover_template_sources(self) -> dict:
         """
-        Discover all template files from the new templates directory structure.
+        Discover all template files from the templates directory structure.
         
         Returns:
             dict: Dictionary mapping template names to their configuration
@@ -89,165 +95,133 @@ class WriteCLIPackage:
             print(f"Warning: Templates directory not found: {templates_base}")
             return discovered_sources
 
-        # Define template locations according to the new structure
-        template_mappings = {
-            # GitHub templates
-            ".github/copilot-instructions.md": "templates/.github/copilotInstructions_md.py",
-            
-            # Project root templates
-            "pyproject.toml": "templates/pyproject_base_template.py",
-            ".gitignore": "templates/gitignore_content.py",
-            "README.md": "templates/README_Command_modifications.py",
-            
-            # Source code templates
-            "src/${packName}/main.py": "templates/src/mainfile.py",
-            "src/${packName}/classes/argParse.py": "templates/src/classes/argParseTemplate.py",
-            "src/${packName}/classes/optSwitches.py": "templates/src/classes/optSwitchesTemplate.py",
-            "src/${packName}/defs/logIt.py": "templates/src/defs/logPrintTemplate.py",
-            "src/${packName}/defs/validation.py": "templates/src/defs/validationTemplate.py",
-            
-            # Command files
-            "src/${packName}/commands/commands.py": "templates/src/commands/commandsFileStr.py",
-            "src/${packName}/commands/commands.json": "templates/src/commands/commandsJsonDict.py",
-            "src/${packName}/commands/cmdSwitchbord.py": "templates/src/commands/cmdSwitchbordFile.py",
-            "src/${packName}/commands/cmdOptSwitchbord.py": "templates/src/commands/cmdOptSwitchbordFileStr.py",
-            "src/${packName}/commands/newCmd.py": "templates/src/commands/newCmdTemplate.py",
-            "src/${packName}/commands/modCmd.py": "templates/src/commands/modCmdTemplate.py",
-            "src/${packName}/commands/rmCmd.py": "templates/src/commands/rmCmdTemplate.py",
-            "src/${packName}/commands/runTest.py": "templates/src/commands/runTestTemplate.py",
-            "src/${packName}/commands/fileDiff.py": "templates/src/commands/fileDiffTemplate.py",
-            "src/${packName}/commands/sync.py": "templates/src/commands/syncTemplate.py",
-            
-            # Command templates
-            # argCmdDef should come from the simple argDefTemplateStr
-            "src/${packName}/commands/templates/argCmdDef.py": "templates/src/commands/templates/argDefTemplateStr.py",
-            # argDefTemplate should come from the Template object argCmdDefTemplate
-            "src/${packName}/commands/templates/argDefTemplate.py": "templates/src/commands/templates/argCmdDefTemplateTemplate.py",
-            "src/${packName}/commands/templates/simple.py": "templates/src/commands/templates/simpleTemplateStr.py",
-            "src/${packName}/commands/templates/classCall.py": "templates/src/commands/templates/classCallTemplateStr.py",
-            "src/${packName}/commands/templates/asyncDef.py": "templates/src/commands/templates/asyncDefTemplateStr.py",
-        }
-        
+        # get list of all template files in templates_base and subdirectories
+        template_files = list_files_os_walk(templates_base, extensions=('.py', '.json'))
+
+        template_mappings: dict[str, str] = {}
+        for template_filename in template_files:
+            template_mappings.update(self.get_template_map_entry(template_filename))
+
+        #print(f"Discovered {json.dumps(template_mappings,indent=2)} template mappings.")
+        # "src/vc/defs/logIt.py": "templates/src/defs/logIt_template.py"
         # Process each template mapping
         for target_file, template_file_path in template_mappings.items():
             # Get the cmdpackage directory (templates are now in src/cmdpackage/templates/)
             package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
             full_template_path = os.path.join(package_dir, template_file_path)
+            full_template_path = full_template_path
+
+            module_name = os.path.splitext(template_file_path)
+            module_name = sanitize_var_name(module_name[0].split(os.path.sep)[-1])
             
             if os.path.exists(full_template_path):
-                try:
-                    # Load the template file as a module
-                    import importlib.util
-                    module_name = os.path.basename(template_file_path)[:-3]  # Remove .py
-                    spec = importlib.util.spec_from_file_location(module_name, full_template_path)
-                    
-                    if spec is None or spec.loader is None:
-                        print(f"Warning: Could not load template from {full_template_path}")
-                        continue
-                        
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    
-                    # Find the template object in the module
-                    template_obj = None
-                    
-                    # Try different naming patterns based on file name and known template names
-                    base_name = module_name.replace("Template", "").replace("Str", "")
-                    
-                    # Define specific template name mappings for known files
-                    template_name_mappings = {
-                        "mainfile": "mainFile",
-                        "logPrintTemplate": "logPrintTemplate", 
-                        "validationTemplate": "validationTemplate",
-                        "argParseTemplate": "argParseTemplate",
-                        "optSwitchesTemplate": "optSwitchesTemplate",
-                        "commandsFileStr": "commandsFileStr",
-                        "cmdSwitchbordFile": "cmdSwitchbordFile",
-                        "cmdOptSwitchbordFileStr": "cmdOptSwitchbordFileStr",
-                        "newCmdTemplate": "newCmdTemplate",
-                        "modCmdTemplate": "modCmdTemplate",
-                        "rmCmdTemplate": "rmCmdTemplate",
-                        "runTestTemplate": "runTestTemplate",
-                        "fileDiffTemplate": "fileDiffTemplate",
-                        "syncTemplate": "syncTemplate",
-                        "argCmdDefTemplateTemplate": "argCmdDefTemplate",
-                        "argDefTemplateStr": "argDefTemplateStr",
-                        "simpleTemplateStr": "simpleTemplateStr",
-                        "classCallTemplateStr": "classCallTemplateStr",
-                        "asyncDefTemplateStr": "asyncDefTemplateStr",
-                        "README_Command_modifications": "README_Command_modifications_template"
-                    }
-                    
-                    possible_names = []
-                    # First try the specific mapping if it exists
-                    if module_name in template_name_mappings:
-                        possible_names.append(template_name_mappings[module_name])
-                    
-                    # Then try common patterns
-                    possible_names.extend([
-                        base_name,  # base name without suffix
-                        module_name,  # exact match
-                        f"{base_name}Template",  # with Template suffix
-                        f"{base_name}File",  # with File suffix
-                        f"{base_name}Str",   # with Str suffix
-                        f"{base_name}TemplateStr"  # with TemplateStr suffix
-                    ])
-                    
-                    for name in possible_names:
-                        if hasattr(module, name):
-                            template_obj = getattr(module, name)
-                            break
+                # Load the template file as a module
+                if os.path.splitext(template_file_path)[1] == '.py':
+                    module = load_template(full_template_path)
 
-                    # Special-case: some modules export a single dict named
-                    # `commandsJsonDict` (commands JSON definition). If no
-                    # template object was found by the usual name patterns,
-                    # look for that variable and use it.
-                    if template_obj is None and hasattr(module, 'commandsJsonDict'):
-                        template_obj = getattr(module, 'commandsJsonDict')
-                    
-                    if template_obj is not None:
-                        # Create source name from target file path
-                        source_name = target_file.replace("src/${packName}/", "").replace("/", "_").replace(".py", "").replace(".md", "").replace(".toml", "").replace(".gitignore", "gitignore")
-                        
-                        discovered_sources[source_name] = {
-                            'module': module,
-                            'template_obj': template_obj,
-                            'target_file': target_file,
-                            'source_name': source_name
-                        }
-                        print(f"  Found template: {source_name} -> {target_file}")
-                    else:
-                        print(f"  Warning: No template found in {module_name}")
-                        # Debug: show what attributes are available
-                        available_attrs = [attr for attr in dir(module) if not attr.startswith('_')]
-                        print(f"    Available attributes: {available_attrs}")
-                        
-                except Exception as e:
-                    print(f"  Error loading template {template_file_path}: {e}")
+                    try:
+                        # Find the template object in the module
+                        template_obj = None
+                        if hasattr(module, module_name):
+                            template_obj = getattr(module, module_name)
+
+                        if template_obj is not None:                           
+                            discovered_sources[module_name] = {
+                                'module': module,
+                                'template_obj': template_obj,
+                                'target_file': target_file,
+                                'source_name': module_name
+                            }
+                        else:
+                            print(f"  Warning: No template found in {module_name}")
+                            # Debug: show what attributes are available
+                            available_attrs = [attr for attr in dir(module) if not attr.startswith('_')]
+                            print(f"    Available attributes: {available_attrs}")
+                            
+                    except Exception as e:
+                        print(f"  Error loading template {template_file_path}: {e}")
+                else:
+                    root, ext = os.path.splitext(target_file)
+                    module_name = module_name + "." + ext
+                    discovered_sources[module_name] = {
+                        'module': None,
+                        'template_obj': None,
+                        'target_file': target_file,
+                        'source_name': full_template_path
+                    }
             else:
                 print(f"  Warning: Template file not found: {full_template_path}")
         
         print(f"Discovered {len(discovered_sources)} template sources")
         return discovered_sources
-    
-    def write_cli_package(self) -> None:
+
+    def get_template_map_entry(self, template_filename: str) -> dict[str, str]:
         """
-        Main method to write the complete CLI package structure using templateSources.
+        Creates a mapping dictionary from a final output path (with self.program_name)
+        back to its source template file path.
+        
+        Args:
+            template_filename (str): The absolute path to the source template file.
+            self.program_name (str): The name of the target project to insert into the 
+                                output path (e.g., 'tc'). Defaults to 'tc'.
+            
+        Returns:
+            dict: A dictionary mapping the relative output path to the relative 
+                template path. 
         """
-        print("Starting CLI package generation with templateSources discovery...")
-        print()
-        
-        # Discover all template sources
-        template_sources = self._discover_template_sources()
-        
-        # Process each template source
-        for source_name, source_info in template_sources.items():
-            self._process_template_source(source_name, source_info)
-        
-        # Write temp sync data
-        self._write_temp_sync_data()
-        
-        print("CLI package generation completed!")
+
+        TEMPLATE_DIR = "templates"
+
+        # 1. Get the path portion starting from 'templates/...'
+        try:
+            # Find the index of the 'templates' directory to get the relative path
+            templates_index = template_filename.find(TEMPLATE_DIR)
+        except ValueError:
+            raise ValueError(
+                f"'{TEMPLATE_DIR}' not found in the template path: {template_filename}")
+
+        # The value for the mapping dictionary: 'templates/...'
+        relative_template_path = template_filename[templates_index:]
+        # Example result: 'templates/src/commands/newCmd_template.py'
+
+        # 2. Derive the output key path
+
+        # Start with the template path relative to the project root (after 'templates/')
+        output_key_path = relative_template_path.replace(
+            TEMPLATE_DIR + os.path.sep, '', 1)
+        # Example result: 'src/commands/newCmd_template.py'
+
+        # Remove the '_template' suffix from the filename part
+        root, ext = os.path.splitext(output_key_path)
+        fileNameParts = root.split(os.path.sep)
+        fileName = fileNameParts[-1]
+        fileName = sanitize_var_name(fileName)
+        # "commands.json": "src/cmdpackage/templates/src/commands/commands_template.json"
+        if fileName.startswith('README")'):
+            ext = '.md'  # Special case for README files
+        if fileName.endswith('_template'):
+            revFileName = fileName[:-len('_template')]
+            output_key_path = root[:-len(fileName)] + revFileName + ext
+            # Example result: 'src/commands/newCmd.py'
+        # 3. Inject the project name ('tc') into the path
+        # We assume 'tc' should be inserted after the first directory component (e.g., 'src/').
+
+        path_parts = output_key_path.split(os.path.sep)
+
+        # If the path has at least two components (a root folder and a filename/folder)
+        if len(path_parts) > 1 and path_parts[0] in ('src', 'tests', '.github'):
+            # Inject the project name after the first directory (e.g., 'src' or 'tests')
+            # e.g., ['src', 'tc', 'commands', 'newCmd.py']
+            path_parts.insert(1, self.program_name)
+
+        final_output_key = os.path.join(*path_parts)
+        # Example result: 'src/tc/commands/newCmd.py'
+        # (or just 'README_Command_modifications.py' if it was a root file)
+
+        # 4. Construct and return the mapping dictionary
+        return {
+            final_output_key: relative_template_path
+        }
     
     def _process_template_source(self, source_name: str, source_info: dict) -> None:
         """
@@ -303,7 +277,8 @@ class WriteCLIPackage:
                     
             elif isinstance(template_obj, str):
                 # Check if this is a template definition file (in commands/templates/)
-                template_names_to_check = ['argCmdDef', 'asyncDef', 'classCall', 'simple', 
+                template_names_to_check = ['argCmdDef_templates', 'argDefTemplate_templates', 'asyncDef_templates',
+                                         'classCall_templates', 'simple_templates',
                                          'commands_templates_argCmdDef', 'commands_templates_argDefTemplate',
                                          'commands_templates_asyncDef', 'commands_templates_classCall', 
                                          'commands_templates_simple']
@@ -334,12 +309,17 @@ class WriteCLIPackage:
                 wf.write(file_content)
             
             # Track for temp sync
-            self._temp_sync_file_json(template_name, module.__file__, file_path, file_content)
-            
-            print(f"Generated: {target_file_path} (from {template_name})")
+            if module is not None:
+                self._temp_sync_file_json(template_name, module.__file__, file_path, file_content)
+            else:
+               self._temp_sync_file_json(template_name, template_name, file_path, file_content)
+
+            printIt(target_file_path, lable.SAVED)
             
         except Exception as e:
-            print(f"Error processing {source_name}: {str(e)}")
+            tb_str = ''.join(traceback.format_exception(
+                None, e, e.__traceback__))
+            print(f"Error processing {source_name}: {tb_str}")
     
     def _is_command_template(self, template_name: str) -> bool:
         """

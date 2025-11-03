@@ -1,0 +1,65 @@
+{
+  "switchFlags": {},
+  "description": "Dictionary of commands, their discription and switches, and their argument discriptions.",
+  "_globalSwitcheFlags": {},
+  "newCmd": {
+    "description": "Add new command <cmdName> with [argNames...]. Also creates a file cmdName.py.",
+    "switchFlags": {},
+    "cmdName": "Name of new command",
+    "argName": "(argName...), Optional names of argument to associate with the new command."
+  },
+  "modCmd": {
+    "description": "Modify a command or argument descriptions, or add another argument for command. The cmdName.py file will not be modified.",
+    "switchFlags": {},
+    "cmdName": "Name of command being modified",
+    "argName": "(argName...) Optional names of argument(s) to modify."
+  },
+  "rmCmd": {
+    "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
+    "switchFlags": {},
+    "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
+    "argName": "Optional names of argument to remove."
+  },
+  "runTest": {
+    "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
+    "switchFlags": {
+      "verbose": {
+        "description": "Verbose output flag",
+        "type": "bool"
+      },
+      "stop": {
+        "description": "Stop on failure flag",
+        "type": "bool"
+      },
+      "summary": {
+        "description": "Summary only flag",
+        "type": "bool"
+      }
+    },
+    "testName": "Optional name of specific test to run (without .py extension)",
+    "listTests": "List all available tests in the tests directory"
+  },
+  "fileDiff": {
+    "description": "Show the differnces between two files.",
+    "origFile": "Original file name",
+    "newFile": "New file name"
+  },
+  "tmplMgt": {
+    "description": "cmdPackage template managmet for transfering new or modified  command files with supporting files back to an editable install of comPackage.th supporting file",
+    "switchFlags": {
+      "black": {
+        "description": "Use +black to enable and -black to disable, tracked python file formating before template generation, and the new template after generation.",
+        "type": "bool"
+      },
+      "force": {
+        "description": "Force template generation even if files are not modified.",
+        "type": "bool"
+      }
+    },
+    "status": "Show status of all tracked files",
+    "make": "Make a template from a file that will be tracked",
+    "sync": "Syncronize all tracked files that have changes",
+    "trans": "Transfer new templates back to cmdPackage",
+    "listNew": "List current set of templates"
+  }
+}

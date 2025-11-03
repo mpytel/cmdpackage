@@ -6,10 +6,10 @@ import json
 # Template imports are now handled dynamically from the new template structure
 # These will be loaded from the templates/ directory structure
 from sys import version_info
-from cmdpackage.defs.runSubProc import runSubProc, CompletedProcess
 from subprocess import Popen, PIPE
 from getpass import getuser
-
+from ..defs.utilities import load_template, list_files_os_walk, runSubProc, CompletedProcess, init_git_repo, sanitize_var_name
+from ..defs.logIt import printIt, lable
 
 class WritePyProject:
     """
@@ -32,238 +32,117 @@ class WritePyProject:
         self.temp_sync_files = {}
         self.fields = ['name', 'version', 'description', 'readme',
                       'license', 'authors', 'authorsEmail', 'maintainers', 'maintainersEmail', 'classifiers']
-    
-    def _load_template(self, template_file_path: str, template_name: str | None = None):
-        """
-        Load a template dynamically from the new templates directory structure.
+
+        self.src_dir = os.path.dirname(os.path.dirname(__file__))
+
+        # Collect user input or use defaults
+        self.projFields = self._collect_project_info()    
         
-        Args:
-            template_file_path (str): Path to the template file relative to package root
-            template_name (str): Name of the template object to extract (optional)
-            
-        Returns:
-            Template object or content
-        """
-        import importlib.util
-        
-        # Get the cmdpackage directory (templates are now in src/cmdpackage/templates/)
-        package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
-        full_path = os.path.join(package_dir, template_file_path)
-        
-        if not os.path.exists(full_path):
-            raise FileNotFoundError(f"Template file not found: {full_path}")
-            
-        # Load the module
-        module_name = os.path.basename(template_file_path)[:-3]  # Remove .py
-        spec = importlib.util.spec_from_file_location(module_name, full_path)
-        
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Could not load template module from {full_path}")
-            
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        
-        # If template_name is specified, return that specific object
-        if template_name:
-            if hasattr(module, template_name):
-                return getattr(module, template_name)
-            else:
-                raise AttributeError(f"Template '{template_name}' not found in {module_name}")
-        
-        # Otherwise, return the module
-        return module
-        
-    def write_py_project(self) -> dict[str, str | bool]:
+    def write_py_project(self) -> dict[str, str]:
         """
         Main method to write pyproject.toml and related files.
         
         Returns:
             dict: Dictionary containing all project configuration values
         """
-        # Collect user input or use defaults
-        rtn_dict = self._collect_project_info()
-        
+
         # Write project files
-        self._write_pyproject_toml(rtn_dict)
-        self._write_readme_files(rtn_dict)
-        self._write_gitignore_and_init_git(rtn_dict)
+        init_repo = self._write_py_project_files()
+        if init_repo:
+            init_git_repo()
+
+        return self.projFields
         
-        # Update temp sync data
-        self._write_temp_sync_data(rtn_dict)
-        
-        return rtn_dict
-        
-    def _collect_project_info(self) -> dict[str, str | bool]:
+    def _collect_project_info(self) -> dict[str, str]:
         """Collect project information from user input or defaults."""
-        rtn_dict = {}
+        self.projFields = {}
         
         for field_name in self.fields:
-            default_value = self._get_default_values(field_name, rtn_dict)
+            default_value = self._get_default_values(field_name)
             if self.use_defaults:
-                rtn_dict[field_name] = default_value
+                self.projFields[field_name] = default_value
                 continue
             else:
-                if field_name == 'description':
-                    default_value = default_value.replace('name', rtn_dict['name'])
+                # When the str 'name' is in description, replace 'name' with actual project name
+                # if field_name == 'description':
+                #     default_value = default_value.replace('name', self.projFields['name'])
                 input_msg = self._input_message(field_name, default_value)
                 input_value = self._get_input(input_msg, default=default_value)
-                rtn_dict[field_name] = input_value
-                
-        return rtn_dict
+                self.projFields[field_name] = input_value
         
-    def _write_pyproject_toml(self, rtn_dict: dict[str, str | bool]) -> None:
-        """Write the pyproject.toml file."""
-        # Load the pyproject template dynamically
-        pyproject_base_template = self._load_template(
-            "templates/pyproject_base_template.py", 
-            "pyproject_base_template"
-        )
-        
-        pyproject_content = pyproject_base_template.substitute(
-            name=rtn_dict['name'],
-            version=rtn_dict['version'],
-            description=rtn_dict['description'],
-            readme=rtn_dict['readme'],
-            license=rtn_dict['license'],
-            authors=rtn_dict['authors'],
-            authorsEmail=rtn_dict['authorsEmail'],
-            maintainers=rtn_dict['maintainers'],
-            maintainersEmail=rtn_dict['maintainersEmail'],
-            classifiers=self._gen_classifiers()
-        )
-        
-        file_name = 'pyproject.toml'
-        with open(file_name, 'w') as pyproject_file:
-            self._write_content(pyproject_file, pyproject_content)
-            
-        # Track for sync data
-        # self._temp_sync_file_json("pyproject_base_template",
-        #                         pyproject_base_template.__module__ if hasattr(pyproject_base_template, '__module__') else "pyprojectTemplate",
-        #                         os.path.abspath(file_name), pyproject_content)
-        
-    def _write_readme_files(self, rtn_dict: dict[str, str | bool]) -> None:
-        """Write README.md and command modifications README files."""
-        # Load README templates dynamically
-        readme_template_obj = self._load_template(
-            "templates/README_template.py", 
-            "README_template"
-        )
-        
-        # Write main README.md
-        readme_content = readme_template_obj.substitute(
-            packName=rtn_dict['name'], 
-            version=rtn_dict['version'], 
-            description=rtn_dict['description'])
-        
-        readme_file_name = str(rtn_dict['readme'])
-        with open(readme_file_name, 'w') as readme_file:
-            self._write_content(readme_file, readme_content)
-            
-        # Track for sync data
-        self._temp_sync_file_json("README_template", "templates/README_template.py",
-                                os.path.abspath(readme_file_name), readme_content)
-        
-        # Load command modifications README template
-        readme_cmd_template_obj = self._load_template(
-            "templates/README_Command_modifications.py", 
-            "README_Command_modifications_template"
-        )
-        
-        # Write command modifications README
-        readme_cmd_content = readme_cmd_template_obj.substitute(
-            packName=rtn_dict['name'], 
-            version=rtn_dict['version'],
-            readme=rtn_dict['readme'],
-            license=rtn_dict['license'],
-            authors=rtn_dict['authors'],
-            authorsEmail=rtn_dict['authorsEmail'])
-        
-        cmd_readme_file_name = str(rtn_dict['readme']).replace('.md', '_Command_modifications.md')
-        with open(cmd_readme_file_name, 'w') as readme_file:
-            self._write_content(readme_file, readme_cmd_content)
-            
-        # Track for sync data
-        self._temp_sync_file_json("README_Command_modifications_template", "templates/README_Command_modifications.py",
-                                  os.path.abspath(cmd_readme_file_name), readme_cmd_content)
-        
-    def _write_gitignore_and_init_git(self, rtn_dict: dict[str, str | bool]) -> None:
-        """Write .gitignore file and initialize git repository."""
-        if self.use_defaults:
-            with_gitignore = 'y'
-        else:
-            with_gitignore = self._get_input('commit a git repo [Y/n]?: ', default='y')
-            
-        if with_gitignore.lower() == 'y':
-            # Load gitignore content dynamically (it's a string, not a template)
-            gitignore_content = self._load_template(
-                "templates/gitignore_content.py", 
-                "gitignore_content"
-            )
-            
-            gitignore_file_name = '.gitignore'
-            with open(gitignore_file_name, 'w') as gitignore_file:
-                self._write_content(gitignore_file, str(gitignore_content))
-                
-            # Track for sync data
-            # self._temp_sync_file_json("gitignore_content",
-            #                         gitignore_content.__module__ if hasattr(gitignore_content, '__module__') else "pyprojectTemplate",
-            #                         os.path.abspath(gitignore_file_name), gitignore_content)
-                
-            rtn_cp = self._init_git_repo()
-            if rtn_cp.returncode == 0:
-                rtn_dict['gitInitialized'] = True
-                print("✅ Initialized git repository")
-            else:
-                rtn_dict['gitInitialized'] = False
-                print("❌ Failed to initialize git repository")
-                print(f"{rtn_cp.returncode}    {rtn_cp.stdout}")
-        else:
-            rtn_dict['gitInitialized'] = False
-            
-    def _write_temp_sync_data(self, rtn_dict: dict[str, str | bool]) -> None:
-        """Write temporary sync data JSON file by reading existing content and updating it."""
-        if self.gen_temp_sync_data_write:
-            # Write sync data file to current working directory
-            sync_file_path = os.path.join(os.path.abspath("."), "genTempSyncData.json")
-            
-            # Read existing sync data if it exists
-            existing_data = {}
-            if os.path.exists(sync_file_path):
-                try:
-                    with open(sync_file_path, "r") as rf:
-                        existing_data = json.load(rf)
-                except (json.JSONDecodeError, FileNotFoundError):
-                    # If file is corrupted or doesn't exist, start with empty dict
-                    existing_data = {}
-            
-            # Update existing data with new pyproject data
-            existing_data.update(self.temp_sync_files)
-            
-            # Write updated data back to file (no need to create directories since it's in current working directory)
-            with open(sync_file_path, "w") as wf:
-                json.dump(existing_data, wf, indent=4)
-                
-    def _temp_sync_file_json(self, template: str, temp_file_name: str, out_file_name: str, file_str: str) -> None:
-        """
-        Create a temp sync file JSON entry.
-        
-        Args:
-            template (str): Template name
-            temp_file_name (str): Template file name
-            out_file_name (str): Output file name
-            file_str (str): File content for MD5 hash calculation
-            
-        Returns:
-            None
-        """
-        if self.gen_temp_sync_data_write:
-            file_md5 = md5(file_str.encode('utf-8')).hexdigest()
-            self.temp_sync_files[out_file_name] = {
-                "fileMD5": file_md5,
-                "template": template,
-                "tempFileName": temp_file_name
-            }
+        # Generate classifiers
+        self.projFields['classifiers'] = self._gen_classifiers()
+
+        return self.projFields
     
+    def _write_py_project_files(self) -> bool:
+        """
+        Write all project files from their templates in proj_templats dirctory.
+        
+        Returns:
+            bool: True if user wants a git repository, False otherwise
+
+        """
+        repo_needed = False
+    
+        template_files = list_files_os_walk(self.src_dir)
+
+        for template_file in template_files:
+            if "__init__" in template_file:
+                continue
+            tmpFlileName = os.path.relpath(template_file, self.src_dir)
+            if not tmpFlileName.startswith("proj_templates"):
+                continue
+            if tmpFlileName.startswith("proj_templates/classifiers"):
+                continue
+            tmplName = os.path.splitext(os.path.split(tmpFlileName)[1])[0]
+
+            # only process pyproject, README, and .gitignore templates
+            if tmplName not in ['pyproject_template', 'README_template', '.gitignore_template']:
+                continue
+            if tmplName == ".gitignore_template":
+                tmplName = "gitignore_template"
+                # ask user if they want to init a git repo
+                repo_needed = self._ask_it_repo_needed()
+
+            pyproject_base_template = load_template(tmpFlileName, tmplName)
+
+            pyproject_content = pyproject_base_template.substitute(
+                packName=self.projFields['name'],
+                version=self.projFields['version'],
+                description=self.projFields['description'],
+                readme=self.projFields['readme'],
+                license=self.projFields['license'],
+                authors=self.projFields['authors'],
+                authorsEmail=self.projFields['authorsEmail'],
+                maintainers=self.projFields['maintainers'],
+                maintainersEmail=self.projFields['maintainersEmail'],
+                classifiers=self.projFields['classifiers']
+            )
+
+            # correct file names for README and .gitignore
+            file_name = tmpFlileName.replace("proj_templates/", "")
+            file_name = file_name.replace("_template", "")
+            if file_name == "README.py":
+                file_name = file_name.replace(".py", ".md")
+            if file_name == ".gitignore.py":
+                file_name = ".gitignore"
+
+            with open(file_name, 'w') as pyproject_file:
+                self._write_content(pyproject_file, pyproject_content)
+
+            printIt(file_name, lable.SAVED)
+        return repo_needed
+
+    def _ask_it_repo_needed(self) -> bool:
+        """Ask user if they want to initialize a git repository."""
+        if self.use_defaults:
+            repo_needed = 'y'
+        else:
+            repo_needed = self._get_input(
+                'commit a git repo [Y/n]?: ', default='y')
+        return repo_needed.lower() == 'y'
+
     def _input_message(self, field_name: str, default_value: str) -> str:
         """Generate input message for user prompts."""
         return u'{} ({}): '.format(field_name, default_value)
@@ -276,12 +155,12 @@ class WritePyProject:
         classifiers = [python, local]
 
         # Load classifier templates dynamically
-        classifiers_line = self._load_template(
-            "templates/classifiers_line.py", 
+        classifiers_line = load_template(
+            "proj_templates/classifiers_line.py",
             "classifiers_line"
         )
-        classifiers_template = self._load_template(
-            "templates/classifiers_template.py", 
+        classifiers_template = load_template(
+            "proj_templates/classifiers_template.py",
             "classifiers_template"
         )
         
@@ -290,13 +169,6 @@ class WritePyProject:
             classifiers_lines += classifiers_line.substitute(classifier=cls)
 
         return classifiers_template.substitute(classifiers=classifiers_lines)
-
-    def _init_git_repo(self, commit_msg: str = "initial commit") -> CompletedProcess:
-        """Initialize git repository."""
-        rtn_cp: CompletedProcess = runSubProc('ls .git')
-        if rtn_cp.returncode != 0:
-            rtn_cp = runSubProc(f'git init')
-        return rtn_cp
 
     def _get_username(self) -> str:
         """Get git config values."""
@@ -321,7 +193,7 @@ class WritePyProject:
 
         return username
 
-    def _get_default_values(self, field_name: str, rtn_dict: dict | None = None) -> str:
+    def _get_default_values(self, field_name: str) -> str:
         """Get default values for project fields."""
         if field_name == 'name':
             rtn_str = os.path.relpath('.', '..')
@@ -330,7 +202,7 @@ class WritePyProject:
         if field_name == 'version':
             return '0.1.0'
         elif field_name == 'description':
-            return 'name related project'
+            return 'A command line interface package for developers to build upon.'
         elif field_name == 'readme':
             return 'README.md'
         elif field_name == 'license':
@@ -341,13 +213,13 @@ class WritePyProject:
             return f'{self._get_username()}@domain.com'
         elif field_name == 'maintainers':
             # Use authors value if available, otherwise fall back to username
-            if rtn_dict and 'authors' in rtn_dict:
-                return rtn_dict['authors']
+            if self.projFields and 'authors' in self.projFields:
+                return self.projFields['authors']
             return self._get_username()
         elif field_name == 'maintainersEmail':
             # Use authorsEmail value if available, otherwise fall back to username@domain.com
-            if rtn_dict and 'authorsEmail' in rtn_dict:
-                return rtn_dict['authorsEmail']
+            if self.projFields and 'authorsEmail' in self.projFields:
+                return self.projFields['authorsEmail']
             return f'{self._get_username()}@domain.com'
         else: return ''
 
@@ -371,7 +243,7 @@ class WritePyProject:
 
 
 # Convenience functions to maintain backward compatibility
-def writePyProject(usedefaults: bool, gen_temp_sync_data_write: bool = False) -> dict[str, str | bool]:
+def writePyProject(usedefaults: bool, gen_temp_sync_data_write: bool = False) -> dict[str, str]:
     """
     Backward compatibility function that creates and uses the WritePyProject class.
     
@@ -384,55 +256,3 @@ def writePyProject(usedefaults: bool, gen_temp_sync_data_write: bool = False) ->
     """
     py_project_writer = WritePyProject(usedefaults, gen_temp_sync_data_write)
     return py_project_writer.write_py_project()
-
-
-def commitGitRepo(commit_msg: str = "commit") -> CompletedProcess:
-    """Commit git repository changes."""
-    rtn_cp: CompletedProcess = runSubProc(f'git add .')
-    if rtn_cp.returncode == 0:
-        rtn_cp = runSubProc(f'git commit -m "{commit_msg}"', noOutput=False)
-    return rtn_cp
-
-
-def initGitRepo(commit_msg: str = "initial commit") -> CompletedProcess:
-    """Initialize git repository (backward compatibility)."""
-    rtn_cp: CompletedProcess = runSubProc('ls .git')
-    if rtn_cp.returncode != 0:
-        rtn_cp = runSubProc(f'git init')
-    return rtn_cp
-
-
-def get_username() -> str:
-    """Get git username (backward compatibility)."""
-    writer = WritePyProject()
-    return writer._get_username()
-
-
-def default_values(field_name: str, rtn_dict: dict | None = None) -> str:
-    """Get default values (backward compatibility)."""
-    writer = WritePyProject()
-    return writer._get_default_values(field_name, rtn_dict)
-
-
-def get_input(input_msg: str, default=None) -> str:
-    """Get user input (backward compatibility)."""
-    writer = WritePyProject()
-    return writer._get_input(input_msg, default)
-
-
-def write_content(file, content: str) -> None:
-    """Write content to file (backward compatibility)."""
-    writer = WritePyProject()
-    writer._write_content(file, content)
-
-
-def input_message(field_name: str, default_value: str) -> str:
-    """Generate input message (backward compatibility)."""
-    writer = WritePyProject()
-    return writer._input_message(field_name, default_value)
-
-
-def gen_classifiers() -> str:
-    """Generate classifiers (backward compatibility)."""
-    writer = WritePyProject()
-    return writer._gen_classifiers()
