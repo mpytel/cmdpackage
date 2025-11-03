@@ -14,14 +14,14 @@ from ..defs.validation import (
     check_command_uses_argcmddef_template,
 )
 from ..classes.argParse import ArgParse
-from ..classes.optSwtces import saveCmdSwtcFlags
+from ..classes.optSwitches import saveCmdswitchFlags
 from .commands import Commands
 
 # from .templates.argCmdDef import cmdDefTemplate
 # from .templates.argDefTemplate import argDefTemplate
 
 commandJsonDict = {
-    "commands_newCmd": {"description": "Command commands_newCmd", "swtcFlags": {}}
+    "commands_newCmd": {"description": "Command commands_newCmd", "switchFlags": {}}
 }
 
 readline.parse_and_bind("tab: compleat")
@@ -153,7 +153,7 @@ def newCmd(argParse: ArgParse):
 
             # Save newCmd-specific flags if any were found
             if newcmd_flags:
-                saveCmdSwtcFlags("newCmd", newcmd_flags, newcmd_swtc_flags)
+                saveCmdswitchFlags("newCmd", newcmd_flags, newcmd_swtc_flags)
 
             # Extract boolean flags for the new command being created
             new_cmd_flags = {}
@@ -169,11 +169,11 @@ def newCmd(argParse: ArgParse):
 
             # Save the flags if any were found
             if new_cmd_flags:
-                # Create swtcFlags dict for the new command
+                # Create switchFlags dict for the new command
                 new_cmd_swtc_flags = {}
                 for flag_name in new_cmd_flags.keys():
                     new_cmd_swtc_flags[flag_name] = {"type": "bool"}
-                saveCmdSwtcFlags(newCmdName, new_cmd_flags, new_cmd_swtc_flags)
+                saveCmdswitchFlags(newCmdName, new_cmd_flags, new_cmd_swtc_flags)
 
         printIt(f'"{newCmdName}" added using {template_name} template.', lable.NewCmd)
     else:
@@ -363,7 +363,7 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
 
     # Handle option flags if they exist
     optionFlags = theArgs.get("_optionFlags", {})
-    newCommandCMDJson["swtcFlags"] = optionFlags
+    newCommandCMDJson["switchFlags"] = optionFlags
 
     argIndex = 1
     while argIndex < len(theArgs):  # add subarg functions

@@ -511,7 +511,7 @@ def test_swtc_flags_with_arguments(result: TestResult) -> bool:
     # Check results
     cmd_data = get_command_data("testValidation")
     swtc_arg_ok = "swtcArg" in cmd_data
-    verbose_flag_ok = "swtcFlags" in cmd_data and "verbose" in cmd_data["swtcFlags"]
+    verbose_flag_ok = "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
     list_rejected = "list" not in cmd_data
 
     # Check output messages
@@ -597,9 +597,9 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    debug_flag_ok = "swtcFlags" in cmd_data and "debug" in cmd_data["swtcFlags"]
+    debug_flag_ok = "switchFlags" in cmd_data and "debug" in cmd_data["switchFlags"]
     verbose_option_ok = (
-        "swtcFlags" in cmd_data and "verbose" in cmd_data["swtcFlags"]
+        "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
     )
     valid_comp_ok = "validComprehensive" in cmd_data
     while_rejected = "while" not in cmd_data

@@ -11,32 +11,32 @@ rcFileDir = Path(__file__).resolve().parents[2]
 rcFileName = rcFileDir.joinpath(f".${packName}rc")
 
 
-class OptSwtces:
-    def __init__(self, swtcFlags: dict) -> None:
-        self.swtcFlags = swtcFlags
-        self.optSwtces = readOptSwtces()
+class optSwitches:
+    def __init__(self, switchFlags: dict) -> None:
+        self.switchFlags = switchFlags
+        self.optSwitches = readoptSwitches()
 
     def toggleSwtcFlag(self, swtcFlag: str):
-        optSwtces = {}
-        optSwtces["swtcFlags"] = {}
+        optSwitches = {}
+        optSwitches["switchFlags"] = {}
         currSwtcFlag = swtcFlag[1:]
         if swtcFlag[0] in "+":
             currSwtcValue = (
-                True  # not (self.optSwtces["swtcFlags"][currSwtcFlag] == True)
+                True  # not (self.optSwitches["switchFlags"][currSwtcFlag] == True)
             )
         else:
             currSwtcValue = False
         try:
-            self.optSwtces["swtcFlags"][currSwtcFlag] = currSwtcValue
+            self.optSwitches["switchFlags"][currSwtcFlag] = currSwtcValue
         except:
             print("here")
-            self.optSwtces["swtcFlags"][currSwtcFlag] = True
-        writeOptJson(self.optSwtces, self.swtcFlags)
+            self.optSwitches["switchFlags"][currSwtcFlag] = True
+        writeOptJson(self.optSwitches, self.switchFlags)
 
 
-def saveCmdSwtcFlags(cmdName: str, cmdOptions: dict, cmdSwtcFlags: dict):
+def saveCmdswitchFlags(cmdName: str, cmdOptions: dict, cmdswitchFlags: dict):
     \"\"\"Save command-specific swtc flags to .${packName}rc\"\"\"
-    rcData = readOptSwtces()
+    rcData = readoptSwitches()
 
     # Initialize command flags section if it doesn't exist
     if "commandFlags" not in rcData:
@@ -46,8 +46,8 @@ def saveCmdSwtcFlags(cmdName: str, cmdOptions: dict, cmdSwtcFlags: dict):
 
     # Process each command option
     for optionName, optionValue in cmdOptions.items():
-        if optionName in cmdSwtcFlags:
-            flagDef = cmdSwtcFlags[optionName]
+        if optionName in cmdswitchFlags:
+            flagDef = cmdswitchFlags[optionName]
             if flagDef["type"] == "bool":
                 # Boolean flag - store true/false
                 rcData["commandFlags"][cmdName][optionName] = bool(optionValue)
@@ -67,7 +67,7 @@ def saveCmdSwtcFlags(cmdName: str, cmdOptions: dict, cmdSwtcFlags: dict):
 
 def toggleCmdSwtcFlag(cmdName: str, flagName: str, setValue: bool):
     \"\"\"Toggle a command-specific boolean flag in .${packName}rc\"\"\"
-    rcData = readOptSwtces()
+    rcData = readoptSwitches()
 
     # Initialize command flags section if it doesn't exist
     if "commandFlags" not in rcData:
@@ -86,15 +86,15 @@ def toggleCmdSwtcFlag(cmdName: str, flagName: str, setValue: bool):
     printIt(f"Command flag '{flagName}' {status} for '{cmdName}'", lable.INFO)
 
 
-def getCmdSwtcFlags(cmdName: str) -> dict:
+def getCmdswitchFlags(cmdName: str) -> dict:
     \"\"\"Get stored command-specific swtc flags from .${packName}rc\"\"\"
-    rcData = readOptSwtces()
+    rcData = readoptSwitches()
     return rcData.get("commandFlags", {}).get(cmdName, {})
 
 
-def removeCmdSwtcFlags(cmdName: str):
+def removeCmdswitchFlags(cmdName: str):
     \"\"\"Remove command-specific swtc flags from .${packName}rc when command is deleted\"\"\"
-    rcData = readOptSwtces()
+    rcData = readoptSwitches()
 
     # Check if command exists in commandFlags
     if "commandFlags" in rcData and cmdName in rcData["commandFlags"]:
@@ -105,7 +105,7 @@ def removeCmdSwtcFlags(cmdName: str):
             del rcData["commandFlags"]
 
         # If the entire file would be empty or only has empty sections, delete the file
-        if not rcData.get("swtcFlags") and not rcData.get("commandFlags"):
+        if not rcData.get("switchFlags") and not rcData.get("commandFlags"):
             if rcFileName.is_file():
                 rcFileName.unlink()
                 # printIt(f"Removed '{cmdName}' flags and deleted empty .${packName}rc file", lable.INFO)
@@ -119,42 +119,42 @@ def removeCmdSwtcFlags(cmdName: str):
         pass
 
 
-def readOptSwtces() -> dict:
+def readoptSwitches() -> dict:
     global rcFileName
-    optSwtces = {}
+    optSwitches = {}
     if rcFileName.is_file():
         with open(rcFileName, "r") as rf:
             rawRcJson = json.load(rf)
-        optSwtces["swtcFlags"] = rawRcJson.get("swtcFlags", {})
-        optSwtces["commandFlags"] = rawRcJson.get("commandFlags", {})
+        optSwitches["switchFlags"] = rawRcJson.get("switchFlags", {})
+        optSwitches["commandFlags"] = rawRcJson.get("commandFlags", {})
     else:
-        optSwtces["swtcFlags"] = {}
-        optSwtces["commandFlags"] = {}
-    return optSwtces
+        optSwitches["switchFlags"] = {}
+        optSwitches["commandFlags"] = {}
+    return optSwitches
 
 
-def writeOptJson(optSwtces: dict, swtcFlags: dict) -> dict:
+def writeOptJson(optSwitches: dict, switchFlags: dict) -> dict:
     global rcFileName
     rawRC = {}
     if rcFileName.is_file():
         with open(rcFileName, "r") as rf:
             rawRC = json.load(rf)
-    rawRC = rawRC | optSwtces
-    for swtcFlag in swtcFlags.keys():  # fill in missing items'
+    rawRC = rawRC | optSwitches
+    for swtcFlag in switchFlags.keys():  # fill in missing items'
         try:
-            _ = rawRC["swtcFlags"][swtcFlag]
+            _ = rawRC["switchFlags"][swtcFlag]
         except:
-            rawRC["swtcFlags"][swtcFlag] = False
-    # printIt(formatOptStr(rawRC["swtcFlags"]), lable.INFO)
+            rawRC["switchFlags"][swtcFlag] = False
+    # printIt(formatOptStr(rawRC["switchFlags"]), lable.INFO)
     with open(rcFileName, "w") as wf:
         json.dump(rawRC, wf, indent=2)
     return rawRC
 
 
-def formatOptStr(optSwtces: dict) -> str:
+def formatOptStr(optSwitches: dict) -> str:
     rtnStr = "Current option values: "
-    for cmdOpt in optSwtces:
-        rtnStr += f"-{cmdOpt}={optSwtces[cmdOpt]}, "
+    for cmdOpt in optSwitches:
+        rtnStr += f"-{cmdOpt}={optSwitches[cmdOpt]}, "
     rtnStr = rtnStr[:-2]
     return rtnStr
 """))

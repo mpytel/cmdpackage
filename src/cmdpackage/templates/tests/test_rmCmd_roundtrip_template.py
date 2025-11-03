@@ -167,7 +167,7 @@ def check_flag_in_${packName}rc(cmd_name: str, flag_name: str) -> bool:
 def check_swtc_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
     \"\"\"Check if a swtc flag is properly defined in commands.json\"\"\"
     cmd_data = get_command_data(cmd_name)
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
     flag_def = swtc_flags.get(flag_name, {})
     return flag_def.get("type") == flag_type
 
@@ -184,7 +184,7 @@ def file_contains_flag(file_path: str, flag_name: str) -> bool:
     try:
         with open(full_path, "r") as f:
             content = f.read()
-            return flag_name in content and "swtcFlags" in content
+            return flag_name in content and "switchFlags" in content
     except Exception:
         return False
 

@@ -10,14 +10,14 @@ from ..defs.validation import (
     check_command_uses_argcmddef_template,
 )
 from ..classes.argParse import ArgParse
-from ..classes.optSwtces import saveCmdSwtcFlags
+from ..classes.optSwitches import saveCmdswitchFlags
 from .commands import Commands
 from .templates.argCmdDef import cmdDefTemplate
 from .templates.argDefTemplate import argDefTemplate
 import readline
 
 commandJsonDict = {
-    "commands_modCmd": {"description": "Command commands_modCmd", "swtcFlags": {}}
+    "commands_modCmd": {"description": "Command commands_modCmd", "switchFlags": {}}
 }
 
 readline.parse_and_bind("tab: compleat")
@@ -123,9 +123,9 @@ def modCmd(argParse: ArgParse):
                         # String option - save with empty string default
                         new_cmd_flags[option_name] = ""
 
-                # Save the flags to .${packName}rc using the saveCmdSwtcFlags function
+                # Save the flags to .${packName}rc using the saveCmdswitchFlags function
                 if new_cmd_flags:
-                    saveCmdSwtcFlags(modCmdName, new_cmd_flags, option_flags)
+                    saveCmdswitchFlags(modCmdName, new_cmd_flags, option_flags)
 
             # Print detailed modification results
             print_modification_results(modCmdName, tracking)
@@ -363,11 +363,11 @@ def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs: dict) -> None:
     # Handle option flags if they exist
     optionFlags = theArgs.get("_optionFlags", {})
     if optionFlags:
-        # Initialize swtcFlags if it doesn't exist
-        if "swtcFlags" not in commands[modCmdName]:
-            commands[modCmdName]["swtcFlags"] = {}
-        # Add new option flags to the command's swtcFlags
-        commands[modCmdName]["swtcFlags"].update(optionFlags)
+        # Initialize switchFlags if it doesn't exist
+        if "switchFlags" not in commands[modCmdName]:
+            commands[modCmdName]["switchFlags"] = {}
+        # Add new option flags to the command's switchFlags
+        commands[modCmdName]["switchFlags"].update(optionFlags)
 
     # Add regular arguments (skip _optionFlags)
     while argIndex < len(theArgs):

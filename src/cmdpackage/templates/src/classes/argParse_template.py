@@ -65,7 +65,7 @@ class ArgParse:
             argumentsHelp = ""
             theCmds = Commands()
             commands = theCmds.commands
-            swtcFlag = theCmds.swtcFlags["swtcFlags"]
+            swtcFlag = theCmds.switchFlags["switchFlags"]
             for cmdName in commands:
                 # Skip metadata entries that are not actual commands
                 if cmdName in ["description", "_globalSwtceFlags"] or not isinstance(
@@ -89,7 +89,7 @@ class ArgParse:
                             cmdHelp += "\\n"
                         commandsHelp += cmdHelp
                         needCmdDescription = False
-                    elif argName not in ["swtcFlags"]:
+                    elif argName not in ["switchFlags"]:
                         # Only process actual arguments, not metadata
                         argHelp = (
                             cStr(f"  <{argName}> ", color.CYAN)
@@ -143,7 +143,7 @@ class ArgParse:
         \"\"\"Extract command-specific options(--option and -option) from arguments\"\"\"
         # Get global swtc flags to differentiate from command-specific flags
         theCmds = Commands()
-        global_swtc_flags = theCmds.swtcFlags.get("swtcFlags", {})
+        global_swtc_flags = theCmds.switchFlags.get("switchFlags", {})
 
         filtered_args = []
         i = 0

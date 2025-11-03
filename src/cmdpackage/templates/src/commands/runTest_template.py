@@ -16,7 +16,7 @@ from .commands import Commands
 commandJsonDict = {
     "runTest": {
         "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
-        "swtcFlags": {
+        "switchFlags": {
             "verbose": {"description": "Verbose output flag", "type": "bool"},
             "stop": {"description": "Stop on failure flag", "type": "bool"},
             "summary": {"description": "Summary only flag", "type": "bool"},
@@ -177,9 +177,9 @@ def runTest(argParse):
     ]
 
     # Get command-line flags from .${packName}rc file after flag processing
-    from ..classes.optSwtces import getCmdSwtcFlags
+    from ..classes.optSwitches import getCmdswitchFlags
 
-    cmd_flags = getCmdSwtcFlags("runTest")
+    cmd_flags = getCmdswitchFlags("runTest")
     verbose = cmd_flags.get("verbose", False)
     stop_on_failure = cmd_flags.get("stop", False)
     summary_only = cmd_flags.get("summary", False)

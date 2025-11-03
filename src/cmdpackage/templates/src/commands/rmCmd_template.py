@@ -5,11 +5,11 @@ from string import Template
 
 rmCmd_template = Template(dedent("""import os, json, hashlib
 from ..defs.logIt import printIt, lable, cStr, color
-from ..classes.optSwtces import removeCmdSwtcFlags
+from ..classes.optSwitches import removeCmdswitchFlags
 from .commands import Commands
 
 commandJsonDict = {
-    "commands_rmCmd": {"description": "Command commands_rmCmd", "swtcFlags": {}}
+    "commands_rmCmd": {"description": "Command commands_rmCmd", "switchFlags": {}}
 }
 
 cmdObj = Commands()
@@ -94,10 +94,10 @@ def rmCmd(argParse):
         for argIndex in range(1, len(theArgs)):
             anArg = theArgs[argIndex]
 
-            # Check if anArg is a swtc flag name (check if it exists in swtcFlags)
+            # Check if anArg is a swtc flag name (check if it exists in switchFlags)
             if (
-                "swtcFlags" in commands[cmdName]
-                and anArg in commands[cmdName]["swtcFlags"]
+                "switchFlags" in commands[cmdName]
+                and anArg in commands[cmdName]["switchFlags"]
             ):
                 # Handle swtc flag removal by flag name (without -)
                 chkRm: str = input(
@@ -121,8 +121,8 @@ def rmCmd(argParse):
                 # Handle swtc flag removal with dash prefix
                 flagName = anArg.lstrip("-")  # Remove - or -- prefix
                 if (
-                    "swtcFlags" in commands[cmdName]
-                    and flagName in commands[cmdName]["swtcFlags"]
+                    "switchFlags" in commands[cmdName]
+                    and flagName in commands[cmdName]["switchFlags"]
                 ):
                     chkRm: str = input(
                         f"Permanently delete swtc flag {anArg} from {cmdName} (y/N):\\n"
@@ -188,13 +188,13 @@ def removeCmdSwtcFlag(cmdName, flagName):
     with open(jsonFileName, "r") as rf:
         theJson = json.load(rf)
         if (
-            "swtcFlags" in theJson[cmdName]
-            and flagName in theJson[cmdName]["swtcFlags"]
+            "switchFlags" in theJson[cmdName]
+            and flagName in theJson[cmdName]["switchFlags"]
         ):
-            del theJson[cmdName]["swtcFlags"][flagName]
-            # If swtcFlags becomes empty, we can leave it empty
-            if not theJson[cmdName]["swtcFlags"]:
-                theJson[cmdName]["swtcFlags"] = {}
+            del theJson[cmdName]["switchFlags"][flagName]
+            # If switchFlags becomes empty, we can leave it empty
+            if not theJson[cmdName]["switchFlags"]:
+                theJson[cmdName]["switchFlags"] = {}
     with open(jsonFileName, "w") as wf:
         json.dump(theJson, wf, indent=2)
 
@@ -376,6 +376,6 @@ def removeCmd(cmdName):
         os.remove(pyFileName)
 
     # Remove command flags from .${packName}rc
-    removeCmdSwtcFlags(cmdName)
+    removeCmdswitchFlags(cmdName)
 """))
 

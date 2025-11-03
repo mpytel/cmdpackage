@@ -180,7 +180,7 @@ def check_flag_value(cmd_name: str, flag_name: str, expected_value) -> bool:
 def check_swtc_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
     \"\"\"Check if a swtc flag is properly defined in commands.json\"\"\"
     cmd_data = get_command_data(cmd_name)
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
     flag_def = swtc_flags.get(flag_name, {})
     return flag_def.get("type") == flag_type
 
@@ -350,7 +350,7 @@ def test_add_boolean_flags(result: TestResult) -> bool:
 
     # Check if flags were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
 
     force_flag_ok = (
         swtc_flags.get("f", {}).get("type") == "bool"
@@ -387,7 +387,7 @@ def test_add_string_options(result: TestResult) -> bool:
 
     # Check if options were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
 
     input_option_ok = (
         swtc_flags.get("input", {}).get("type") == "str"
@@ -442,7 +442,7 @@ def test_modify_mixed_args_and_flags(result: TestResult) -> bool:
     arg_ok = cmd_data.get("arg4") == "New fourth argument"
 
     # Check swtc flags
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
     flag_ok = (
         swtc_flags.get("e", {}).get("type") == "bool"
         and swtc_flags.get("e", {}).get("description") == "Enable feature flag"
@@ -559,7 +559,7 @@ def test_modify_existing_flags(result: TestResult) -> bool:
 
     # Check if flag descriptions were updated
     cmd_data = get_command_data("modTestCmd02")
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
 
     verbose_ok = (
         swtc_flags.get("v", {}).get("description")
@@ -597,7 +597,7 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
 
     # Check if default descriptions were used
     cmd_data = get_command_data("modTestEmpty")
-    swtc_flags = cmd_data.get("swtcFlags", {})
+    swtc_flags = cmd_data.get("switchFlags", {})
 
     # Should have some default description for the flag
     flag_desc = swtc_flags.get("v", {}).get("description", "")

@@ -7,13 +7,13 @@ cmdSwitchbord_template = Template(dedent("""import sys, traceback
 from argparse import Namespace
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
-from .cmdOptSwtcbord import cmdOptSwtcbord
+from .cmdOptSwitchbord import cmdOptSwitchbord
 from ..classes.argParse import ArgParse
-from ..classes.optSwtces import saveCmdSwtcFlags, toggleCmdSwtcFlag
+from ..classes.optSwitches import saveCmdswitchFlags, toggleCmdSwtcFlag
 
 cmdObj = Commands()
 commands = cmdObj.commands
-swtcFlags = cmdObj.swtcFlags["swtcFlags"]
+switchFlags = cmdObj.switchFlags["switchFlags"]
 
 
 def printCommandHelp(cmdName: str):
@@ -34,17 +34,17 @@ def printCommandHelp(cmdName: str):
     # Add arguments
     args = []
     for key, value in cmdInfo.items():
-        if key not in ["description", "swtcFlags"] and isinstance(value, str):
+        if key not in ["description", "switchFlags"] and isinstance(value, str):
             args.append(f"<{key}>")
 
     if args:
         usage_parts.extend(args)
 
     # Add option flags
-    swtcFlags = cmdInfo.get("swtcFlags", {})
-    if swtcFlags:
+    switchFlags = cmdInfo.get("switchFlags", {})
+    if switchFlags:
         flag_parts = []
-        for flagName, flagInfo in swtcFlags.items():
+        for flagName, flagInfo in switchFlags.items():
             if flagInfo.get("type") == "bool":
                 flag_parts.append(f"[+{flagName}|-{flagName}]")
             elif flagInfo.get("type") == "str":
@@ -59,14 +59,14 @@ def printCommandHelp(cmdName: str):
     if args:
         printIt(f"{cStr('Arguments:', color.CYAN)}", lable.INFO)
         for key, value in cmdInfo.items():
-            if key not in ["description", "swtcFlags"] and isinstance(value, str):
+            if key not in ["description", "switchFlags"] and isinstance(value, str):
                 printIt(f"  {cStr(f'<{key}>', color.WHITE)}  {value}", lable.INFO)
         print()  # Extra line
 
     # Print option flags section
-    if swtcFlags:
+    if switchFlags:
         printIt(f"{cStr('Option Flags:', color.CYAN)}", lable.INFO)
-        for flagName, flagInfo in swtcFlags.items():
+        for flagName, flagInfo in switchFlags.items():
             flagType = flagInfo.get("type", "unknown")
             flagDesc = flagInfo.get("description", "No description")
 
@@ -87,7 +87,7 @@ def printCommandHelp(cmdName: str):
         print()  # Extra line
 
     # Print examples if the command has flags
-    if swtcFlags:
+    if switchFlags:
         printIt(f"{cStr('Examples:', color.CYAN)}", lable.INFO)
         example_parts = [f"${packName} {cmdName}"]
         if args:
@@ -95,10 +95,10 @@ def printCommandHelp(cmdName: str):
 
         # Show flag examples
         bool_flags = [
-            name for name, info in swtcFlags.items() if info.get("type") == "bool"
+            name for name, info in switchFlags.items() if info.get("type") == "bool"
         ]
         str_flags = [
-            name for name, info in swtcFlags.items() if info.get("type") == "str"
+            name for name, info in switchFlags.items() if info.get("type") == "str"
         ]
 
         if str_flags:
@@ -115,7 +115,7 @@ def printCommandHelp(cmdName: str):
             )
 
 
-def cmdSwtcbord(argParse: ArgParse):
+def cmdSwitcbord(argParse: ArgParse):
     global commands
     theCmd = "notSet"
     flag_toggle_occurred = False  # Track if a flag toggle happened
@@ -141,15 +141,15 @@ def cmdSwtcbord(argParse: ArgParse):
                         flagName = arg[1:]
 
                         # Check if it's a global swtc flag first
-                        if flagName in swtcFlags.keys():
-                            cmdOptSwtcbord(arg, swtcFlags)
+                        if flagName in switchFlags.keys():
+                            cmdOptSwitchbord(arg, switchFlags)
 
                         # Check if it's a command-specific flag
-                        if cmdName in commands and "swtcFlags" in commands[cmdName]:
-                            cmdSwtcFlags = commands[cmdName]["swtcFlags"]
+                        if cmdName in commands and "switchFlags" in commands[cmdName]:
+                            cmdswitchFlags = commands[cmdName]["switchFlags"]
                             if (
-                                flagName in cmdSwtcFlags
-                                and cmdSwtcFlags[flagName].get("type") == "bool"
+                                flagName in cmdswitchFlags
+                                and cmdswitchFlags[flagName].get("type") == "bool"
                             ):
                                 # This is a command-specific boolean flag
                                 setValue = arg[0] == "+"
@@ -168,17 +168,17 @@ def cmdSwtcbord(argParse: ArgParse):
                         flagName = swtcFlagChk[1:]
 
                         # Check if it's a global swtc flag first
-                        if flagName in swtcFlags.keys():
-                            cmdOptSwtcbord(swtcFlagChk, swtcFlags)
+                        if flagName in switchFlags.keys():
+                            cmdOptSwitchbord(swtcFlagChk, switchFlags)
                             exit()
 
                         # Check if it's a command-specific flag
                         cmdName = sys.argv[1]
-                        if cmdName in commands and "swtcFlags" in commands[cmdName]:
-                            cmdSwtcFlags = commands[cmdName]["swtcFlags"]
+                        if cmdName in commands and "switchFlags" in commands[cmdName]:
+                            cmdswitchFlags = commands[cmdName]["switchFlags"]
                             if (
-                                flagName in cmdSwtcFlags
-                                and cmdSwtcFlags[flagName].get("type") == "bool"
+                                flagName in cmdswitchFlags
+                                and cmdswitchFlags[flagName].get("type") == "bool"
                             ):
                                 # This is a command-specific boolean flag
                                 setValue = swtcFlagChk[0] == "+"
@@ -204,9 +204,9 @@ def cmdSwtcbord(argParse: ArgParse):
                     and argParse.cmd_options
                     and not flag_toggle_occurred
                 ):
-                    cmdSwtcFlags = commands[theCmd].get("swtcFlags", {})
-                    if cmdSwtcFlags:
-                        saveCmdSwtcFlags(theCmd, argParse.cmd_options, cmdSwtcFlags)
+                    cmdswitchFlags = commands[theCmd].get("switchFlags", {})
+                    if cmdswitchFlags:
+                        saveCmdswitchFlags(theCmd, argParse.cmd_options, cmdswitchFlags)
 
                 exec(f"from ..commands.{theCmd} import {theCmd}")
                 exec(f"{theCmd}(argParse)")

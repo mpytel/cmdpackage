@@ -11,8 +11,8 @@ from getpass import getuser
 from ..defs.utilities import load_template, list_files_os_walk, runSubProc, CompletedProcess, init_git_repo, sanitize_var_name
 from ..defs.logIt import printIt, lable, cStr, color as c
 
-LABLE_DEBUG = lable.ABORTPRT
 LABLE_DEBUG = lable.DEBUG
+LABLE_DEBUG = lable.ABORTPRT
 
 class WritePyProject:
     """

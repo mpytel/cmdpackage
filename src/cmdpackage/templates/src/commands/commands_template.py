@@ -15,12 +15,12 @@ class Commands(object):
         try:
             with open(self.cmdFileName, "r") as fr:
                 rawJson = json.load(fr)
-                self._swtcFlags = {}
+                self._switchFlags = {}
                 try:
-                    self._swtcFlags["swtcFlags"] = copy(rawJson["swtcFlags"])
-                    del rawJson["swtcFlags"]
+                    self._switchFlags["switchFlags"] = copy(rawJson["switchFlags"])
+                    del rawJson["switchFlags"]
                 except:
-                    self._swtcFlags["swtcFlags"] = {}
+                    self._switchFlags["switchFlags"] = {}
                 self._commands = rawJson
             self.checkForUpdates()
         except json.decoder.JSONDecodeError:
@@ -36,18 +36,18 @@ class Commands(object):
         self._writeCmdJsonFile()
 
     @property
-    def swtcFlags(self):
-        return self._swtcFlags
+    def switchFlags(self):
+        return self._switchFlags
 
-    @swtcFlags.setter
-    def swtcFlags(self, aDict: dict):
-        self._swtcFlags = aDict
+    @switchFlags.setter
+    def switchFlags(self, aDict: dict):
+        self._switchFlags = aDict
         self._writeCmdJsonFile()
 
     def _writeCmdJsonFile(self):
-        # outJson = copy(self._swtcFlags)
+        # outJson = copy(self._switchFlags)
         # outJson.update(self._commands)
-        outJson = self._swtcFlags | self._commands
+        outJson = self._switchFlags | self._commands
         with open(self.cmdFileName, "w") as fw:
             json.dump(outJson, fw, indent=2)
 

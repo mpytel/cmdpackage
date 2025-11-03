@@ -19,12 +19,12 @@ from typing import Dict, Any, List, Optional, Union, Tuple
 from ..defs.logIt import printIt, lable, cStr, color
 from ..defs.utilities import calculate_md5, filter_out_options
 from .commands import Commands
-from ..classes.optSwtces import getCmdSwtcFlags
+from ..classes.optSwitches import getCmdswitchFlags
 
 commandJsonDict = {
     "tmplMgt": {
         "description": "cmdPackage template managmet for transfering new or modified  command files with supporting files back to an editable install of comPackage.th supporting file",
-        "swtcFlags": {
+        "switchFlags": {
             "black": {
                 "description": "Use +black to enable and -black to disable, tracked python file formating before template generation, and the new template after generation.",
                 "type": "bool",
@@ -53,7 +53,7 @@ class TemplateSyncer:
         self.sync_data_file = os.path.join(self.project_root, "genTempSyncData.json")
         self.new_templates_dir = os.path.join(self.project_root, "newTemplates")
         self.sync_data = {}
-        cmd_flags = getCmdSwtcFlags("tmplMgt")
+        cmd_flags = getCmdswitchFlags("tmplMgt")
         self.run_black = cmd_flags.get("black", True)
         self.force = cmd_flags.get("force", False)
 
@@ -420,7 +420,7 @@ class TemplateSyncer:
     def _build_complete_commands_json_dict(self) -> str:
         \"\"\"Build complete commandsJsonDict from all command files in the sync data\"\"\"
         commands_dict = {
-            "swtcFlags": {},
+            "switchFlags": {},
             "description": "Dictionary of commands, their discription and swtces, and their argument discriptions.",
             "_globalSwtceFlags": {},
         }
