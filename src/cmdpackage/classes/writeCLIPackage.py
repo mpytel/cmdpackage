@@ -11,6 +11,8 @@ from cmdpackage.defs.utilities import chkDir, list_files_os_walk, load_template,
 # Note: Template imports are now handled dynamically from the new template structure
 # Old static imports have been replaced with dynamic template discovery
 
+LABLE_DEBUG = lable.DEBUG
+LABLE_DEBUG = lable.ABORTPRT
 
 class WriteCLIPackage:
     """
@@ -125,9 +127,9 @@ class WriteCLIPackage:
                         if hasattr(module, module_name):
                             template_obj = getattr(module, module_name)
 
-
-
-                        printIt(f"target_file: {target_file}, module_name: {module_name}", lable.DEBUG )
+                        if LABLE_DEBUG == lable.DEBUG:
+                            printIt(f"target_file: {target_file}, module_name: {module_name}", lable.DEBUG)
+                            
                         if template_obj is not None:                           
                             discovered_sources[module_name] = {
                                 'module': module,
@@ -146,9 +148,11 @@ class WriteCLIPackage:
                 else:
                     root, ext = os.path.splitext(target_file)
                     module_name = module_name + "." + ext
+                    with open(full_template_path, "r") as rf:
+                        template_str = rf.read()
                     discovered_sources[module_name] = {
                         'module': None,
-                        'template_obj': None,
+                        'template_obj': template_str,
                         'target_file': target_file,
                         'source_name': full_template_path
                     }
@@ -211,6 +215,12 @@ class WriteCLIPackage:
         # We assume '{packName}' should be inserted after the first directory component (e.g., 'src/').
 
         path_parts = output_key_path.split(os.path.sep)
+
+        # If the path has at least two components (a root folder and a filename/folder)
+        if len(path_parts) > 1 and path_parts[0] in ('src', 'tests', '.github'):
+            # Inject the project name after the first directory (e.g., 'src' or 'tests')
+            # e.g., ['src', '{packName}', 'commands', 'newCmd.py']
+            path_parts.insert(1, self.program_name)
 
         final_output_key = os.path.join(*path_parts)
         # Example result: 'src/{packName}/commands/newCmd.py'
