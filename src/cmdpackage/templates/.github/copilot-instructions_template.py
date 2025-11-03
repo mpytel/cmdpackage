@@ -14,13 +14,13 @@ copilot_instructions_template = Template(dedent("""# GitHub Copilot Instructions
 ```
 ${packName}/
 ├── src/${packName}/
-│   ├── main.py                     # Entry point - calls cmdSwi${packName}hbord
+│   ├── main.py                     # Entry point - calls cmdSwtcbord
 │   ├── classes/
 │   │   ├── argParse.py            # Argument parsing logic
-│   │   └── optSwi${packName}hes.py         # Option flag management and .${packName}rc file handling
+│   │   └── optSwtces.py         # Option flag management and .${packName}rc file handling
 │   ├── commands/
 │   │   ├── commands.json          # Central command registry and metadata
-│   │   ├── cmdSwi${packName}hbord.py       # Command dispa${packName}her/router
+│   │   ├── cmdSwtcbord.py       # Command disptcer/router
 │   │   ├── commands.py            # Command loading and management
 │   │   ├── newCmd.py              # Create new commands
 │   │   ├── modCmd.py              # Modify existing commands
@@ -135,7 +135,7 @@ Commands are generated from templates with variable substitution:
 
 ### Command Processing Pipeline
 1. **argParse.py** - Parses command-line arguments
-2. **cmdSwi${packName}hbord.py** - Routes to appropriate command handler
+2. **cmdSwtcbord.py** - Routes to appropriate command handler
 3. **commands.py** - Loads and manages command definitions
 4. **Individual command files** - Execute specific functionality
 

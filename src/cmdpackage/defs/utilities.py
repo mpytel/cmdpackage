@@ -36,7 +36,6 @@ def list_files_os_walk(base_dir: str, extensions=None) -> list:
 
     return template_files
 
-
 def load_template(template_file_path: str, template_name: str | None = None) -> ModuleType:
     """
     Load a template dynamically from a templates directory structure.
@@ -78,7 +77,6 @@ def load_template(template_file_path: str, template_name: str | None = None) -> 
 
     # Otherwise, return the module
     return module
-
 
 def runSubProc(theCmd: str, noOutput=True) -> CompletedProcess:
     if noOutput:
@@ -139,3 +137,22 @@ def sanitize_var_name(requested_name):
         return "_"
 
     return sanitized_name
+
+
+def installModules(project_name: str) -> None:
+    """Install the generated module in editable mode."""
+    import subprocess
+
+    activate_cmd = f". env/{project_name}/bin/activate"
+    module = "-e ."
+    install_cmd = f"{activate_cmd} && pip install {module} --quiet"
+    result = subprocess.run(
+        install_cmd, shell=True, capture_output=True, text=True)
+    module = "black"
+    install_cmd = f"{activate_cmd} && pip install {module}  --quiet"
+    result = subprocess.run(
+        install_cmd, shell=True, capture_output=True, text=True)
+    if result.returncode == 0:
+        printIt(f"{module} Installed ",lable.PASS)
+    else:
+        printIt(f"Failed to install the module: {result.stderr}",lable.FAIL)

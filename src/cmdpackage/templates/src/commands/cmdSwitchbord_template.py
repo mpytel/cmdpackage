@@ -7,13 +7,13 @@ cmdSwitchbord_template = Template(dedent("""import sys, traceback
 from argparse import Namespace
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
-from .cmdOptSwi${packName}hbord import cmdOptSwi${packName}hbord
+from .cmdOptSwtcbord import cmdOptSwtcbord
 from ..classes.argParse import ArgParse
-from ..classes.optSwi${packName}hes import saveCmdSwi${packName}hFlags, toggleCmdSwi${packName}hFlag
+from ..classes.optSwtces import saveCmdSwtcFlags, toggleCmdSwtcFlag
 
 cmdObj = Commands()
 commands = cmdObj.commands
-swi${packName}hFlags = cmdObj.swi${packName}hFlags["swi${packName}hFlags"]
+swtcFlags = cmdObj.swtcFlags["swtcFlags"]
 
 
 def printCommandHelp(cmdName: str):
@@ -34,17 +34,17 @@ def printCommandHelp(cmdName: str):
     # Add arguments
     args = []
     for key, value in cmdInfo.items():
-        if key not in ["description", "swi${packName}hFlags"] and isinstance(value, str):
+        if key not in ["description", "swtcFlags"] and isinstance(value, str):
             args.append(f"<{key}>")
 
     if args:
         usage_parts.extend(args)
 
     # Add option flags
-    swi${packName}hFlags = cmdInfo.get("swi${packName}hFlags", {})
-    if swi${packName}hFlags:
+    swtcFlags = cmdInfo.get("swtcFlags", {})
+    if swtcFlags:
         flag_parts = []
-        for flagName, flagInfo in swi${packName}hFlags.items():
+        for flagName, flagInfo in swtcFlags.items():
             if flagInfo.get("type") == "bool":
                 flag_parts.append(f"[+{flagName}|-{flagName}]")
             elif flagInfo.get("type") == "str":
@@ -59,14 +59,14 @@ def printCommandHelp(cmdName: str):
     if args:
         printIt(f"{cStr('Arguments:', color.CYAN)}", lable.INFO)
         for key, value in cmdInfo.items():
-            if key not in ["description", "swi${packName}hFlags"] and isinstance(value, str):
+            if key not in ["description", "swtcFlags"] and isinstance(value, str):
                 printIt(f"  {cStr(f'<{key}>', color.WHITE)}  {value}", lable.INFO)
         print()  # Extra line
 
     # Print option flags section
-    if swi${packName}hFlags:
+    if swtcFlags:
         printIt(f"{cStr('Option Flags:', color.CYAN)}", lable.INFO)
-        for flagName, flagInfo in swi${packName}hFlags.items():
+        for flagName, flagInfo in swtcFlags.items():
             flagType = flagInfo.get("type", "unknown")
             flagDesc = flagInfo.get("description", "No description")
 
@@ -87,7 +87,7 @@ def printCommandHelp(cmdName: str):
         print()  # Extra line
 
     # Print examples if the command has flags
-    if swi${packName}hFlags:
+    if swtcFlags:
         printIt(f"{cStr('Examples:', color.CYAN)}", lable.INFO)
         example_parts = [f"${packName} {cmdName}"]
         if args:
@@ -95,10 +95,10 @@ def printCommandHelp(cmdName: str):
 
         # Show flag examples
         bool_flags = [
-            name for name, info in swi${packName}hFlags.items() if info.get("type") == "bool"
+            name for name, info in swtcFlags.items() if info.get("type") == "bool"
         ]
         str_flags = [
-            name for name, info in swi${packName}hFlags.items() if info.get("type") == "str"
+            name for name, info in swtcFlags.items() if info.get("type") == "str"
         ]
 
         if str_flags:
@@ -115,7 +115,7 @@ def printCommandHelp(cmdName: str):
             )
 
 
-def cmdSwi${packName}hbord(argParse: ArgParse):
+def cmdSwtcbord(argParse: ArgParse):
     global commands
     theCmd = "notSet"
     flag_toggle_occurred = False  # Track if a flag toggle happened
@@ -140,56 +140,56 @@ def cmdSwi${packName}hbord(argParse: ArgParse):
                     if arg[0] in "-+?" and not arg.startswith("--") and len(arg) > 1:
                         flagName = arg[1:]
 
-                        # Check if it's a global swi${packName}h flag first
-                        if flagName in swi${packName}hFlags.keys():
-                            cmdOptSwi${packName}hbord(arg, swi${packName}hFlags)
+                        # Check if it's a global swtc flag first
+                        if flagName in swtcFlags.keys():
+                            cmdOptSwtcbord(arg, swtcFlags)
 
                         # Check if it's a command-specific flag
-                        if cmdName in commands and "swi${packName}hFlags" in commands[cmdName]:
-                            cmdSwi${packName}hFlags = commands[cmdName]["swi${packName}hFlags"]
+                        if cmdName in commands and "swtcFlags" in commands[cmdName]:
+                            cmdSwtcFlags = commands[cmdName]["swtcFlags"]
                             if (
-                                flagName in cmdSwi${packName}hFlags
-                                and cmdSwi${packName}hFlags[flagName].get("type") == "bool"
+                                flagName in cmdSwtcFlags
+                                and cmdSwtcFlags[flagName].get("type") == "bool"
                             ):
                                 # This is a command-specific boolean flag
                                 setValue = arg[0] == "+"
-                                toggleCmdSwi${packName}hFlag(cmdName, flagName, setValue)
+                                toggleCmdSwtcFlag(cmdName, flagName, setValue)
                                 flag_toggle_occurred = True
 
                 # Handle old logic for backward compatibility only if flag toggle didn't occur above
                 if not flag_toggle_occurred:
-                    swi${packName}hFlagChk = sys.argv[2]
+                    swtcFlagChk = sys.argv[2]
                     # Only handle single hyphen options here, let double hyphen pass through
                     if (
                         len(sys.argv) == 3
-                        and swi${packName}hFlagChk[0] in "-+?"
-                        and not swi${packName}hFlagChk.startswith("--")
+                        and swtcFlagChk[0] in "-+?"
+                        and not swtcFlagChk.startswith("--")
                     ):
-                        flagName = swi${packName}hFlagChk[1:]
+                        flagName = swtcFlagChk[1:]
 
-                        # Check if it's a global swi${packName}h flag first
-                        if flagName in swi${packName}hFlags.keys():
-                            cmdOptSwi${packName}hbord(swi${packName}hFlagChk, swi${packName}hFlags)
+                        # Check if it's a global swtc flag first
+                        if flagName in swtcFlags.keys():
+                            cmdOptSwtcbord(swtcFlagChk, swtcFlags)
                             exit()
 
                         # Check if it's a command-specific flag
                         cmdName = sys.argv[1]
-                        if cmdName in commands and "swi${packName}hFlags" in commands[cmdName]:
-                            cmdSwi${packName}hFlags = commands[cmdName]["swi${packName}hFlags"]
+                        if cmdName in commands and "swtcFlags" in commands[cmdName]:
+                            cmdSwtcFlags = commands[cmdName]["swtcFlags"]
                             if (
-                                flagName in cmdSwi${packName}hFlags
-                                and cmdSwi${packName}hFlags[flagName].get("type") == "bool"
+                                flagName in cmdSwtcFlags
+                                and cmdSwtcFlags[flagName].get("type") == "bool"
                             ):
                                 # This is a command-specific boolean flag
-                                setValue = swi${packName}hFlagChk[0] == "+"
-                                toggleCmdSwi${packName}hFlag(cmdName, flagName, setValue)
+                                setValue = swtcFlagChk[0] == "+"
+                                toggleCmdSwtcFlag(cmdName, flagName, setValue)
                                 flag_toggle_occurred = True
                                 # Don't exit here - let the command execute with the new flag setting
 
                         # Not a recognized flag
                         if not flag_toggle_occurred:
-                            if swi${packName}hFlagChk not in ["-h", "--help"]:
-                                printIt(f"{swi${packName}hFlagChk} not defined", lable.WARN)
+                            if swtcFlagChk not in ["-h", "--help"]:
+                                printIt(f"{swtcFlagChk} not defined", lable.WARN)
                             else:
                                 argParse.parser.print_help()
                             exit()
@@ -197,16 +197,16 @@ def cmdSwi${packName}hbord(argParse: ArgParse):
             args: Namespace = argParse.args
             theCmd = args.commands[0]
             if theCmd in commands.keys():
-                # Save command-specific swi${packName}h flags before executing command
+                # Save command-specific swtc flags before executing command
                 # Skip if a flag toggle already occurred to avoid overwriting the toggle
                 if (
                     hasattr(argParse, "cmd_options")
                     and argParse.cmd_options
                     and not flag_toggle_occurred
                 ):
-                    cmdSwi${packName}hFlags = commands[theCmd].get("swi${packName}hFlags", {})
-                    if cmdSwi${packName}hFlags:
-                        saveCmdSwi${packName}hFlags(theCmd, argParse.cmd_options, cmdSwi${packName}hFlags)
+                    cmdSwtcFlags = commands[theCmd].get("swtcFlags", {})
+                    if cmdSwtcFlags:
+                        saveCmdSwtcFlags(theCmd, argParse.cmd_options, cmdSwtcFlags)
 
                 exec(f"from ..commands.{theCmd} import {theCmd}")
                 exec(f"{theCmd}(argParse)")

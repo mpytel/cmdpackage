@@ -9,7 +9,10 @@ from sys import version_info
 from subprocess import Popen, PIPE
 from getpass import getuser
 from ..defs.utilities import load_template, list_files_os_walk, runSubProc, CompletedProcess, init_git_repo, sanitize_var_name
-from ..defs.logIt import printIt, lable
+from ..defs.logIt import printIt, lable, cStr, color as c
+
+LABLE_DEBUG = lable.ABORTPRT
+LABLE_DEBUG = lable.DEBUG
 
 class WritePyProject:
     """
@@ -48,8 +51,11 @@ class WritePyProject:
 
         # Write project files
         init_repo = self._write_py_project_files()
-        if init_repo:
+        if init_repo: 
             init_git_repo()
+            self.projFields['git_initialized'] = "True"
+        else:
+            self.projFields['git_initialized'] = "False"
 
         return self.projFields
         
@@ -86,6 +92,13 @@ class WritePyProject:
         repo_needed = False
     
         template_files = list_files_os_walk(self.src_dir)
+        template_files_str = '\n'.join(template_files)
+
+        if LABLE_DEBUG==lable.DEBUG:
+            printIt(
+                f"Discovered {len(template_files)} total template files:\n{cStr(template_files_str,c.YELLOW)}", LABLE_DEBUG)
+
+        savedFiles = []
 
         for template_file in template_files:
             if "__init__" in template_file:
@@ -96,7 +109,7 @@ class WritePyProject:
             if tmpFlileName.startswith("proj_templates/classifiers"):
                 continue
             tmplName = os.path.splitext(os.path.split(tmpFlileName)[1])[0]
-
+                                   
             # only process pyproject, README, and .gitignore templates
             if tmplName not in ['pyproject_template', 'README_template', '.gitignore_template']:
                 continue
@@ -121,17 +134,27 @@ class WritePyProject:
             )
 
             # correct file names for README and .gitignore
+            # proj_templates literal name where project templates files are stored 
             file_name = tmpFlileName.replace("proj_templates/", "")
             file_name = file_name.replace("_template", "")
+
+            # secial cases for file name modifications
             if file_name == "README.py":
                 file_name = file_name.replace(".py", ".md")
             if file_name == ".gitignore.py":
                 file_name = ".gitignore"
+            if file_name == "pyproject.py":
+                file_name = "pyproject.toml"
+
+            savedFiles.append(file_name)
 
             with open(file_name, 'w') as pyproject_file:
                 self._write_content(pyproject_file, pyproject_content)
-
+        
+        printIt(f"Discovered {len(savedFiles)} PyPackage template sources",lable.INFO)
+        for file_name in savedFiles:
             printIt(file_name, lable.SAVED)
+
         return repo_needed
 
     def _ask_it_repo_needed(self) -> bool:

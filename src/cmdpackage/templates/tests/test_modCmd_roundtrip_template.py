@@ -177,11 +177,11 @@ def check_flag_value(cmd_name: str, flag_name: str, expected_value) -> bool:
         return False
 
 
-def check_swi${packName}h_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
-    \"\"\"Check if a swi${packName}h flag is properly defined in commands.json\"\"\"
+def check_swtc_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
+    \"\"\"Check if a swtc flag is properly defined in commands.json\"\"\"
     cmd_data = get_command_data(cmd_name)
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
-    flag_def = swi${packName}h_flags.get(flag_name, {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
+    flag_def = swtc_flags.get(flag_name, {})
     return flag_def.get("type") == flag_type
 
 
@@ -350,15 +350,15 @@ def test_add_boolean_flags(result: TestResult) -> bool:
 
     # Check if flags were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
 
     force_flag_ok = (
-        swi${packName}h_flags.get("f", {}).get("type") == "bool"
-        and swi${packName}h_flags.get("f", {}).get("description") == "Force operation flag"
+        swtc_flags.get("f", {}).get("type") == "bool"
+        and swtc_flags.get("f", {}).get("description") == "Force operation flag"
     )
     quiet_flag_ok = (
-        swi${packName}h_flags.get("q", {}).get("type") == "bool"
-        and swi${packName}h_flags.get("q", {}).get("description") == "Quiet mode flag"
+        swtc_flags.get("q", {}).get("type") == "bool"
+        and swtc_flags.get("q", {}).get("description") == "Quiet mode flag"
     )
 
     # Check if flags were added to .${packName}rc
@@ -387,15 +387,15 @@ def test_add_string_options(result: TestResult) -> bool:
 
     # Check if options were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
 
     input_option_ok = (
-        swi${packName}h_flags.get("input", {}).get("type") == "str"
-        and swi${packName}h_flags.get("input", {}).get("description") == "Input file path"
+        swtc_flags.get("input", {}).get("type") == "str"
+        and swtc_flags.get("input", {}).get("description") == "Input file path"
     )
     loglevel_option_ok = (
-        swi${packName}h_flags.get("loglevel", {}).get("type") == "str"
-        and swi${packName}h_flags.get("loglevel", {}).get("description") == "Log level setting"
+        swtc_flags.get("loglevel", {}).get("type") == "str"
+        and swtc_flags.get("loglevel", {}).get("description") == "Log level setting"
     )
 
     # Check if options were added to .${packName}rc
@@ -441,15 +441,15 @@ def test_modify_mixed_args_and_flags(result: TestResult) -> bool:
     # Check new argument
     arg_ok = cmd_data.get("arg4") == "New fourth argument"
 
-    # Check swi${packName}h flags
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
+    # Check swtc flags
+    swtc_flags = cmd_data.get("swtcFlags", {})
     flag_ok = (
-        swi${packName}h_flags.get("e", {}).get("type") == "bool"
-        and swi${packName}h_flags.get("e", {}).get("description") == "Enable feature flag"
+        swtc_flags.get("e", {}).get("type") == "bool"
+        and swtc_flags.get("e", {}).get("description") == "Enable feature flag"
     )
     option_ok = (
-        swi${packName}h_flags.get("format", {}).get("type") == "str"
-        and swi${packName}h_flags.get("format", {}).get("description") == "Output format option"
+        swtc_flags.get("format", {}).get("type") == "str"
+        and swtc_flags.get("format", {}).get("description") == "Output format option"
     )
 
     # Check .${packName}rc
@@ -559,14 +559,14 @@ def test_modify_existing_flags(result: TestResult) -> bool:
 
     # Check if flag descriptions were updated
     cmd_data = get_command_data("modTestCmd02")
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
 
     verbose_ok = (
-        swi${packName}h_flags.get("v", {}).get("description")
+        swtc_flags.get("v", {}).get("description")
         == "Updated verbose flag description"
     )
     debug_ok = (
-        swi${packName}h_flags.get("d", {}).get("description") == "Updated debug flag description"
+        swtc_flags.get("d", {}).get("description") == "Updated debug flag description"
     )
 
     if verbose_ok and debug_ok:
@@ -597,10 +597,10 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
 
     # Check if default descriptions were used
     cmd_data = get_command_data("modTestEmpty")
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
 
     # Should have some default description for the flag
-    flag_desc = swi${packName}h_flags.get("v", {}).get("description", "")
+    flag_desc = swtc_flags.get("v", {}).get("description", "")
     has_default = flag_desc != "" and (
         "Boolean flag" in flag_desc or "no help" in flag_desc
     )

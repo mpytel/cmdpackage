@@ -5,13 +5,13 @@ from string import Template
 
 main_template = Template(dedent("""import sys, os
 from .classes.argParse import ArgParse
-from .commands.cmdSwi${packName}hbord import cmdSwi${packName}hbord
+from .commands.cmdSwitchbord import cmdSwitchbord
 
 
 def main():
     # packName = os.path.basename(sys.argv[0])
     argParse = ArgParse()
-    cmdSwi${packName}hbord(argParse)
+    cmdSwitchbord(argParse)
 
 
 if __name__ == "__main__":

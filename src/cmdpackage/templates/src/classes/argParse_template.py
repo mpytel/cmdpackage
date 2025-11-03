@@ -65,10 +65,10 @@ class ArgParse:
             argumentsHelp = ""
             theCmds = Commands()
             commands = theCmds.commands
-            swi${packName}hFlag = theCmds.swi${packName}hFlags["swi${packName}hFlags"]
+            swtcFlag = theCmds.swtcFlags["swtcFlags"]
             for cmdName in commands:
                 # Skip metadata entries that are not actual commands
-                if cmdName in ["description", "_globalSwi${packName}heFlags"] or not isinstance(
+                if cmdName in ["description", "_globalSwtceFlags"] or not isinstance(
                     commands[cmdName], dict
                 ):
                     continue
@@ -89,7 +89,7 @@ class ArgParse:
                             cmdHelp += "\\n"
                         commandsHelp += cmdHelp
                         needCmdDescription = False
-                    elif argName not in ["swi${packName}hFlags"]:
+                    elif argName not in ["swtcFlags"]:
                         # Only process actual arguments, not metadata
                         argHelp = (
                             cStr(f"  <{argName}> ", color.CYAN)
@@ -132,8 +132,8 @@ class ArgParse:
                 help=argumentsHelp,
             )
 
-            for optFlag in swi${packName}hFlag:
-                flagHelp = swi${packName}hFlag[optFlag]
+            for optFlag in swtcFlag:
+                flagHelp = swtcFlag[optFlag]
                 self.parser.add_argument(
                     f"-{optFlag}", action="store_true", help=flagHelp
                 )
@@ -141,9 +141,9 @@ class ArgParse:
 
     def _extract_cmd_options(self, args):
         \"\"\"Extract command-specific options(--option and -option) from arguments\"\"\"
-        # Get global swi${packName}h flags to differentiate from command-specific flags
+        # Get global swtc flags to differentiate from command-specific flags
         theCmds = Commands()
-        global_swi${packName}h_flags = theCmds.swi${packName}hFlags.get("swi${packName}hFlags", {})
+        global_swtc_flags = theCmds.swtcFlags.get("swtcFlags", {})
 
         filtered_args = []
         i = 0
@@ -192,7 +192,7 @@ class ArgParse:
                     else:
                         # This is command-specific help (${packName} command -h), don't pass to argparse
                         i += 1
-                elif option_name in global_swi${packName}h_flags:
+                elif option_name in global_swtc_flags:
                     # This is a global flag, let argparse handle it
                     filtered_args.append(arg)
                     i += 1
@@ -224,9 +224,9 @@ def formatHelpWidth(theText, tCols, indentPad=1) -> str:
             outLine = chkStr  # less the the colums of copy over to outline
         else:
             if len(token) > tCols:
-                # when the ma${packName}h word is longer then the terminal character width (tCols),
+                # when the mtc word is longer then the terminal character width (tCols),
                 # DEBUG how it should be handeled here.
-                print(f"here with long ma${packName}h.group():\\n{token}")
+                print(f"here with long mtc.group():\\n{token}")
                 exit()
                 chkStr = token
                 while len(chkStr) > tCols:  # a single word may be larger the tCols

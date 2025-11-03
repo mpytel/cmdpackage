@@ -19,12 +19,12 @@ from typing import Dict, Any, List, Optional, Union, Tuple
 from ..defs.logIt import printIt, lable, cStr, color
 from ..defs.utilities import calculate_md5, filter_out_options
 from .commands import Commands
-from ..classes.optSwi${packName}hes import getCmdSwi${packName}hFlags
+from ..classes.optSwtces import getCmdSwtcFlags
 
 commandJsonDict = {
     "tmplMgt": {
         "description": "cmdPackage template managmet for transfering new or modified  command files with supporting files back to an editable install of comPackage.th supporting file",
-        "swi${packName}hFlags": {
+        "swtcFlags": {
             "black": {
                 "description": "Use +black to enable and -black to disable, tracked python file formating before template generation, and the new template after generation.",
                 "type": "bool",
@@ -49,11 +49,11 @@ class TemplateSyncer:
     def __init__(self, argParse):
 
         # Use current working directory as project root
-        self.project_root = os.ge${packName}wd()
+        self.project_root = os.gtcd()
         self.sync_data_file = os.path.join(self.project_root, "genTempSyncData.json")
         self.new_templates_dir = os.path.join(self.project_root, "newTemplates")
         self.sync_data = {}
-        cmd_flags = getCmdSwi${packName}hFlags("tmplMgt")
+        cmd_flags = getCmdSwtcFlags("tmplMgt")
         self.run_black = cmd_flags.get("black", True)
         self.force = cmd_flags.get("force", False)
 
@@ -283,7 +283,7 @@ class TemplateSyncer:
                             modified_content = modified_content.replace(
                                 compound_pattern, compound_replacement
                             )
-                    # General replacement (exact ma${packName}hes with and without word boundaries)
+                    # General replacement (exact mtces with and without word boundaries)
                     pattern = r"\\b" + re.escape(field_value) + r"\\b"
                     modified_content = re.sub(
                         pattern, placeholder, modified_content
@@ -330,29 +330,29 @@ class TemplateSyncer:
 
         # Pattern 1: dedent(\"\"\"...\"\"\") assignments
         dedent_pattern = rf'^{re.escape(template_name)}\\s*=\\s*dedent\\(\"\"\"(.*?)\"\"\"\\)'
-        ma${packName}h = re.search(dedent_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if ma${packName}h:
-            return ma${packName}h.group(1)
+        mtc = re.search(dedent_pattern, file_content, re.DOTALL | re.MULTILINE)
+        if mtc:
+            return mtc.group(1)
 
         # Pattern 2: Template(dedent(\"\"\"...\"\"\")) assignments
         template_pattern = (
             rf'^{re.escape(template_name)}\\s*=\\s*Template\\(dedent\\(\"\"\"(.*?)\"\"\"\\)\\)'
         )
-        ma${packName}h = re.search(template_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if ma${packName}h:
-            return ma${packName}h.group(1)
+        mtc = re.search(template_pattern, file_content, re.DOTALL | re.MULTILINE)
+        if mtc:
+            return mtc.group(1)
 
         # Pattern 3: JSON dictionary assignments
         json_pattern = rf"^{re.escape(template_name)}\\s*=\\s*(\\{{.*?\\}})"
-        ma${packName}h = re.search(json_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if ma${packName}h:
+        mtc = re.search(json_pattern, file_content, re.DOTALL | re.MULTILINE)
+        if mtc:
             try:
                 # Try to parse as JSON and return formatted version
                 # Using eval for Python dict syntax
-                json_data = eval(ma${packName}h.group(1))
+                json_data = eval(mtc.group(1))
                 return json.dumps(json_data, indent=2, ensure_ascii=False)
             except:
-                return ma${packName}h.group(1)
+                return mtc.group(1)
 
         printIt(f"Template '{template_name}' not found in file", lable.WARN)
         return None
@@ -375,7 +375,7 @@ class TemplateSyncer:
             with open(file_path, "r", encoding="utf-8") as f:
                 file_content = f.read()
 
-            # Look for commandJsonDict = { ... } with proper brace ma${packName}hing
+            # Look for commandJsonDict = { ... } with proper brace mtcing
             lines = file_content.split("\\n")
             start_line = -1
             end_line = -1
@@ -420,9 +420,9 @@ class TemplateSyncer:
     def _build_complete_commands_json_dict(self) -> str:
         \"\"\"Build complete commandsJsonDict from all command files in the sync data\"\"\"
         commands_dict = {
-            "swi${packName}hFlags": {},
-            "description": "Dictionary of commands, their discription and swi${packName}hes, and their argument discriptions.",
-            "_globalSwi${packName}heFlags": {},
+            "swtcFlags": {},
+            "description": "Dictionary of commands, their discription and swtces, and their argument discriptions.",
+            "_globalSwtceFlags": {},
         }
 
         # Collect command JSONs from all command files
@@ -812,9 +812,9 @@ class TemplateSyncer:
         template_pattern = (
             rf"^({re.escape(template_name)}\\s*=.*?)(?=^[a-zA-Z_][a-zA-Z0-9_]*\\s*=|\\Z)"
         )
-        ma${packName}h = re.search(template_pattern, existing_content, re.MULTILINE | re.DOTALL)
+        mtc = re.search(template_pattern, existing_content, re.MULTILINE | re.DOTALL)
 
-        if ma${packName}h:
+        if mtc:
             # Replace existing template
             new_content = re.sub(
                 template_pattern,
@@ -824,10 +824,10 @@ class TemplateSyncer:
             )
         else:
             # Template doesn't exist in new file, try to find it in original and replace
-            original_ma${packName}h = re.search(
+            original_mtc = re.search(
                 template_pattern, original_content, re.MULTILINE | re.DOTALL
             )
-            if original_ma${packName}h:
+            if original_mtc:
                 # Add the template in the same position as original
                 new_content = re.sub(
                     template_pattern,
@@ -891,7 +891,7 @@ class TemplateSyncer:
             f.write(new_content)
 
     def sync_all_files(self, file_patterns: Optional[List[str]] = None) -> bool:
-        \"\"\"Synchronize all tracked files or files ma${packName}hing patterns\"\"\"
+        \"\"\"Synchronize all tracked files or files mtcing patterns\"\"\"
         if not self.sync_data:
             printIt("No sync data available", lable.ERROR)
             return False
@@ -911,14 +911,14 @@ class TemplateSyncer:
             if not isinstance(file_info, dict):
                 continue
 
-            # If patterns specified, check if file ma${packName}hes
+            # If patterns specified, check if file mtces
             if file_patterns:
-                ma${packName}hes = False
+                mtces = False
                 for pattern in file_patterns:
                     if pattern in file_path or pattern in os.path.basename(file_path):
-                        ma${packName}hes = True
+                        mtces = True
                         break
-                if not ma${packName}hes:
+                if not mtces:
                     continue
 
             if self.force:
@@ -1274,7 +1274,7 @@ class TemplateSyncer:
                     if any(excl in file for excl in exclude_patterns):
                         continue
 
-                    # Check if file ma${packName}hes any pattern
+                    # Check if file mtces any pattern
                     file_path = os.path.join(root, file)
 
                     # Only include Python files for now
@@ -1737,7 +1737,7 @@ def sync(argParse):
 
     if file_patterns:
         printIt(
-            f"Generating templates for files ma${packName}hing patterns: {', '.join(file_patterns)}",
+            f"Generating templates for files mtcing patterns: {', '.join(file_patterns)}",
             lable.INFO,
         )
 

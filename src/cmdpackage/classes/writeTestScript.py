@@ -5,7 +5,8 @@ import os
 import json
 import importlib
 from string import Template
-from cmdpackage.defs.utilities import chkDir
+from cmdpackage.defs.utilities import chkDir, load_template, sanitize_var_name
+from cmdpackage.defs.logIt import printIt, lable
 
 class WriteTestScript:
     """
@@ -32,7 +33,7 @@ class WriteTestScript:
         self.test_dir = os.path.join(os.path.abspath("."), "tests")
         # Set up base source directory for sync data file
         self.src_dir = os.path.join(os.path.abspath("."), 'src', self.program_name)
-        
+    
     def write_test_script(self) -> None:
         """
         Main method to write all test scripts using dynamic discovery.
@@ -48,11 +49,12 @@ class WriteTestScript:
     
     def _discover_and_write_test_scripts(self) -> None:
         """Discover and process all test templates that begin with 'test_'."""
+
         # Get the cmdpackage directory and use the new template location
         package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
         templates_dir = os.path.join(package_dir, "templates", "tests")
         if not os.path.exists(templates_dir):
-            print(f"Warning: Template directory not found: {templates_dir}")
+            printIt(f"Template directory not found: {templates_dir}", lable.WARN)
             return
             
         # Include any templates containing '_test_' and the cleanup helper script
@@ -60,39 +62,46 @@ class WriteTestScript:
             f for f in os.listdir(templates_dir)
             if (f.startswith("test_") and f.endswith(".py") or "_test_" in f) and f != "__init__.py"
         ]
-        
-        print(f"Discovered {len(template_files)} test template files: {template_files}")
+        printIt(f"Discovered {len(template_files)} TestScript template sources", lable.INFO)
         
         for template_file in template_files:
             self._process_test_template(template_file)
     
     def _process_test_template(self, template_file: str) -> None:
         """Process a single test template file."""
+        TEMPLATE_DIR = "templates"
+        TESTS_DIR = "tests"
         try:
             # Remove .py extension to get module name
             module_name = template_file[:-3]
             
             # Load the template file directly from the new templates directory
             package_dir = os.path.dirname(os.path.dirname(__file__))  # Go up 2 levels from classes/ to cmdpackage/
-            templates_dir = os.path.join(package_dir, "templates", "tests")
+            templates_dir = os.path.join(package_dir, TEMPLATE_DIR, TESTS_DIR)
             template_path = os.path.join(templates_dir, template_file)
-            
+
             # Load the template file as a module
-            import importlib.util
-            spec = importlib.util.spec_from_file_location(module_name, template_path)
-            if spec is None or spec.loader is None:
-                print(f"Warning: Could not load template module from {template_path}")
-                return
-                
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            
+            module = None
+            if os.path.splitext(template_path)[1] == '.py':
+                module = load_template(template_path)
+
+            if module is None:
+                printIt(f"Could not load template module from {template_path}",lable.WARN)
+                return  
+
+
+            module_name = os.path.splitext(template_path)
+            module_name = sanitize_var_name(module_name[0].split(os.path.sep)[-1])
+            module_name = module_name.replace(f"_template_{TEMPLATE_DIR}", "_template").replace(f".py", "")
+
             # Look for template attribute - try common naming patterns
-            template_attr_name = f"{module_name}_template"
-            template_obj = getattr(module, template_attr_name, None)
+            template_attr_name = f"{module_name}_{TEMPLATE_DIR}"
+            template_obj = getattr(module, module_name, None)
             
             if template_obj is None:
-                print(f"Warning: No template attribute '{template_attr_name}' found in {module_name}")
+                printIt(f"No template attribute '{template_attr_name}' found in {module_name}", lable.WARN)
+                available_attrs = [attr for attr in dir(module) if not attr.startswith('_')]
+                printIt(f"    Available attributes: {available_attrs}",lable.INFO)
                 return
             
             # Generate output filename (remove test_ prefix and add .py)
@@ -120,10 +129,10 @@ class WriteTestScript:
             module_file_path = module.__file__ or f"cmdpackage.templates.{module_name}"
             self._temp_sync_file_json(template_attr_name, module_file_path, file_path, file_content)
             
-            print(f"Processed test template: {module_name} -> {output_filename}")
+            printIt(f"{output_filename}",lable.SAVED)
             
         except Exception as e:
-            print(f"Error processing test template {template_file}: {e}")
+            printIt(f"Processing test template {template_file}: {e}",lable.ERROR)
 
 
     def _make_executable(self, file_name: str) -> None:

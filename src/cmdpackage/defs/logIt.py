@@ -87,7 +87,7 @@ class lable:
 
 
 # log function
-def logIt(*message, logFileName="tc.log"):
+def logIt(*message, logFileName="cmdPackage.log"):
     # write log
     now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -145,7 +145,7 @@ def cStr(inStr: str, cVal: str):
     return cVal + inStr + color.RESET
 
 
-def deleteLog(logFileName="tc.log"):
+def deleteLog(logFileName="cmdPackage.log"):
     if os.path.isfile(logFileName):
         os.remove(logFileName)
 

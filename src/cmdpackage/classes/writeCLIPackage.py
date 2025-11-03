@@ -125,6 +125,9 @@ class WriteCLIPackage:
                         if hasattr(module, module_name):
                             template_obj = getattr(module, module_name)
 
+
+
+                        printIt(f"target_file: {target_file}, module_name: {module_name}", lable.DEBUG )
                         if template_obj is not None:                           
                             discovered_sources[module_name] = {
                                 'module': module,
@@ -152,7 +155,8 @@ class WriteCLIPackage:
             else:
                 print(f"  Warning: Template file not found: {full_template_path}")
         
-        print(f"Discovered {len(discovered_sources)} template sources")
+        printIt(f"Discovered {len(discovered_sources)} CLIPackage template sources",lable.INFO)
+
         return discovered_sources
 
     def get_template_map_entry(self, template_filename: str) -> dict[str, str]:
@@ -163,7 +167,7 @@ class WriteCLIPackage:
         Args:
             template_filename (str): The absolute path to the source template file.
             self.program_name (str): The name of the target project to insert into the 
-                                output path (e.g., 'tc'). Defaults to 'tc'.
+                                output path (e.g., '{packName}'). Defaults to '{packName}'.
             
         Returns:
             dict: A dictionary mapping the relative output path to the relative 
@@ -203,19 +207,13 @@ class WriteCLIPackage:
             revFileName = fileName[:-len('_template')]
             output_key_path = root[:-len(fileName)] + revFileName + ext
             # Example result: 'src/commands/newCmd.py'
-        # 3. Inject the project name ('tc') into the path
-        # We assume 'tc' should be inserted after the first directory component (e.g., 'src/').
+        # 3. Inject the project name ('{packName}') into the path
+        # We assume '{packName}' should be inserted after the first directory component (e.g., 'src/').
 
         path_parts = output_key_path.split(os.path.sep)
 
-        # If the path has at least two components (a root folder and a filename/folder)
-        if len(path_parts) > 1 and path_parts[0] in ('src', 'tests', '.github'):
-            # Inject the project name after the first directory (e.g., 'src' or 'tests')
-            # e.g., ['src', 'tc', 'commands', 'newCmd.py']
-            path_parts.insert(1, self.program_name)
-
         final_output_key = os.path.join(*path_parts)
-        # Example result: 'src/tc/commands/newCmd.py'
+        # Example result: 'src/{packName}/commands/newCmd.py'
         # (or just 'README_Command_modifications.py' if it was a root file)
 
         # 4. Construct and return the mapping dictionary

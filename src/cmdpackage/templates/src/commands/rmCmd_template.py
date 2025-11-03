@@ -5,11 +5,11 @@ from string import Template
 
 rmCmd_template = Template(dedent("""import os, json, hashlib
 from ..defs.logIt import printIt, lable, cStr, color
-from ..classes.optSwi${packName}hes import removeCmdSwi${packName}hFlags
+from ..classes.optSwtces import removeCmdSwtcFlags
 from .commands import Commands
 
 commandJsonDict = {
-    "commands_rmCmd": {"description": "Command commands_rmCmd", "swi${packName}hFlags": {}}
+    "commands_rmCmd": {"description": "Command commands_rmCmd", "swtcFlags": {}}
 }
 
 cmdObj = Commands()
@@ -94,55 +94,55 @@ def rmCmd(argParse):
         for argIndex in range(1, len(theArgs)):
             anArg = theArgs[argIndex]
 
-            # Check if anArg is a swi${packName}h flag name (check if it exists in swi${packName}hFlags)
+            # Check if anArg is a swtc flag name (check if it exists in swtcFlags)
             if (
-                "swi${packName}hFlags" in commands[cmdName]
-                and anArg in commands[cmdName]["swi${packName}hFlags"]
+                "swtcFlags" in commands[cmdName]
+                and anArg in commands[cmdName]["swtcFlags"]
             ):
-                # Handle swi${packName}h flag removal by flag name (without -)
+                # Handle swtc flag removal by flag name (without -)
                 chkRm: str = input(
-                    f"Permanently delete swi${packName}h flag '-{anArg}' from {cmdName} (y/N):\\n"
+                    f"Permanently delete swtc flag '-{anArg}' from {cmdName} (y/N):\\n"
                 )
                 if chkRm == "":
                     chkRm = "N"
                 if chkRm[0].lower() == "y":
-                    removeCmdSwi${packName}hFlag(cmdName, anArg)
+                    removeCmdSwtcFlag(cmdName, anArg)
                     printIt(
-                        f'Swi${packName}h flag "-{anArg}" removed from command "{cmdName}"',
+                        f'Swtc flag "-{anArg}" removed from command "{cmdName}"',
                         lable.RmArg,
                     )
                 else:
                     printIt(
-                        f'Swi${packName}h flag "-{anArg}" not removed from command "{cmdName}"',
+                        f'Swtc flag "-{anArg}" not removed from command "{cmdName}"',
                         lable.INFO,
                     )
-            # Check if anArg is a swi${packName}h flag (starts with -) - legacy support
+            # Check if anArg is a swtc flag (starts with -) - legacy support
             elif anArg.startswith("-"):
-                # Handle swi${packName}h flag removal with dash prefix
+                # Handle swtc flag removal with dash prefix
                 flagName = anArg.lstrip("-")  # Remove - or -- prefix
                 if (
-                    "swi${packName}hFlags" in commands[cmdName]
-                    and flagName in commands[cmdName]["swi${packName}hFlags"]
+                    "swtcFlags" in commands[cmdName]
+                    and flagName in commands[cmdName]["swtcFlags"]
                 ):
                     chkRm: str = input(
-                        f"Permanently delete swi${packName}h flag {anArg} from {cmdName} (y/N):\\n"
+                        f"Permanently delete swtc flag {anArg} from {cmdName} (y/N):\\n"
                     )
                     if chkRm == "":
                         chkRm = "N"
                     if chkRm[0].lower() == "y":
-                        removeCmdSwi${packName}hFlag(cmdName, flagName)
+                        removeCmdSwtcFlag(cmdName, flagName)
                         printIt(
-                            f'Swi${packName}h flag "{anArg}" removed from command "{cmdName}"',
+                            f'Swtc flag "{anArg}" removed from command "{cmdName}"',
                             lable.RmArg,
                         )
                     else:
                         printIt(
-                            f'Swi${packName}h flag "{anArg}" not removed from command "{cmdName}"',
+                            f'Swtc flag "{anArg}" not removed from command "{cmdName}"',
                             lable.INFO,
                         )
                 else:
                     printIt(
-                        f'Swi${packName}h flag "{anArg}" is not defined for command "{cmdName}"',
+                        f'Swtc flag "{anArg}" is not defined for command "{cmdName}"',
                         lable.WARN,
                     )
             elif anArg in commands[cmdName]:
@@ -159,7 +159,7 @@ def rmCmd(argParse):
                     )
             else:
                 printIt(
-                    f'"{anArg}" is not an argument or swi${packName}h flag for command "{cmdName}".',
+                    f'"{anArg}" is not an argument or swtc flag for command "{cmdName}".',
                     lable.WARN,
                 )
 
@@ -182,19 +182,19 @@ def removeCmdArg(cmdName, argName):
     updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
 
 
-def removeCmdSwi${packName}hFlag(cmdName, flagName):
-    \"\"\"Remove a swi${packName}h flag from commands.json, .${packName}rc, and source file\"\"\"
+def removeCmdSwtcFlag(cmdName, flagName):
+    \"\"\"Remove a swtc flag from commands.json, .${packName}rc, and source file\"\"\"
     global jsonFileName
     with open(jsonFileName, "r") as rf:
         theJson = json.load(rf)
         if (
-            "swi${packName}hFlags" in theJson[cmdName]
-            and flagName in theJson[cmdName]["swi${packName}hFlags"]
+            "swtcFlags" in theJson[cmdName]
+            and flagName in theJson[cmdName]["swtcFlags"]
         ):
-            del theJson[cmdName]["swi${packName}hFlags"][flagName]
-            # If swi${packName}hFlags becomes empty, we can leave it empty
-            if not theJson[cmdName]["swi${packName}hFlags"]:
-                theJson[cmdName]["swi${packName}hFlags"] = {}
+            del theJson[cmdName]["swtcFlags"][flagName]
+            # If swtcFlags becomes empty, we can leave it empty
+            if not theJson[cmdName]["swtcFlags"]:
+                theJson[cmdName]["swtcFlags"] = {}
     with open(jsonFileName, "w") as wf:
         json.dump(theJson, wf, indent=2)
 
@@ -237,7 +237,7 @@ def removeCmdSwi${packName}hFlag(cmdName, flagName):
 
 
 def updateSourceFileAfterRemoval(cmdName: str, cmdDict: dict) -> None:
-    \"\"\"Update the commandJsonDict in the source file after removing an argument or swi${packName}h flag\"\"\"
+    \"\"\"Update the commandJsonDict in the source file after removing an argument or swtc flag\"\"\"
     fileDir = os.path.dirname(__file__)
     fileName = os.path.join(fileDir, f"{cmdName}.py")
 
@@ -376,6 +376,6 @@ def removeCmd(cmdName):
         os.remove(pyFileName)
 
     # Remove command flags from .${packName}rc
-    removeCmdSwi${packName}hFlags(cmdName)
+    removeCmdSwtcFlags(cmdName)
 """))
 

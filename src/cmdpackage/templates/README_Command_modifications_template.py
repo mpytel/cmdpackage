@@ -132,10 +132,10 @@ ${packName}/
 │   ├── main.py                     # Entry point
 │   ├── classes/
 │   │   ├── argParse.py            # Argument parsing logic
-│   │   └── optSwi${packName}hes.py         # Option flag management
+│   │   └── optSwtces.py         # Option flag management
 │   ├── commands/
 │   │   ├── commands.json          # Command registry
-│   │   ├── cmdSwi${packName}hbord.py       # Command dispa${packName}her
+│   │   ├── cmdSwtcbord.py       # Command disptcer
 │   │   ├── commands.py            # Command loading
 │   │   ├── newCmd.py              # Command creation
 │   │   ├── modCmd.py              # Command modification

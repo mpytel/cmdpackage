@@ -12,7 +12,7 @@ This test suite validates the enhanced modCmd functionality including:
 1. Python keyword and built-in name validation for argCmdDef templates
 2. Input alignment when arguments are rejected during validation
 3. Proper messaging for mixed success/failure scenarios
-4. Swi${packName}h flag handling alongside argument validation
+4. Swtc flag handling alongside argument validation
 5. Template-specific validation (argCmdDef ${packName} simple templates)
 6. Function definition addition to .py files for argCmdDef templates
 7. Function content verification and template consistency
@@ -22,11 +22,11 @@ Test scenarios:
 - Valid argument names that should be accepted
 - Invalid Python keywords/built-ins that should be rejected
 - Mixed valid/invalid arguments with proper input alignment
-- Swi${packName}h flags combined with arguments
+- Swtc flags combined with arguments
 - All arguments rejected scenario
 - Template-specific behavior (validation only for argCmdDef)
 - Function definition addition when arguments are added
-- Function content ma${packName}hing argDefTemplate pattern
+- Function content mtcing argDefTemplate pattern
 - Multiple argument function addition in single call
 - Complete add/remove cycle maintaining JSON and .py file consistency
 
@@ -215,7 +215,7 @@ def check_function_exists_in_file(file_path: str, function_name: str) -> bool:
 def verify_function_template_content(
     file_path: str, function_name: str, cmd_name: str
 ) -> bool:
-    \"\"\"Verify that a function ma${packName}hes the expected argDefTemplate pattern\"\"\"
+    \"\"\"Verify that a function mtces the expected argDefTemplate pattern\"\"\"
     try:
         with open(file_path, "r") as file:
             content = file.read()
@@ -233,17 +233,17 @@ def verify_function_template_content(
         import re
 
         func_pattern = rf"def {re.escape(function_name)}\\(.*?\\):(.*?)(?=def \\w+\\(|$$)"
-        func_ma${packName}h = re.search(func_pattern, content, re.DOTALL)
+        func_mtc = re.search(func_pattern, content, re.DOTALL)
 
-        if not func_ma${packName}h:
+        if not func_mtc:
             return False
 
-        func_content = func_ma${packName}h.group(1)
+        func_content = func_mtc.group(1)
 
         # Check if all expected patterns are in the function content
         for pattern in expected_patterns[
             1:
-        ]:  # Skip the def line as it's already ma${packName}hed
+        ]:  # Skip the def line as it's already mtced
             if pattern not in func_content:
                 return False
 
@@ -262,8 +262,8 @@ def get_all_function_names_in_file(file_path: str) -> list:
 
         # Find all function definitions
         pattern = r"^def (\\w+)\\s*\\("
-        ma${packName}hes = re.findall(pattern, content, re.MULTILINE)
-        return ma${packName}hes
+        mtces = re.findall(pattern, content, re.MULTILINE)
+        return mtces
     except FileNotFoundError:
         return []
 
@@ -499,41 +499,41 @@ def test_mixed_valid_invalid_arguments(result: TestResult) -> bool:
         return False
 
 
-def test_swi${packName}h_flags_with_arguments(result: TestResult) -> bool:
-    \"\"\"Test 5: Swi${packName}h flags combined with arguments\"\"\"
-    print_test("Test 5: Swi${packName}h flags with arguments")
+def test_swtc_flags_with_arguments(result: TestResult) -> bool:
+    \"\"\"Test 5: Swtc flags combined with arguments\"\"\"
+    print_test("Test 5: Swtc flags with arguments")
 
-    input_text = "Verbose flag description\\nValid swi${packName}h argument"
+    input_text = "Verbose flag description\\nValid swtc argument"
     returncode, stdout, stderr = run_command(
-        "${packName} modCmd testValidation -verbose list swi${packName}hArg", input_text
+        "${packName} modCmd testValidation -verbose list swtcArg", input_text
     )
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    swi${packName}h_arg_ok = "swi${packName}hArg" in cmd_data
-    verbose_flag_ok = "swi${packName}hFlags" in cmd_data and "verbose" in cmd_data["swi${packName}hFlags"]
+    swtc_arg_ok = "swtcArg" in cmd_data
+    verbose_flag_ok = "swtcFlags" in cmd_data and "verbose" in cmd_data["swtcFlags"]
     list_rejected = "list" not in cmd_data
 
     # Check output messages
     contains_modified = "CMD MODIFIED: " in stdout
     contains_flag = "flag -verbose" in stdout
-    contains_arg = "swi${packName}hArg" in stdout
+    contains_arg = "swtcArg" in stdout
     contains_rejected_note = "Note:" in stdout and "list" in stdout
 
-    all_ok = swi${packName}h_arg_ok and verbose_flag_ok and list_rejected and contains_modified
+    all_ok = swtc_arg_ok and verbose_flag_ok and list_rejected and contains_modified
 
     if all_ok:
         result.add_result(
-            "Swi${packName}h flags with arguments",
+            "Swtc flags with arguments",
             True,
             "Flags and arguments processed correctly with mixed validation",
         )
         return True
     else:
         result.add_result(
-            "Swi${packName}h flags with arguments",
+            "Swtc flags with arguments",
             False,
-            f"Failed - swi${packName}hArg:{swi${packName}h_arg_ok}, verbose_flag:{verbose_flag_ok}, list_rejected:{list_rejected}, modified_msg:{contains_modified}",
+            f"Failed - swtcArg:{swtc_arg_ok}, verbose_flag:{verbose_flag_ok}, list_rejected:{list_rejected}, modified_msg:{contains_modified}",
         )
         return False
 
@@ -597,9 +597,9 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    debug_flag_ok = "swi${packName}hFlags" in cmd_data and "debug" in cmd_data["swi${packName}hFlags"]
+    debug_flag_ok = "swtcFlags" in cmd_data and "debug" in cmd_data["swtcFlags"]
     verbose_option_ok = (
-        "swi${packName}hFlags" in cmd_data and "verbose" in cmd_data["swi${packName}hFlags"]
+        "swtcFlags" in cmd_data and "verbose" in cmd_data["swtcFlags"]
     )
     valid_comp_ok = "validComprehensive" in cmd_data
     while_rejected = "while" not in cmd_data
@@ -881,7 +881,7 @@ def main():
             test_valid_argument_acceptance,
             test_invalid_argument_rejection,
             test_mixed_valid_invalid_arguments,
-            test_swi${packName}h_flags_with_arguments,
+            test_swtc_flags_with_arguments,
             test_simple_template_bypass,
             test_comprehensive_scenario,
             test_function_definition_addition,

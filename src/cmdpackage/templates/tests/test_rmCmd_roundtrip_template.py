@@ -9,10 +9,10 @@ Comprehensive test script for rmCmd round trip functionality
 
 This test suite validates the rmCmd command functionality including:
 
-1. Creating a test command with arguments and swi${packName}h flags
+1. Creating a test command with arguments and swtc flags
 2. Modifying the command with additional arguments and flags
 3. Removing individual arguments without affecting the command file
-4. Removing individual swi${packName}h flags from all locations(.${packName}rc, commands.json, source file)
+4. Removing individual swtc flags from all locations(.${packName}rc, commands.json, source file)
 5. Verifying that the command file remains intact during selective removals
 6. Finally removing the entire command and verifying complete cleanup
 
@@ -164,11 +164,11 @@ def check_flag_in_${packName}rc(cmd_name: str, flag_name: str) -> bool:
         return False
 
 
-def check_swi${packName}h_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
-    \"\"\"Check if a swi${packName}h flag is properly defined in commands.json\"\"\"
+def check_swtc_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
+    \"\"\"Check if a swtc flag is properly defined in commands.json\"\"\"
     cmd_data = get_command_data(cmd_name)
-    swi${packName}h_flags = cmd_data.get("swi${packName}hFlags", {})
-    flag_def = swi${packName}h_flags.get(flag_name, {})
+    swtc_flags = cmd_data.get("swtcFlags", {})
+    flag_def = swtc_flags.get(flag_name, {})
     return flag_def.get("type") == flag_type
 
 
@@ -184,7 +184,7 @@ def file_contains_flag(file_path: str, flag_name: str) -> bool:
     try:
         with open(full_path, "r") as f:
             content = f.read()
-            return flag_name in content and "swi${packName}hFlags" in content
+            return flag_name in content and "swtcFlags" in content
     except Exception:
         return False
 
@@ -281,10 +281,10 @@ def test_create_command(result: TestResult) -> bool:
 
 
 def test_add_flags_and_arguments(result: TestResult) -> bool:
-    \"\"\"Test 2: Add swi${packName}h flags and arguments to the command\"\"\"
-    print_test("Test 2: Add swi${packName}h flags and arguments")
+    \"\"\"Test 2: Add swtc flags and arguments to the command\"\"\"
+    print_test("Test 2: Add swtc flags and arguments")
 
-    # Add swi${packName}h flags
+    # Add swtc flags
     input_text = "Verbose output flag\\nDebug mode flag\\n"
     returncode, stdout, stderr = run_command(
         "${packName} modCmd rmTestCmd01 -verbose -debug", input_text
@@ -297,8 +297,8 @@ def test_add_flags_and_arguments(result: TestResult) -> bool:
     )
 
     # Verify flags were added
-    verbose_ok = check_swi${packName}h_flag_definition("rmTestCmd01", "verbose", "bool")
-    debug_ok = check_swi${packName}h_flag_definition("rmTestCmd01", "debug", "bool")
+    verbose_ok = check_swtc_flag_definition("rmTestCmd01", "verbose", "bool")
+    debug_ok = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     verbose_${packName}rc = check_flag_in_${packName}rc("rmTestCmd01", "verbose")
     debug_${packName}rc = check_flag_in_${packName}rc("rmTestCmd01", "debug")
 
@@ -338,8 +338,8 @@ def test_remove_regular_argument(result: TestResult) -> bool:
     cmd_data = get_command_data("rmTestCmd01")
     arg1_removed = "arg1" not in cmd_data
     arg2_exists = "arg2" in cmd_data
-    verbose_exists = check_swi${packName}h_flag_definition("rmTestCmd01", "verbose", "bool")
-    debug_exists = check_swi${packName}h_flag_definition("rmTestCmd01", "debug", "bool")
+    verbose_exists = check_swtc_flag_definition("rmTestCmd01", "verbose", "bool")
+    debug_exists = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")
     verbose_${packName}rc_exists = check_flag_in_${packName}rc("rmTestCmd01", "verbose")
 
@@ -366,15 +366,15 @@ def test_remove_regular_argument(result: TestResult) -> bool:
         return False
 
 
-def test_remove_swi${packName}h_flag(result: TestResult) -> bool:
-    \"\"\"Test 4: Remove a swi${packName}h flag from all locations\"\"\"
-    print_test("Test 4: Remove swi${packName}h flag")
+def test_remove_swtc_flag(result: TestResult) -> bool:
+    \"\"\"Test 4: Remove a swtc flag from all locations\"\"\"
+    print_test("Test 4: Remove swtc flag")
 
     # Remove verbose flag using flag name (without dash)
     returncode, stdout, stderr = run_command('echo "y" | ${packName} rmCmd rmTestCmd01 verbose')
 
     # Verify verbose flag was removed from all locations
-    verbose_removed_json = not check_swi${packName}h_flag_definition(
+    verbose_removed_json = not check_swtc_flag_definition(
         "rmTestCmd01", "verbose", "bool"
     )
     verbose_removed_${packName}rc = not check_flag_in_${packName}rc("rmTestCmd01", "verbose")
@@ -383,7 +383,7 @@ def test_remove_swi${packName}h_flag(result: TestResult) -> bool:
     )
 
     # Verify other items still exist
-    debug_exists = check_swi${packName}h_flag_definition("rmTestCmd01", "debug", "bool")
+    debug_exists = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     arg2_exists = "arg2" in get_command_data("rmTestCmd01")
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")
     debug_${packName}rc_exists = check_flag_in_${packName}rc("rmTestCmd01", "debug")
@@ -400,14 +400,14 @@ def test_remove_swi${packName}h_flag(result: TestResult) -> bool:
 
     if all_ok:
         result.add_result(
-            "Remove swi${packName}h flag",
+            "Remove swtc flag",
             True,
             "verbose flag removed from all locations, everything else preserved",
         )
         return True
     else:
         result.add_result(
-            "Remove swi${packName}h flag",
+            "Remove swtc flag",
             False,
             f"Failed - verbose_removed_json:{verbose_removed_json}, verbose_removed_${packName}rc:{verbose_removed_${packName}rc}, verbose_removed_source:{verbose_removed_source}, debug_exists:{debug_exists}, arg2_exists:{arg2_exists}, file_exists:{file_exists_check}, debug_${packName}rc:{debug_${packName}rc_exists}",
         )
@@ -427,7 +427,7 @@ def test_remove_remaining_items(result: TestResult) -> bool:
     # Verify everything was removed except basic command structure
     cmd_data = get_command_data("rmTestCmd01")
     arg2_removed = "arg2" not in cmd_data
-    debug_removed_json = not check_swi${packName}h_flag_definition(
+    debug_removed_json = not check_swtc_flag_definition(
         "rmTestCmd01", "debug", "bool"
     )
     debug_removed_${packName}rc = not check_flag_in_${packName}rc("rmTestCmd01", "debug")
@@ -674,7 +674,7 @@ def main():
         test_create_command,
         test_add_flags_and_arguments,
         test_remove_regular_argument,
-        test_remove_swi${packName}h_flag,
+        test_remove_swtc_flag,
         test_remove_remaining_items,
         test_template_system_cleanup,
         test_remove_entire_command,

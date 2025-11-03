@@ -15,12 +15,12 @@ class Commands(object):
         try:
             with open(self.cmdFileName, "r") as fr:
                 rawJson = json.load(fr)
-                self._swi${packName}hFlags = {}
+                self._swtcFlags = {}
                 try:
-                    self._swi${packName}hFlags["swi${packName}hFlags"] = copy(rawJson["swi${packName}hFlags"])
-                    del rawJson["swi${packName}hFlags"]
+                    self._swtcFlags["swtcFlags"] = copy(rawJson["swtcFlags"])
+                    del rawJson["swtcFlags"]
                 except:
-                    self._swi${packName}hFlags["swi${packName}hFlags"] = {}
+                    self._swtcFlags["swtcFlags"] = {}
                 self._commands = rawJson
             self.checkForUpdates()
         except json.decoder.JSONDecodeError:
@@ -36,18 +36,18 @@ class Commands(object):
         self._writeCmdJsonFile()
 
     @property
-    def swi${packName}hFlags(self):
-        return self._swi${packName}hFlags
+    def swtcFlags(self):
+        return self._swtcFlags
 
-    @swi${packName}hFlags.setter
-    def swi${packName}hFlags(self, aDict: dict):
-        self._swi${packName}hFlags = aDict
+    @swtcFlags.setter
+    def swtcFlags(self, aDict: dict):
+        self._swtcFlags = aDict
         self._writeCmdJsonFile()
 
     def _writeCmdJsonFile(self):
-        # outJson = copy(self._swi${packName}hFlags)
+        # outJson = copy(self._swtcFlags)
         # outJson.update(self._commands)
-        outJson = self._swi${packName}hFlags | self._commands
+        outJson = self._swtcFlags | self._commands
         with open(self.cmdFileName, "w") as fw:
             json.dump(outJson, fw, indent=2)
 
@@ -57,8 +57,8 @@ class Commands(object):
             if not aFile in [
                 "commands.py",
                 "__init__.py",
-                "cmdOptSwi${packName}hboard.py",
-                "cmdSwi${packName}hboard.py",
+                "cmdOptSwtcboard.py",
+                "cmdSwtcboard.py",
             ]:
                 if aFile[:-2] == "py":
                     chkName = aFile[:-3]
@@ -74,8 +74,8 @@ class Commands(object):
             if not aFile in [
                 "commands.py",
                 "__init__.py",
-                "cmdOptSwi${packName}hboard.py",
-                "cmdSwi${packName}hboard.py",
+                "cmdOptSwtcboard.py",
+                "cmdSwtcboard.py",
             ]:
                 if aFile[:-2] == "py":
                     chkName = aFile[:-3]

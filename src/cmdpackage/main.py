@@ -5,7 +5,7 @@ from cmdpackage.classes.writePyProject import writePyProject
 from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
 from cmdpackage.classes.writeTestScript import writeTestScript
-from cmdpackage.defs.utilities import commitGitRepo
+from cmdpackage.defs.utilities import commitGitRepo, installModules
 import argparse
 from pathlib import Path
 
@@ -58,12 +58,11 @@ def main():
     fields: dict[str, str] = writePyProject(
         usedefaults, gen_temp_sync_data_write=False)
     writeCLIPackage(fields, args.GenTempSyncDataWrite)
-    exit()
     createzVirtualEnv(fields)
     writeTestScript(fields, args.GenTempSyncDataWrite)
-    if fields['gitInitialized']:
+    if fields['git_initialized'] == "True" :
         commitGitRepo("finalize package setup")
-    intstallModules(projName)
+    installModules(projName)
     if args.test:
         print(f'\n*** Running tests on {projName} package ***')
         test_result = test_generated_package(projName)
@@ -83,23 +82,6 @@ def main():
             f'{GREEN}execute{RESET}: pip install -e /Users/primwind/proj/python/syncTemps')
 
 
-def intstallModules(project_name: str) -> None:
-    """Install the generated module in editable mode."""
-    import subprocess
-
-    activate_cmd = f". env/{project_name}/bin/activate"
-    module = "-e ."
-    install_cmd = f"{activate_cmd} && pip install {module} --quiet"
-    result = subprocess.run(
-        install_cmd, shell=True, capture_output=True, text=True)
-    module = "black"
-    install_cmd = f"{activate_cmd} && pip install {module}  --quiet"
-    result = subprocess.run(
-        install_cmd, shell=True, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f"  ✅ {module} Installed ")
-    else:
-        print(f"{RED}❌ Failed to install the module: {result.stderr}{RESET}")
 
 def test_generated_package(project_name: str) -> bool:
     """

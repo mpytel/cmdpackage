@@ -14,14 +14,14 @@ from ..defs.validation import (
     check_command_uses_argcmddef_template,
 )
 from ..classes.argParse import ArgParse
-from ..classes.optSwi${packName}hes import saveCmdSwi${packName}hFlags
+from ..classes.optSwtces import saveCmdSwtcFlags
 from .commands import Commands
 
 # from .templates.argCmdDef import cmdDefTemplate
 # from .templates.argDefTemplate import argDefTemplate
 
 commandJsonDict = {
-    "commands_newCmd": {"description": "Command commands_newCmd", "swi${packName}hFlags": {}}
+    "commands_newCmd": {"description": "Command commands_newCmd", "swtcFlags": {}}
 }
 
 readline.parse_and_bind("tab: compleat")
@@ -136,24 +136,24 @@ def newCmd(argParse: ArgParse):
         if hasattr(argParse, "cmd_options") and argParse.cmd_options:
             # Save newCmd-specific options like --template
             newcmd_flags = {}
-            newcmd_swi${packName}h_flags = {}
+            newcmd_swtc_flags = {}
             for option_name, option_value in argParse.cmd_options.items():
                 if option_name in ["template", "templates"]:
                     # Save template option for newCmd command
                     if option_name == "template":
                         newcmd_flags["template"] = option_value
-                        newcmd_swi${packName}h_flags["template"] = {"type": "str"}
+                        newcmd_swtc_flags["template"] = {"type": "str"}
                     elif option_name == "templates" and option_value not in [
                         "__STRING_OPTION__",
                         True,
                     ]:
                         # --templates=value format, treat as template
                         newcmd_flags["template"] = option_value
-                        newcmd_swi${packName}h_flags["template"] = {"type": "str"}
+                        newcmd_swtc_flags["template"] = {"type": "str"}
 
             # Save newCmd-specific flags if any were found
             if newcmd_flags:
-                saveCmdSwi${packName}hFlags("newCmd", newcmd_flags, newcmd_swi${packName}h_flags)
+                saveCmdSwtcFlags("newCmd", newcmd_flags, newcmd_swtc_flags)
 
             # Extract boolean flags for the new command being created
             new_cmd_flags = {}
@@ -169,11 +169,11 @@ def newCmd(argParse: ArgParse):
 
             # Save the flags if any were found
             if new_cmd_flags:
-                # Create swi${packName}hFlags dict for the new command
-                new_cmd_swi${packName}h_flags = {}
+                # Create swtcFlags dict for the new command
+                new_cmd_swtc_flags = {}
                 for flag_name in new_cmd_flags.keys():
-                    new_cmd_swi${packName}h_flags[flag_name] = {"type": "bool"}
-                saveCmdSwi${packName}hFlags(newCmdName, new_cmd_flags, new_cmd_swi${packName}h_flags)
+                    new_cmd_swtc_flags[flag_name] = {"type": "bool"}
+                saveCmdSwtcFlags(newCmdName, new_cmd_flags, new_cmd_swtc_flags)
 
         printIt(f'"{newCmdName}" added using {template_name} template.', lable.NewCmd)
     else:
@@ -363,7 +363,7 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
 
     # Handle option flags if they exist
     optionFlags = theArgs.get("_optionFlags", {})
-    newCommandCMDJson["swi${packName}hFlags"] = optionFlags
+    newCommandCMDJson["swtcFlags"] = optionFlags
 
     argIndex = 1
     while argIndex < len(theArgs):  # add subarg functions

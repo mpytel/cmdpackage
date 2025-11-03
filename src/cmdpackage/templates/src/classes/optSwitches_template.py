@@ -11,32 +11,32 @@ rcFileDir = Path(__file__).resolve().parents[2]
 rcFileName = rcFileDir.joinpath(f".${packName}rc")
 
 
-class OptSwi${packName}hes:
-    def __init__(self, swi${packName}hFlags: dict) -> None:
-        self.swi${packName}hFlags = swi${packName}hFlags
-        self.optSwi${packName}hes = readOptSwi${packName}hes()
+class OptSwtces:
+    def __init__(self, swtcFlags: dict) -> None:
+        self.swtcFlags = swtcFlags
+        self.optSwtces = readOptSwtces()
 
-    def toggleSwi${packName}hFlag(self, swi${packName}hFlag: str):
-        optSwi${packName}hes = {}
-        optSwi${packName}hes["swi${packName}hFlags"] = {}
-        currSwi${packName}hFlag = swi${packName}hFlag[1:]
-        if swi${packName}hFlag[0] in "+":
-            currSwi${packName}hValue = (
-                True  # not (self.optSwi${packName}hes["swi${packName}hFlags"][currSwi${packName}hFlag] == True)
+    def toggleSwtcFlag(self, swtcFlag: str):
+        optSwtces = {}
+        optSwtces["swtcFlags"] = {}
+        currSwtcFlag = swtcFlag[1:]
+        if swtcFlag[0] in "+":
+            currSwtcValue = (
+                True  # not (self.optSwtces["swtcFlags"][currSwtcFlag] == True)
             )
         else:
-            currSwi${packName}hValue = False
+            currSwtcValue = False
         try:
-            self.optSwi${packName}hes["swi${packName}hFlags"][currSwi${packName}hFlag] = currSwi${packName}hValue
+            self.optSwtces["swtcFlags"][currSwtcFlag] = currSwtcValue
         except:
             print("here")
-            self.optSwi${packName}hes["swi${packName}hFlags"][currSwi${packName}hFlag] = True
-        writeOptJson(self.optSwi${packName}hes, self.swi${packName}hFlags)
+            self.optSwtces["swtcFlags"][currSwtcFlag] = True
+        writeOptJson(self.optSwtces, self.swtcFlags)
 
 
-def saveCmdSwi${packName}hFlags(cmdName: str, cmdOptions: dict, cmdSwi${packName}hFlags: dict):
-    \"\"\"Save command-specific swi${packName}h flags to .${packName}rc\"\"\"
-    rcData = readOptSwi${packName}hes()
+def saveCmdSwtcFlags(cmdName: str, cmdOptions: dict, cmdSwtcFlags: dict):
+    \"\"\"Save command-specific swtc flags to .${packName}rc\"\"\"
+    rcData = readOptSwtces()
 
     # Initialize command flags section if it doesn't exist
     if "commandFlags" not in rcData:
@@ -46,8 +46,8 @@ def saveCmdSwi${packName}hFlags(cmdName: str, cmdOptions: dict, cmdSwi${packName
 
     # Process each command option
     for optionName, optionValue in cmdOptions.items():
-        if optionName in cmdSwi${packName}hFlags:
-            flagDef = cmdSwi${packName}hFlags[optionName]
+        if optionName in cmdSwtcFlags:
+            flagDef = cmdSwtcFlags[optionName]
             if flagDef["type"] == "bool":
                 # Boolean flag - store true/false
                 rcData["commandFlags"][cmdName][optionName] = bool(optionValue)
@@ -65,9 +65,9 @@ def saveCmdSwi${packName}hFlags(cmdName: str, cmdOptions: dict, cmdSwi${packName
     printIt(f"Command flags saved for '{cmdName}'", lable.INFO)
 
 
-def toggleCmdSwi${packName}hFlag(cmdName: str, flagName: str, setValue: bool):
+def toggleCmdSwtcFlag(cmdName: str, flagName: str, setValue: bool):
     \"\"\"Toggle a command-specific boolean flag in .${packName}rc\"\"\"
-    rcData = readOptSwi${packName}hes()
+    rcData = readOptSwtces()
 
     # Initialize command flags section if it doesn't exist
     if "commandFlags" not in rcData:
@@ -86,15 +86,15 @@ def toggleCmdSwi${packName}hFlag(cmdName: str, flagName: str, setValue: bool):
     printIt(f"Command flag '{flagName}' {status} for '{cmdName}'", lable.INFO)
 
 
-def getCmdSwi${packName}hFlags(cmdName: str) -> dict:
-    \"\"\"Get stored command-specific swi${packName}h flags from .${packName}rc\"\"\"
-    rcData = readOptSwi${packName}hes()
+def getCmdSwtcFlags(cmdName: str) -> dict:
+    \"\"\"Get stored command-specific swtc flags from .${packName}rc\"\"\"
+    rcData = readOptSwtces()
     return rcData.get("commandFlags", {}).get(cmdName, {})
 
 
-def removeCmdSwi${packName}hFlags(cmdName: str):
-    \"\"\"Remove command-specific swi${packName}h flags from .${packName}rc when command is deleted\"\"\"
-    rcData = readOptSwi${packName}hes()
+def removeCmdSwtcFlags(cmdName: str):
+    \"\"\"Remove command-specific swtc flags from .${packName}rc when command is deleted\"\"\"
+    rcData = readOptSwtces()
 
     # Check if command exists in commandFlags
     if "commandFlags" in rcData and cmdName in rcData["commandFlags"]:
@@ -105,7 +105,7 @@ def removeCmdSwi${packName}hFlags(cmdName: str):
             del rcData["commandFlags"]
 
         # If the entire file would be empty or only has empty sections, delete the file
-        if not rcData.get("swi${packName}hFlags") and not rcData.get("commandFlags"):
+        if not rcData.get("swtcFlags") and not rcData.get("commandFlags"):
             if rcFileName.is_file():
                 rcFileName.unlink()
                 # printIt(f"Removed '{cmdName}' flags and deleted empty .${packName}rc file", lable.INFO)
@@ -119,42 +119,42 @@ def removeCmdSwi${packName}hFlags(cmdName: str):
         pass
 
 
-def readOptSwi${packName}hes() -> dict:
+def readOptSwtces() -> dict:
     global rcFileName
-    optSwi${packName}hes = {}
+    optSwtces = {}
     if rcFileName.is_file():
         with open(rcFileName, "r") as rf:
             rawRcJson = json.load(rf)
-        optSwi${packName}hes["swi${packName}hFlags"] = rawRcJson.get("swi${packName}hFlags", {})
-        optSwi${packName}hes["commandFlags"] = rawRcJson.get("commandFlags", {})
+        optSwtces["swtcFlags"] = rawRcJson.get("swtcFlags", {})
+        optSwtces["commandFlags"] = rawRcJson.get("commandFlags", {})
     else:
-        optSwi${packName}hes["swi${packName}hFlags"] = {}
-        optSwi${packName}hes["commandFlags"] = {}
-    return optSwi${packName}hes
+        optSwtces["swtcFlags"] = {}
+        optSwtces["commandFlags"] = {}
+    return optSwtces
 
 
-def writeOptJson(optSwi${packName}hes: dict, swi${packName}hFlags: dict) -> dict:
+def writeOptJson(optSwtces: dict, swtcFlags: dict) -> dict:
     global rcFileName
     rawRC = {}
     if rcFileName.is_file():
         with open(rcFileName, "r") as rf:
             rawRC = json.load(rf)
-    rawRC = rawRC | optSwi${packName}hes
-    for swi${packName}hFlag in swi${packName}hFlags.keys():  # fill in missing items'
+    rawRC = rawRC | optSwtces
+    for swtcFlag in swtcFlags.keys():  # fill in missing items'
         try:
-            _ = rawRC["swi${packName}hFlags"][swi${packName}hFlag]
+            _ = rawRC["swtcFlags"][swtcFlag]
         except:
-            rawRC["swi${packName}hFlags"][swi${packName}hFlag] = False
-    # printIt(formatOptStr(rawRC["swi${packName}hFlags"]), lable.INFO)
+            rawRC["swtcFlags"][swtcFlag] = False
+    # printIt(formatOptStr(rawRC["swtcFlags"]), lable.INFO)
     with open(rcFileName, "w") as wf:
         json.dump(rawRC, wf, indent=2)
     return rawRC
 
 
-def formatOptStr(optSwi${packName}hes: dict) -> str:
+def formatOptStr(optSwtces: dict) -> str:
     rtnStr = "Current option values: "
-    for cmdOpt in optSwi${packName}hes:
-        rtnStr += f"-{cmdOpt}={optSwi${packName}hes[cmdOpt]}, "
+    for cmdOpt in optSwtces:
+        rtnStr += f"-{cmdOpt}={optSwtces[cmdOpt]}, "
     rtnStr = rtnStr[:-2]
     return rtnStr
 """))
