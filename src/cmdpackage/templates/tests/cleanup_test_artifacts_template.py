@@ -8,7 +8,7 @@ cleanup_test_artifacts_template = Template(dedent("""#!/usr/bin/env python3
 Utility script to clean up test artifacts that might be left behind during testing.
 
 This script removes:
-1. Test command .py files from src/vc/commands/
+1. Test command .py files from src/${packName]/commands/
 2. Test command entries from commands.json
 3. Any other test-related artifacts
 
@@ -31,7 +31,7 @@ def cleanup_test_artifacts():
     print("🧹 Cleaning up test artifacts...")
 
     # Clean up .py files - look for any file starting with "test"
-    commands_dir = project_root / "src" / "vc" / "commands"
+    commands_dir = project_root / "src" / "${packName]" / "commands"
 
     cleaned_files = 0
     if commands_dir.exists():

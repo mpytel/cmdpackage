@@ -92,7 +92,7 @@ class WriteTestScript:
 
             module_name = os.path.splitext(template_path)
             module_name = sanitize_var_name(module_name[0].split(os.path.sep)[-1])
-            module_name = module_name.replace(f"_template_{TEMPLATE_DIR}", "_template").replace(f".py", "")
+            module_name = module_name.replace(f"_template_template", "_template").replace(f".py", "")
 
             # Look for template attribute - try common naming patterns
             template_attr_name = f"{module_name}_{TEMPLATE_DIR}"
