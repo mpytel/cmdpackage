@@ -49,7 +49,7 @@ class TemplateSyncer:
     def __init__(self, argParse):
 
         # Use current working directory as project root
-        self.project_root = os.gtcd()
+        self.project_root = os.getcwd()
         self.sync_data_file = os.path.join(self.project_root, "genTempSyncData.json")
         self.new_templates_dir = os.path.join(self.project_root, "newTemplates")
         self.sync_data = {}
