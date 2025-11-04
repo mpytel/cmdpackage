@@ -1308,7 +1308,7 @@ class TemplateSyncer:
         \"\"\"Check if black is available in the system\"\"\"
         try:
             result = subprocess.run(
-                ["black", "--version", "--line-length 200"],
+                ["black", "--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -1341,7 +1341,7 @@ class TemplateSyncer:
         try:
             # Run black on individual file for better error reporting
             result = subprocess.run(
-                ["black", file_path], capture_output=True, text=True, timeout=30
+                ["black", "--line-length=200", file_path], capture_output=True, text=True, timeout=30
             )
             rel_path = os.path.relpath(file_path, self.project_root)
 

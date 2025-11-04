@@ -14,9 +14,9 @@ from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
 from ..defs.utilities import split_args
 
-${commandJsonDict}
+$${commandJsonDict}
 
-class ${defName}Command:
+class $${defName}Command:
     def __init__(self, argParse):
         self.argParse = argParse
         self.cmdObj = Commands()
@@ -28,7 +28,7 @@ class ${defName}Command:
         self.module = sys.modules[__name__]
 
     def execute(self):
-        \\"\\"\\"Main execution method for ${defName} command\\"\\"\\"
+        \\"\\"\\"Main execution method for $${defName} command\\"\\"\\"
 
         theArgs, theOpts = split_args(self.theArgs)
 
@@ -47,9 +47,9 @@ class ${defName}Command:
             printIt("No arguments provided", lable.WARN)
             return
 
-def ${defName}(argParse):
-    \\"\\"\\"Entry point for ${defName} command\\"\\"\\"
-    command_instance = ${defName}Command(argParse)
+def $${defName}(argParse):
+    \\"\\"\\"Entry point for $${defName} command\\"\\"\\"
+    command_instance = $${defName}Command(argParse)
     command_instance.execute()
 \"\"\"
     )

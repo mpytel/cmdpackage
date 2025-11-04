@@ -205,8 +205,9 @@ class WriteCLIPackage:
         fileName = fileNameParts[-1]
         fileName = sanitize_var_name(fileName)
         # "commands.json": "src/cmdpackage/templates/src/commands/commands_template.json"
-        if fileName.startswith('README")'):
+        if fileName.startswith('README') or fileName == "copilot_instructions_template":
             ext = '.md'  # Special case for README files
+            output_key_path = os.path.join(root, ext)
         if fileName.endswith('_template'):
             revFileName = fileName[:-len('_template')]
             output_key_path = root[:-len(fileName)] + revFileName + ext

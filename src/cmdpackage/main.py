@@ -4,7 +4,6 @@ import os
 from cmdpackage.classes.writePyProject import writePyProject
 from cmdpackage.classes.writeCLIPackage import writeCLIPackage
 from cmdpackage.defs.createzVirtualEnv import createzVirtualEnv
-from cmdpackage.classes.writeTestScript import writeTestScript
 from cmdpackage.defs.utilities import commitGitRepo, installModules
 import argparse
 from pathlib import Path
