@@ -12,10 +12,11 @@ classCallTemplate = Template(
 import sys    
 from ..defs.logIt import printIt, lable, cStr, color
 from .commands import Commands
+from ..defs.utilities import split_args
 
-$${commandJsonDict}
+${commandJsonDict}
 
-class $${defName}Command:
+class ${defName}Command:
     def __init__(self, argParse):
         self.argParse = argParse
         self.cmdObj = Commands()
@@ -27,9 +28,9 @@ class $${defName}Command:
         self.module = sys.modules[__name__]
 
     def execute(self):
-        \\"\\"\\"Main execution method for $${defName} command\\"\\"\\"
-        
-        theArgs = _filter_out_options(self.theArgs)
+        \\"\\"\\"Main execution method for ${defName} command\\"\\"\\"
+
+        theArgs, theOpts = split_args(self.theArgs)
 
         argIndex = 0
         while argIndex < len(theArgs):
@@ -46,16 +47,9 @@ class $${defName}Command:
             printIt("No arguments provided", lable.WARN)
             return
 
-            
-def _filter_out_options(args):
-    \\"\\"\\"Filters out option flags(starting with - or +) from the argument list.\\"\\"\\"
-    filtered_args = [arg for arg in args if not str(arg).startswith(("-", "+"))]
-    return filtered_args
-
-    
-def $${defName}(argParse):
-    \\"\\"\\"Entry point for $${defName} command\\"\\"\\"
-    command_instance = $${defName}Command(argParse)
+def ${defName}(argParse):
+    \\"\\"\\"Entry point for ${defName} command\\"\\"\\"
+    command_instance = ${defName}Command(argParse)
     command_instance.execute()
 \"\"\"
     )

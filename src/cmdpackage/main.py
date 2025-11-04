@@ -59,7 +59,6 @@ def main():
         usedefaults, gen_temp_sync_data_write=False)
     writeCLIPackage(fields, args.GenTempSyncDataWrite)
     createzVirtualEnv(fields)
-    writeTestScript(fields, args.GenTempSyncDataWrite)
     if fields['git_initialized'] == "True" :
         commitGitRepo("finalize package setup")
     installModules(projName)

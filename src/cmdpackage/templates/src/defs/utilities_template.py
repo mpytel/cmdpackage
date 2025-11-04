@@ -3,7 +3,8 @@
 from textwrap import dedent
 from string import Template
 
-utilities_template = Template(dedent("""import hashlib
+utilities_template = Template(dedent("""import os
+import hashlib
 from .logIt import printIt, lable, cStr, color
 
 
@@ -17,10 +18,27 @@ def calculate_md5(file_path: str) -> str:
         return ""
 
 
-def filter_out_options(inlist, moreStartsWithList: list[str]) -> list:
-    \"\"\"Filters out option flags (starting with - or +) from the argument list.\"\"\"
+def walk_directory(directory: str) -> list[str]:
+    \"\"\"Get a list of all files in the specified directory and its subdirectories\"\"\"
+    file_list = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_list.append(file_path)
+    return file_list
+
+
+def split_args(inlist, moreStartsWithList: list[str]) -> tuple[list[str], list[str]]:
+    \"\"\"
+    Split out option flags (starting with - or +) from the argument list.
+
+    Returns a tuple containing two lists:
+    - The first list contains arguments.
+    - The second list contains option arguments.
+    \"\"\"
     startsWithList = ("-", "+") + tuple(moreStartsWithList)
-    filtered_args = [arg for arg in inlist if not str(arg).startswith(startsWithList)]
-    return filtered_args
+    theArgs = [arg for arg in inlist if not str(arg).startswith(startsWithList)]
+    optList = [arg for arg in inlist if not str(arg).startswith(startsWithList)]
+    return (theArgs, optList)
 """))
 

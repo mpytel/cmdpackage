@@ -17,7 +17,7 @@ from textwrap import dedent
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 from ..defs.logIt import printIt, lable, cStr, color
-from ..defs.utilities import calculate_md5, filter_out_options
+from ..defs.utilities import calculate_md5, split_args
 from .commands import Commands
 from ..classes.optSwitches import getCmdswitchFlags
 
@@ -259,7 +259,7 @@ class TemplateSyncer:
             ("license", "license"),
             ("authors", "authors"),
             ("maintainers", "maintainers"),
-            ("classifiers", "classifiers")
+            ("classifiers", "classifiers"),
         ]
 
         # Replace literal values with placeholders
@@ -270,7 +270,7 @@ class TemplateSyncer:
                     placeholder = "$${" + placeholder_name + "}"
                     # Special handling for 'name' field (packName) which appears in compound words
                     if field_key == "name":
-                        # Handle compound patterns like "${packName}rc", "syncTemplates", e${packName}.
+                        # Handle compound patterns like "${packName}rc", "syncTemplates", etc.
                         compound_patterns = [
                             (f"{field_value}rc", f"$${{{placeholder_name}}}rc"),
                             (
@@ -285,14 +285,10 @@ class TemplateSyncer:
                             )
                     # General replacement (exact mtces with and without word boundaries)
                     pattern = r"\\b" + re.escape(field_value) + r"\\b"
-                    modified_content = re.sub(
-                        pattern, placeholder, modified_content
-                    )
-                    pattern = re.escape(field_value)
-                    modified_content = re.sub(
-                        pattern, placeholder, modified_content
-                    )
-                    
+                    modified_content = re.sub(pattern, placeholder, modified_content)
+                    # pattern = re.escape(field_value)
+                    # modified_content = re.sub(pattern, placeholder, modified_content)
+
         return modified_content
 
     def _load_template_content(
@@ -1312,7 +1308,10 @@ class TemplateSyncer:
         \"\"\"Check if black is available in the system\"\"\"
         try:
             result = subprocess.run(
-                ["black", "--version"], capture_output=True, text=True, timeout=10
+                ["black", "--version", "--line-length 200"],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             return result.returncode == 0
         except (
@@ -1654,7 +1653,7 @@ class tmplMgtCommand:
             printIt("No arguments provided", lable.WARN)
             return
 
-        theArgs = filter_out_options(self.theArgs, [])
+        theArgs, optArgs = split_args(self.theArgs, [])
 
         argIndex = 0
         while argIndex < len(theArgs):
@@ -1706,7 +1705,7 @@ def make(argParse):
 
     args = argParse.args
     theArgs = args.arguments
-    theArgs = filter_out_options(theArgs, ["make"])
+    theArgs, optArgs = split_args(theArgs, ["make"])
 
     for i, arg in enumerate(theArgs):
         if i + 1 < len(theArgs):
@@ -1728,7 +1727,7 @@ def sync(argParse):
 
     args = argParse.args
     theArgs = args.arguments
-    theArgs = filter_out_options(theArgs, ["sync"])
+    theArgs, optArgs = split_args(theArgs, ["sync"])
 
     file_patterns = []
     for arg in theArgs:
