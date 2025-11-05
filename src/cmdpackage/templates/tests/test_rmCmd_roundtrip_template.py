@@ -103,9 +103,7 @@ def print_step(message: str):
     print(f"{Colors.MAGENTA}[STEP]{Colors.NC} {message}")
 
 
-def run_command(
-    cmd: str, input_text: str = "", capture_output: bool = True
-) -> Tuple[int, str, str]:
+def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> Tuple[int, str, str]:
     \"\"\"Run a shell command and return (returncode, stdout, stderr)\"\"\"
     try:
         # Change to the project directory
@@ -126,9 +124,7 @@ def run_command(
 
 def check_command_exists(cmd_name: str) -> bool:
     \"\"\"Check if command exists in commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -139,9 +135,7 @@ def check_command_exists(cmd_name: str) -> bool:
 
 def get_command_data(cmd_name: str) -> dict:
     \"\"\"Get command data from commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -156,10 +150,7 @@ def check_flag_in_${packName}rc(cmd_name: str, flag_name: str) -> bool:
     try:
         with open(${packName}rc_file, "r") as f:
             data = json.load(f)
-            return (
-                cmd_name in data.get("commandFlags", {})
-                and flag_name in data["commandFlags"][cmd_name]
-            )
+            return cmd_name in data.get("commandFlags", {}) and flag_name in data["commandFlags"][cmd_name]
     except Exception:
         return False
 
@@ -270,9 +261,7 @@ def test_create_command(result: TestResult) -> bool:
     returncode, stdout, stderr = run_command("${packName} newCmd rmTestCmd01", input_text)
 
     # Check if command was created
-    if check_command_exists("rmTestCmd01") and file_exists(
-        "src/${packName}/commands/rmTestCmd01.py"
-    ):
+    if check_command_exists("rmTestCmd01") and file_exists("src/${packName}/commands/rmTestCmd01.py"):
         result.add_result("Create command", True, "rmTestCmd01 created successfully")
         return True
     else:
@@ -286,15 +275,11 @@ def test_add_flags_and_arguments(result: TestResult) -> bool:
 
     # Add swtc flags
     input_text = "Verbose output flag\\nDebug mode flag\\n"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd rmTestCmd01 -verbose -debug", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd rmTestCmd01 -verbose -debug", input_text)
 
     # Add regular arguments
     input_text = "First test argument\\nSecond test argument\\n"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd rmTestCmd01 arg1 arg2", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd rmTestCmd01 arg1 arg2", input_text)
 
     # Verify flags were added
     verbose_ok = check_swtc_flag_definition("rmTestCmd01", "verbose", "bool")
@@ -307,9 +292,7 @@ def test_add_flags_and_arguments(result: TestResult) -> bool:
     arg1_ok = "arg1" in cmd_data
     arg2_ok = "arg2" in cmd_data
 
-    all_ok = (
-        verbose_ok and debug_ok and verbose_${packName}rc and debug_${packName}rc and arg1_ok and arg2_ok
-    )
+    all_ok = verbose_ok and debug_ok and verbose_${packName}rc and debug_${packName}rc and arg1_ok and arg2_ok
 
     if all_ok:
         result.add_result(
@@ -344,18 +327,11 @@ def test_remove_regular_argument(result: TestResult) -> bool:
     verbose_${packName}rc_exists = check_flag_in_${packName}rc("rmTestCmd01", "verbose")
 
     all_ok = (
-        arg1_removed
-        and arg2_exists
-        and verbose_exists
-        and debug_exists
-        and file_exists_check
-        and verbose_${packName}rc_exists
+        arg1_removed and arg2_exists and verbose_exists and debug_exists and file_exists_check and verbose_${packName}rc_exists
     )
 
     if all_ok:
-        result.add_result(
-            "Remove regular argument", True, "arg1 removed, everything else preserved"
-        )
+        result.add_result("Remove regular argument", True, "arg1 removed, everything else preserved")
         return True
     else:
         result.add_result(
@@ -374,13 +350,9 @@ def test_remove_swtc_flag(result: TestResult) -> bool:
     returncode, stdout, stderr = run_command('echo "y" | ${packName} rmCmd rmTestCmd01 verbose')
 
     # Verify verbose flag was removed from all locations
-    verbose_removed_json = not check_swtc_flag_definition(
-        "rmTestCmd01", "verbose", "bool"
-    )
+    verbose_removed_json = not check_swtc_flag_definition("rmTestCmd01", "verbose", "bool")
     verbose_removed_${packName}rc = not check_flag_in_${packName}rc("rmTestCmd01", "verbose")
-    verbose_removed_source = not file_contains_flag(
-        "src/${packName}/commands/rmTestCmd01.py", "verbose"
-    )
+    verbose_removed_source = not file_contains_flag("src/${packName}/commands/rmTestCmd01.py", "verbose")
 
     # Verify other items still exist
     debug_exists = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
@@ -427,20 +399,12 @@ def test_remove_remaining_items(result: TestResult) -> bool:
     # Verify everything was removed except basic command structure
     cmd_data = get_command_data("rmTestCmd01")
     arg2_removed = "arg2" not in cmd_data
-    debug_removed_json = not check_swtc_flag_definition(
-        "rmTestCmd01", "debug", "bool"
-    )
+    debug_removed_json = not check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     debug_removed_${packName}rc = not check_flag_in_${packName}rc("rmTestCmd01", "debug")
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")
     command_still_exists = check_command_exists("rmTestCmd01")
 
-    all_ok = (
-        arg2_removed
-        and debug_removed_json
-        and debug_removed_${packName}rc
-        and file_exists_check
-        and command_still_exists
-    )
+    all_ok = arg2_removed and debug_removed_json and debug_removed_${packName}rc and file_exists_check and command_still_exists
 
     if all_ok:
         result.add_result(
@@ -476,17 +440,13 @@ def test_template_system_cleanup(result: TestResult) -> bool:
     print_step("Running initial sync")
     returncode, stdout, stderr = run_command("${packName} sync")
     if returncode != 0:
-        result.add_result(
-            "Template cleanup - initial sync", False, f"Initial sync failed: {stderr}"
-        )
+        result.add_result("Template cleanup - initial sync", False, f"Initial sync failed: {stderr}")
         return False
 
     # Step 2: Create testVerify command with arguments and flags
     print_step("Creating testVerify command with arguments and flags")
     input_text = "Test command\\nTest argument\\nOutput option\\n"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd testVerify arg1 --output --template=simple", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd testVerify arg1 --output --template=simple", input_text)
     if returncode != 0:
         result.add_result(
             "Template cleanup - create testVerify",
@@ -497,9 +457,7 @@ def test_template_system_cleanup(result: TestResult) -> bool:
 
     # Step 3: Add testVerify to template system
     print_step("Adding testVerify to template system")
-    returncode, stdout, stderr = run_command(
-        "${packName} sync make src/${packName}/commands/testVerify.py"
-    )
+    returncode, stdout, stderr = run_command("${packName} sync make src/${packName}/commands/testVerify.py")
     if returncode != 0:
         result.add_result(
             "Template cleanup - sync make",
@@ -512,9 +470,7 @@ def test_template_system_cleanup(result: TestResult) -> bool:
     print_step("Running final sync to populate templates")
     returncode, stdout, stderr = run_command("${packName} sync")
     if returncode != 0:
-        result.add_result(
-            "Template cleanup - final sync", False, f"Final sync failed: {stderr}"
-        )
+        result.add_result("Template cleanup - final sync", False, f"Final sync failed: {stderr}")
         return False
 
     # Step 5: Verify testVerify exists in all expected locations
@@ -603,9 +559,7 @@ def test_template_system_cleanup(result: TestResult) -> bool:
     # Check command file removed
     file_removed = not file_exists("src/${packName}/commands/testVerify.py")
     if not file_removed:
-        result.add_result(
-            "Template cleanup - file removal", False, "testVerify.py file still exists"
-        )
+        result.add_result("Template cleanup - file removal", False, "testVerify.py file still exists")
         return False
 
     # Check command removed from commands.json
@@ -636,9 +590,7 @@ def test_remove_entire_command(result: TestResult) -> bool:
     # Verify command was completely removed
     command_removed = not check_command_exists("rmTestCmd01")
     file_removed = not file_exists("src/${packName}/commands/rmTestCmd01.py")
-    ${packName}rc_cleaned = not check_flag_in_${packName}rc(
-        "rmTestCmd01", "debug"
-    ) and not check_flag_in_${packName}rc("rmTestCmd01", "verbose")
+    ${packName}rc_cleaned = not check_flag_in_${packName}rc("rmTestCmd01", "debug") and not check_flag_in_${packName}rc("rmTestCmd01", "verbose")
 
     all_ok = command_removed and file_removed and ${packName}rc_cleaned
 
@@ -682,9 +634,7 @@ def main():
 
     for test_func in tests:
         if not test_func(result):
-            print_fail(
-                f"Test {test_func.__name__} failed, continuing with remaining tests..."
-            )
+            print_fail(f"Test {test_func.__name__} failed, continuing with remaining tests...")
 
     # Final cleanup
     cleanup_test_commands()
@@ -693,14 +643,10 @@ def main():
     success = result.print_summary()
 
     if success:
-        print(
-            f"{Colors.GREEN}All tests passed! rmCmd functionality is working correctly.{Colors.NC}"
-        )
+        print(f"{Colors.GREEN}All tests passed! rmCmd functionality is working correctly.{Colors.NC}")
         sys.exit(0)
     else:
-        print(
-            f"{Colors.RED}Some tests failed. Please check the implementation.{Colors.NC}"
-        )
+        print(f"{Colors.RED}Some tests failed. Please check the implementation.{Colors.NC}")
         sys.exit(1)
 
 

@@ -16,9 +16,7 @@ from .templates.argCmdDef import cmdDefTemplate
 from .templates.argDefTemplate import argDefTemplate
 import readline
 
-commandJsonDict = {
-    "commands_modCmd": {"description": "Command commands_modCmd", "switchFlags": {}}
-}
+commandJsonDict = {"commands_modCmd": {"description": "Command commands_modCmd", "switchFlags": {}}}
 
 readline.parse_and_bind("tab: compleat")
 readline.parse_and_bind("set editing-mode vi")
@@ -86,22 +84,16 @@ def modCmd(argParse: ArgParse):
                 if isinstance(option_value, bool):
                     # Boolean flag (single hyphen) - add regardless of value for flag definition
                     combined_args.append(f"-{option_name}")
-                elif option_value == "__STRING_OPTION__" or not isinstance(
-                    option_value, bool
-                ):
+                elif option_value == "__STRING_OPTION__" or not isinstance(option_value, bool):
                     # String option (double hyphen) - either has a value or is marked as string option
                     combined_args.append(f"--{option_name}")
 
         # Check if command uses argCmdDef template for validation
         uses_argcmddef = check_command_uses_argcmddef_template(modCmdName)
-        theArgs, tracking = verifyArgsWithDiscriptions(
-            cmdObj, combined_args, uses_argcmddef
-        )
+        theArgs, tracking = verifyArgsWithDiscriptions(cmdObj, combined_args, uses_argcmddef)
         # Check if there are actual modifications (excluding _optionFlags)
         actual_modifications = {k: v for k, v in theArgs.items() if k != "_optionFlags"}
-        if len(actual_modifications) > 0 or (
-            theArgs.get("_optionFlags") and len(theArgs["_optionFlags"]) > 0
-        ):
+        if len(actual_modifications) > 0 or (theArgs.get("_optionFlags") and len(theArgs["_optionFlags"]) > 0):
             updateCMDJson(cmdObj, modCmdName, theArgs)
 
             # If command uses argCmdDef template, add new argument functions to the .py file
@@ -167,9 +159,7 @@ def print_modification_results(cmd_name: str, tracking: dict) -> None:
             printIt(f"Note: {rej_list} were rejected.", lable.INFO)
 
 
-def verifyArgsWithDiscriptions(
-    cmdObj: Commands, theArgs, uses_argcmddef: bool = False
-) -> tuple[dict, dict]:
+def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, uses_argcmddef: bool = False) -> tuple[dict, dict]:
     rtnDict = {}
     optionFlags = {}
     cmdName = theArgs[0]
@@ -219,9 +209,7 @@ def verifyArgsWithDiscriptions(
                 printIt("Missing option name after double hyphen.", lable.WARN)
                 exit(0)
             optionName = argName[2:]  # Remove --
-            theDict = input(
-                f"Enter help description for option {argName} (stores value):\\n"
-            )
+            theDict = input(f"Enter help description for option {argName} (stores value):\\n")
             if theDict == "":
                 theDict = f"Value option {argName}"
             optionFlags[optionName] = {"description": theDict, "type": "str"}
@@ -232,9 +220,7 @@ def verifyArgsWithDiscriptions(
                 printIt("Missing option name after single hyphen.", lable.WARN)
                 exit(0)
             optionName = argName[1:]  # Remove -
-            theDict = input(
-                f"Enter help description for flag {argName} (true/false):\\n"
-            )
+            theDict = input(f"Enter help description for flag {argName} (true/false):\\n")
             if theDict == "":
                 theDict = f"Boolean flag {argName}"
             optionFlags[optionName] = {"description": theDict, "type": "bool"}
@@ -306,11 +292,7 @@ def add_new_argument_functions(cmdName: str, theArgs: dict, tracking: dict) -> N
             # Extract argument name from "argument argname" format
             arg_name = item.replace("argument ", "")
             # Only add if this is a new argument (not command description modification)
-            if (
-                arg_name != cmdName
-                and arg_name in theArgs
-                and arg_name != "_optionFlags"
-            ):
+            if arg_name != cmdName and arg_name in theArgs and arg_name != "_optionFlags":
                 new_arguments.append(arg_name)
 
     if not new_arguments:
@@ -380,9 +362,7 @@ def updateCMDJson(cmdObj: Commands, modCmdName: str, theArgs: dict) -> None:
     cmdObj.commands = commands
 
     # Update MD5 hash in genTempSyncData.json if it exists
-    commands_json_file = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "commands.json"
-    )
+    commands_json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "commands.json")
     update_sync_data_md5(commands_json_file)
 
     # Also update the source file's commandJsonDict

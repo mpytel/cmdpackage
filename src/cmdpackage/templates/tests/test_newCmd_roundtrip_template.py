@@ -82,9 +82,7 @@ def print_step(message: str):
     print(f"{Colors.MAGENTA}[STEP]{Colors.NC} {message}")
 
 
-def run_command(
-    cmd: str, input_text: str = "", capture_output: bool = True
-) -> Tuple[int, str, str]:
+def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> Tuple[int, str, str]:
     \"\"\"Run a shell command and return (returncode, stdout, stderr)\"\"\"
     try:
         # Change to project directory
@@ -108,9 +106,7 @@ def run_command(
 
 def check_command_exists(cmd_name: str) -> bool:
     \"\"\"Check if command exists in commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -171,9 +167,7 @@ def cleanup_test_commands():
     test_commands = ["testCmd01", "testCmd02", "testCmd03", "invalidTest"]
 
     # Add template-based test commands
-    template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
-    )
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
             template_name = template_file.stem
@@ -208,9 +202,7 @@ def test_basic_command(result: TestResult) -> bool:
 
     if not check_command_exists("testCmd01"):
         print_fail("Command testCmd01 was not created")
-        result.add_result(
-            "Basic command creation", False, "Command not found in commands.json"
-        )
+        result.add_result("Basic command creation", False, "Command not found in commands.json")
         return False
 
     print_pass("Command testCmd01 created successfully")
@@ -230,9 +222,7 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
     print_test("Test 2: Command creation with boolean flags")
 
     input_text = "Command with flags\\nArgument description\\nEnable verbose mode\\nEnable debug mode"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd testCmd02 arg1 -verbose -debug", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd testCmd02 arg1 -verbose -debug", input_text)
 
     if not check_command_exists("testCmd02"):
         print_fail("Command testCmd02 was not created")
@@ -249,10 +239,7 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
     print_pass("Boolean flags saved to .${packName}rc")
 
     # Check specific flag values
-    if not (
-        check_flag_value("testCmd02", "verbose", False)
-        and check_flag_value("testCmd02", "debug", False)
-    ):
+    if not (check_flag_value("testCmd02", "verbose", False) and check_flag_value("testCmd02", "debug", False)):
         print_fail("Boolean flags do not have correct default values")
         result.add_result("Boolean flags creation", False, "Incorrect default values")
         return False
@@ -267,9 +254,7 @@ def test_command_with_string_options(result: TestResult) -> bool:
     print_test("Test 3: Command creation with string options and template")
 
     input_text = "Simple command\\nArgument description\\nOutput file path"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd testCmd03 arg1 --output --template=simple", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd testCmd03 arg1 --output --template=simple", input_text)
 
     if not check_command_exists("testCmd03"):
         print_fail("Command testCmd03 was not created")
@@ -279,22 +264,15 @@ def test_command_with_string_options(result: TestResult) -> bool:
     print_pass("Command testCmd03 created successfully")
 
     # Check if template flag was saved for newCmd
-    if not (
-        check_flags_in_${packName}rc("newCmd")
-        and check_flag_value("newCmd", "template", "simple")
-    ):
+    if not (check_flags_in_${packName}rc("newCmd") and check_flag_value("newCmd", "template", "simple")):
         print_fail("Template flag was not saved correctly")
-        result.add_result(
-            "String options and template", False, "Template flag not saved"
-        )
+        result.add_result("String options and template", False, "Template flag not saved")
         return False
 
     print_pass("Template flag saved to .${packName}rc under newCmd")
 
     # Verify the template was actually used by checking the generated file
-    if file_contains(
-        "src/${packName}/commands/testCmd03.py", "# Generated using simple template"
-    ):
+    if file_contains("src/${packName}/commands/testCmd03.py", "# Generated using simple template"):
         print_pass("Simple template was used for code generation")
     else:
         print_info("Note: Template verification skipped (template marker not found)")
@@ -388,15 +366,11 @@ def test_error_handling(result: TestResult) -> bool:
 
     # Test invalid template
     input_text = "Test command\\nArgument description"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd invalidTest arg1 --template=nonexistent", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd invalidTest arg1 --template=nonexistent", input_text)
 
     if check_command_exists("invalidTest"):
         print_fail("Invalid template error not handled correctly")
-        result.add_result(
-            "Error handling", False, "Command created despite invalid template"
-        )
+        result.add_result("Error handling", False, "Command created despite invalid template")
         return False
 
     print_pass("Invalid template error handled correctly (command not created)")
@@ -440,17 +414,11 @@ def test_all_templates(result: TestResult) -> bool:
     print_test("Test 9: All template functionality")
 
     # Get list of available templates
-    template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
-    )
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     templates = []
 
     for file in template_dir.iterdir():
-        if (
-            file.suffix == ".py"
-            and file.name != "__init__.py"
-            and file.name != "argDefTemplate.py"
-        ):
+        if file.suffix == ".py" and file.name != "__init__.py" and file.name != "argDefTemplate.py":
             template_name = file.stem
             templates.append(template_name)
 
@@ -479,25 +447,19 @@ def test_all_templates(result: TestResult) -> bool:
 
             # Check if command was created
             if not check_command_exists(test_cmd_name):
-                print_fail(
-                    f"Command {test_cmd_name} was not created with template {template_name}"
-                )
+                print_fail(f"Command {test_cmd_name} was not created with template {template_name}")
                 continue
 
             # Check if Python file was created
             py_file = f"src/${packName}/commands/{test_cmd_name}.py"
             if not file_exists(py_file):
-                print_fail(
-                    f"Python file {test_cmd_name}.py was not created with template {template_name}"
-                )
+                print_fail(f"Python file {test_cmd_name}.py was not created with template {template_name}")
                 continue
 
             # Check if template marker exists
             expected_marker = f"# Generated using {template_name} template"
             if not file_contains(py_file, expected_marker):
-                print_fail(
-                    f"Template marker not found in {test_cmd_name}.py for template {template_name}"
-                )
+                print_fail(f"Template marker not found in {test_cmd_name}.py for template {template_name}")
                 continue
 
             print_pass(f"Template {template_name} works correctly")
@@ -518,9 +480,7 @@ def test_all_templates(result: TestResult) -> bool:
         result.add_result("All templates test", True)
         return True
     else:
-        print_fail(
-            f"Only {template_tests_passed}/{template_tests_total} templates work correctly"
-        )
+        print_fail(f"Only {template_tests_passed}/{template_tests_total} templates work correctly")
         result.add_result(
             "All templates test",
             False,
@@ -543,9 +503,7 @@ def test_complete_cleanup(result: TestResult) -> bool:
     test_commands = ["testCmd01", "testCmd02", "testCmd03"]
 
     # Add template-based test commands to verification
-    template_dir = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
-    )
+    template_dir = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "templates"
     for template_file in template_dir.glob("*.py"):
         if template_file.name != "__init__.py":
             template_name = template_file.stem
@@ -556,9 +514,7 @@ def test_complete_cleanup(result: TestResult) -> bool:
 
     if remaining_count > 0:
         print_fail(f"{remaining_count} test commands still exist")
-        result.add_result(
-            "Complete cleanup", False, f"{remaining_count} commands remain"
-        )
+        result.add_result("Complete cleanup", False, f"{remaining_count} commands remain")
         return False
 
     print_pass("All test commands removed")

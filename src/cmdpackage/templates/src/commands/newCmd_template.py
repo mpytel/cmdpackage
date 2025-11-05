@@ -20,9 +20,7 @@ from .commands import Commands
 # from .templates.argCmdDef import cmdDefTemplate
 # from .templates.argDefTemplate import argDefTemplate
 
-commandJsonDict = {
-    "commands_newCmd": {"description": "Command commands_newCmd", "switchFlags": {}}
-}
+commandJsonDict = {"commands_newCmd": {"description": "Command commands_newCmd", "switchFlags": {}}}
 
 readline.parse_and_bind("tab: compleat")
 readline.parse_and_bind("set editing-mode vi")
@@ -72,10 +70,7 @@ def newCmd(argParse: ArgParse):
     # Handle --templates option to list available templates
     if hasattr(argParse, "cmd_options") and "templates" in argParse.cmd_options:
         # If templates option has a value, use it as template name
-        if (
-            argParse.cmd_options["templates"] != "__STRING_OPTION__"
-            and argParse.cmd_options["templates"] is not True
-        ):
+        if argParse.cmd_options["templates"] != "__STRING_OPTION__" and argParse.cmd_options["templates"] is not True:
             # --templates=templatename format, treat as --template
             pass  # Continue with command creation using the specified template
         else:
@@ -99,9 +94,10 @@ def newCmd(argParse: ArgParse):
             if "template" in argParse.cmd_options:
                 template_name = argParse.cmd_options["template"]
             # Check for --templates=value option
-            elif "templates" in argParse.cmd_options and argParse.cmd_options[
-                "templates"
-            ] not in ["__STRING_OPTION__", True]:
+            elif "templates" in argParse.cmd_options and argParse.cmd_options["templates"] not in [
+                "__STRING_OPTION__",
+                True,
+            ]:
                 template_name = argParse.cmd_options["templates"]
 
             # Validate template exists - EXIT with error if invalid
@@ -121,9 +117,7 @@ def newCmd(argParse: ArgParse):
             if isinstance(option_value, bool):
                 # Boolean flag (single hyphen) - add regardless of value for flag definition
                 combined_args.append(f"-{option_name}")
-            elif option_value == "__STRING_OPTION__" or not isinstance(
-                option_value, bool
-            ):
+            elif option_value == "__STRING_OPTION__" or not isinstance(option_value, bool):
                 # String option (double hyphen) - either has a value or is marked as string option
                 combined_args.append(f"--{option_name}")
 
@@ -163,9 +157,7 @@ def newCmd(argParse: ArgParse):
                     continue
                 # Only save boolean flags (single hyphen options) with default value False
                 if isinstance(option_value, bool):
-                    new_cmd_flags[option_name] = (
-                        False  # Default to False for new command flags
-                    )
+                    new_cmd_flags[option_name] = False  # Default to False for new command flags
 
             # Save the flags if any were found
             if new_cmd_flags:
@@ -211,9 +203,7 @@ def template_exists(template_name):
     return os.path.isfile(template_file)
 
 
-def verifyArgsWithDiscriptions(
-    cmdObj: Commands, theArgs, template_name: str = "simple"
-) -> dict:
+def verifyArgsWithDiscriptions(cmdObj: Commands, theArgs, template_name: str = "simple") -> dict:
     rtnDict = {}
     optionFlags = {}
     argIndex = 0
@@ -228,9 +218,7 @@ def verifyArgsWithDiscriptions(
                 printIt("Missing option name after double hyphen.", lable.WARN)
                 exit(0)
             optionName = argName[2:]  # Remove --
-            theDict = input(
-                f"Enter help description for option {argName} (stores value):\\n"
-            )
+            theDict = input(f"Enter help description for option {argName} (stores value):\\n")
             if theDict == "":
                 theDict = f"Value option {argName}"
             optionFlags[optionName] = {"description": theDict, "type": "str"}
@@ -240,18 +228,14 @@ def verifyArgsWithDiscriptions(
                 printIt("Missing option name after single hyphen.", lable.WARN)
                 exit(0)
             optionName = argName[1:]  # Remove -
-            theDict = input(
-                f"Enter help description for flag {argName} (true/false):\\n"
-            )
+            theDict = input(f"Enter help description for flag {argName} (true/false):\\n")
             if theDict == "":
                 theDict = f"Boolean flag {argName}"
             optionFlags[optionName] = {"description": theDict, "type": "bool"}
         else:
             # Regular argument
             # Validate argument name if using argCmdDef template (creates functions)
-            if (
-                template_name == "argCmdDef" and argIndex > 0
-            ):  # Skip command name validation
+            if template_name == "argCmdDef" and argIndex > 0:  # Skip command name validation
                 if not validate_argument_name(argName, cmdName):
                     printIt(
                         f"Skipping invalid argument '{argName}' - cannot be used as function name",
@@ -271,9 +255,7 @@ def verifyArgsWithDiscriptions(
     return rtnDict
 
 
-def writeCodeFile(
-    theArgs: dict, newCommandCMDJson: dict, template_name: str = "simple"
-) -> str:
+def writeCodeFile(theArgs: dict, newCommandCMDJson: dict, template_name: str = "simple") -> str:
     fileDir = os.path.dirname(__file__)
     fileName = os.path.join(fileDir, f"{list(theArgs.keys())[0]}.py")
     if os.path.isfile(fileName):
@@ -286,9 +268,7 @@ def writeCodeFile(
     return rtnStr
 
 
-def cmdCodeBlock(
-    theArgs: dict, newCommandCMDJson: dict, template_name: str = "simple"
-) -> str:
+def cmdCodeBlock(theArgs: dict, newCommandCMDJson: dict, template_name: str = "simple") -> str:
     packName = os.path.basename(sys.argv[0])
     argNames = list(theArgs.keys())
     cmdName = argNames[0]
@@ -296,9 +276,7 @@ def cmdCodeBlock(
     # Import the specified template
     try:
         print("importing template:", template_name)
-        template_module = importlib.import_module(
-            f"${packName}.commands.templates.{template_name}"
-        )
+        template_module = importlib.import_module(f"${packName}.commands.templates.{template_name}")
 
         # Map template names to their template variable names
         template_var_names = {
@@ -309,9 +287,7 @@ def cmdCodeBlock(
         }
 
         # get template from template module
-        template_var_name = template_var_names.get(
-            template_name, f"{template_name}Template"
-        )
+        template_var_name = template_var_names.get(template_name, f"{template_name}Template")
         argCmdDefTemplate: Template = getattr(template_module, template_var_name)
 
         # get argument def template for argCmdDef to use when nessesary
@@ -335,9 +311,7 @@ def cmdCodeBlock(
         if argName != "_optionFlags":
             cmdCodeBlockJsonDict[argName] = theArgs[argName]
 
-    rtnStr = argCmdDefTemplate.substitute(
-        packName=packName, defName=cmdName, commandJsonDict=commandJsonDictStr
-    )
+    rtnStr = argCmdDefTemplate.substitute(packName=packName, defName=cmdName, commandJsonDict=commandJsonDictStr)
 
     argIndex = 1
     while argIndex < len(argNames):  # add subarg functions
@@ -346,9 +320,7 @@ def cmdCodeBlock(
         if argName != "_optionFlags":
             # Only add argument functions if template has argDefTemplate
             if argDefTemplate is not None:
-                rtnStr += argDefTemplate.substitute(
-                    argName=argName, defName=cmdName, packName=packName
-                )
+                rtnStr += argDefTemplate.substitute(argName=argName, defName=cmdName, packName=packName)
         argIndex += 1
     return rtnStr
 
@@ -376,9 +348,7 @@ def updateCMDJson(cmdObj: Commands, theArgs: dict) -> dict:
     cmdObj.commands = commands
 
     # Update MD5 hash in genTempSyncData.json if it exists
-    commands_json_file = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "commands.json"
-    )
+    commands_json_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "commands.json")
     update_sync_data_md5(commands_json_file)
 
     return newCommandCMDJson

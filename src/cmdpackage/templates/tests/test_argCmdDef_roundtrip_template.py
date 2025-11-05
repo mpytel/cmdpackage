@@ -124,9 +124,7 @@ def print_step(message: str):
     print(f"{Colors.MAGENTA}[STEP]{Colors.NC} {message}")
 
 
-def run_command(
-    cmd: str, input_text: str = "", capture_output: bool = True
-) -> Tuple[int, str, str]:
+def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> Tuple[int, str, str]:
     \"\"\"Run a shell command and return (returncode, stdout, stderr)\"\"\"
     try:
         # Change to the project directory
@@ -147,9 +145,7 @@ def run_command(
 
 def check_command_exists(cmd_name: str) -> bool:
     \"\"\"Check if command exists in commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -160,9 +156,7 @@ def check_command_exists(cmd_name: str) -> bool:
 
 def get_command_data(cmd_name: str) -> dict:
     \"\"\"Get command data from commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -179,9 +173,7 @@ def file_exists(file_path: str) -> bool:
 
 def check_template_type(cmd_name: str) -> str:
     \"\"\"Check what template was used for a command\"\"\"
-    file_path = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / f"{cmd_name}.py"
-    )
+    file_path = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / f"{cmd_name}.py"
     if not file_path.exists():
         return "none"
 
@@ -212,9 +204,7 @@ def check_function_exists_in_file(file_path: str, function_name: str) -> bool:
         return False
 
 
-def verify_function_template_content(
-    file_path: str, function_name: str, cmd_name: str
-) -> bool:
+def verify_function_template_content(file_path: str, function_name: str, cmd_name: str) -> bool:
     \"\"\"Verify that a function mtces the expected argDefTemplate pattern\"\"\"
     try:
         with open(file_path, "r") as file:
@@ -241,9 +231,7 @@ def verify_function_template_content(
         func_content = func_mtc.group(1)
 
         # Check if all expected patterns are in the function content
-        for pattern in expected_patterns[
-            1:
-        ]:  # Skip the def line as it's already mtced
+        for pattern in expected_patterns[1:]:  # Skip the def line as it's already mtced
             if pattern not in func_content:
                 return False
 
@@ -381,9 +369,7 @@ def test_valid_argument_acceptance(result: TestResult) -> bool:
     print_test("Test 2: Valid argument names acceptance")
 
     input_text = "Valid argument for testing\\nAnother valid argument"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd testValidation validArg anotherValid", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd testValidation validArg anotherValid", input_text)
 
     # Check if both arguments were added
     cmd_data = get_command_data("testValidation")
@@ -394,9 +380,7 @@ def test_valid_argument_acceptance(result: TestResult) -> bool:
     contains_modified = "CMD MODIFIED: " in stdout
     contains_both_args = "validArg" in stdout and "anotherValid" in stdout
 
-    all_ok = (
-        valid_arg_ok and another_valid_ok and contains_modified and contains_both_args
-    )
+    all_ok = valid_arg_ok and another_valid_ok and contains_modified and contains_both_args
 
     if all_ok:
         result.add_result(
@@ -427,24 +411,14 @@ def test_invalid_argument_rejection(result: TestResult) -> bool:
     int_rejected = "int" not in cmd_data
 
     # Check output messages
-    contains_all_rejected = (
-        "All requested modifications" in stdout and "were rejected" in stdout
-    )
+    contains_all_rejected = "All requested modifications" in stdout and "were rejected" in stdout
     contains_error_msgs = "ERROR:" in stdout
     contains_skip_msgs = "Skipping invalid argument" in stdout
 
-    all_ok = (
-        list_rejected
-        and str_rejected
-        and int_rejected
-        and contains_all_rejected
-        and contains_error_msgs
-    )
+    all_ok = list_rejected and str_rejected and int_rejected and contains_all_rejected and contains_error_msgs
 
     if all_ok:
-        result.add_result(
-            "Invalid argument rejection", True, "All Python keywords properly rejected"
-        )
+        result.add_result("Invalid argument rejection", True, "All Python keywords properly rejected")
         return True
     else:
         result.add_result(
@@ -461,9 +435,7 @@ def test_mixed_valid_invalid_arguments(result: TestResult) -> bool:
 
     # Test input alignment: list and int should be rejected, validMixed should be accepted
     input_text = "This should work for validMixed"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd testValidation list validMixed int", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd testValidation list validMixed int", input_text)
 
     # Check results
     cmd_data = get_command_data("testValidation")
@@ -475,13 +447,7 @@ def test_mixed_valid_invalid_arguments(result: TestResult) -> bool:
     contains_modified = "CMD MODIFIED: " in stdout and "validMixed" in stdout
     contains_rejected_note = "Note:" in stdout and "were rejected" in stdout
 
-    all_ok = (
-        valid_mixed_ok
-        and list_rejected
-        and int_rejected
-        and contains_modified
-        and contains_rejected_note
-    )
+    all_ok = valid_mixed_ok and list_rejected and int_rejected and contains_modified and contains_rejected_note
 
     if all_ok:
         result.add_result(
@@ -504,9 +470,7 @@ def test_swtc_flags_with_arguments(result: TestResult) -> bool:
     print_test("Test 5: Swtc flags with arguments")
 
     input_text = "Verbose flag description\\nValid swtc argument"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd testValidation -verbose list swtcArg", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd testValidation -verbose list swtcArg", input_text)
 
     # Check results
     cmd_data = get_command_data("testValidation")
@@ -544,14 +508,10 @@ def test_simple_template_bypass(result: TestResult) -> bool:
 
     # Create simple template command
     input_text = "Test command with simple template"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd --template=simple testSimple", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd --template=simple testSimple", input_text)
 
     if not check_command_exists("testSimple"):
-        result.add_result(
-            "Simple template bypass", False, "Failed to create simple template command"
-        )
+        result.add_result("Simple template bypass", False, "Failed to create simple template command")
         return False
 
     # Try to add reserved names (should be allowed)
@@ -598,9 +558,7 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
     # Check results
     cmd_data = get_command_data("testValidation")
     debug_flag_ok = "switchFlags" in cmd_data and "debug" in cmd_data["switchFlags"]
-    verbose_option_ok = (
-        "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
-    )
+    verbose_option_ok = "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
     valid_comp_ok = "validComprehensive" in cmd_data
     while_rejected = "while" not in cmd_data
     def_rejected = "def" not in cmd_data
@@ -617,9 +575,7 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
     all_ok = basic_validation_ok and messaging_ok
 
     if all_ok:
-        result.add_result(
-            "Comprehensive mixed scenario", True, "Complex scenario handled correctly"
-        )
+        result.add_result("Comprehensive mixed scenario", True, "Complex scenario handled correctly")
         return True
     else:
         result.add_result(
@@ -648,9 +604,7 @@ def test_function_definition_addition(result: TestResult) -> bool:
 
     # Add arguments and check if corresponding functions are added
     input_text = "First test argument\\nSecond test argument"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd testFunctions firstArg secondArg", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd testFunctions firstArg secondArg", input_text)
 
     # Verify functions were added to the .py file
     file_path = get_command_file_path("testFunctions")
@@ -666,11 +620,7 @@ def test_function_definition_addition(result: TestResult) -> bool:
     second_arg_in_json = "secondArg" in cmd_data
 
     all_ok = (
-        first_func_exists
-        and second_func_exists
-        and contains_function_msg
-        and first_arg_in_json
-        and second_arg_in_json
+        first_func_exists and second_func_exists and contains_function_msg and first_arg_in_json and second_arg_in_json
     )
 
     if all_ok:
@@ -697,21 +647,15 @@ def test_function_content_verification(result: TestResult) -> bool:
     # Verify the functions created in the previous test have correct content
     file_path = get_command_file_path("testFunctions")
 
-    first_content_ok = verify_function_template_content(
-        file_path, "firstArg", "testFunctions"
-    )
-    second_content_ok = verify_function_template_content(
-        file_path, "secondArg", "testFunctions"
-    )
+    first_content_ok = verify_function_template_content(file_path, "firstArg", "testFunctions")
+    second_content_ok = verify_function_template_content(file_path, "secondArg", "testFunctions")
 
     # Also check that the file doesn't have syntax errors by trying to read all functions
     all_functions = get_all_function_names_in_file(file_path)
     has_main_function = "testFunctions" in all_functions
     has_both_args = "firstArg" in all_functions and "secondArg" in all_functions
 
-    all_ok = (
-        first_content_ok and second_content_ok and has_main_function and has_both_args
-    )
+    all_ok = first_content_ok and second_content_ok and has_main_function and has_both_args
 
     if all_ok:
         result.add_result(
@@ -748,9 +692,7 @@ def test_multiple_argument_functions(result: TestResult) -> bool:
 
     # Add 3 arguments in a single call
     input_text = "First argument description\\nSecond argument description\\nThird argument description"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd testMultiple arg1 arg2 arg3", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd testMultiple arg1 arg2 arg3", input_text)
 
     # Verify all 3 functions were added
     file_path = get_command_file_path("testMultiple")
@@ -831,9 +773,7 @@ def test_function_removal_consistency(result: TestResult) -> bool:
     json_arg3_exists = "arg3" in cmd_data
 
     # Verify output messages
-    contains_removed_msg = (
-        "Removed function 'arg2'" in stdout or "ARG REMOVED: arg2" in stdout
-    )
+    contains_removed_msg = "Removed function 'arg2'" in stdout or "ARG REMOVED: arg2" in stdout
 
     all_ok = (
         after_removal_arg1
@@ -892,9 +832,7 @@ def main():
 
         for test_func in tests:
             if not test_func(result):
-                print_fail(
-                    f"Test {test_func.__name__} failed, continuing with remaining tests..."
-                )
+                print_fail(f"Test {test_func.__name__} failed, continuing with remaining tests...")
 
         # Print summary
         success = result.print_summary()
@@ -909,14 +847,10 @@ def main():
         cleanup_test_commands()
 
     if success:
-        print(
-            f"{Colors.GREEN}All tests passed! argCmdDef validation functionality is working correctly.{Colors.NC}"
-        )
+        print(f"{Colors.GREEN}All tests passed! argCmdDef validation functionality is working correctly.{Colors.NC}")
         sys.exit(0)
     else:
-        print(
-            f"{Colors.RED}Some tests failed. Please check the implementation.{Colors.NC}"
-        )
+        print(f"{Colors.RED}Some tests failed. Please check the implementation.{Colors.NC}")
         sys.exit(1)
 
 

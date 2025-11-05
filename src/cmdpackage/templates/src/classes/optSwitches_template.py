@@ -21,9 +21,7 @@ class optSwitches:
         optSwitches["switchFlags"] = {}
         currSwtcFlag = swtcFlag[1:]
         if swtcFlag[0] in "+":
-            currSwtcValue = (
-                True  # not (self.optSwitches["switchFlags"][currSwtcFlag] == True)
-            )
+            currSwtcValue = True  # not (self.optSwitches["switchFlags"][currSwtcFlag] == True)
         else:
             currSwtcValue = False
         try:

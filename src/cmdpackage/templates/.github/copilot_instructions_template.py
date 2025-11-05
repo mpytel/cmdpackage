@@ -13,38 +13,53 @@ copilot_instructions_template = Template(dedent("""# GitHub Copilot Instructions
 
 ```
 ${packName}/
-├── src/${packName}/
+├── src/${packName}/ 
 │   ├── main.py                     # Entry point - calls cmdSwitcbord
 │   ├── classes/
-│   │   ├── argParse.py            # Argument parsing logic
-│   │   └── optSwitches.py         # Option flag management and .${packName}rc file handling
+│   │   ├── argParse.py             # Argument parsing logic
+│   │   └── optSwitches.py          # Option flag management and .${packName}rc file handling
 │   ├── commands/
-│   │   ├── commands.json          # Central command registry and metadata
-│   │   ├── cmdSwitcbord.py       # Command disptcer/router
-│   │   ├── commands.py            # Command loading and management
-│   │   ├── newCmd.py              # Create new commands
-│   │   ├── modCmd.py              # Modify existing commands
-│   │   ├── rmCmd.py               # Remove commands
-│   │   ├── runTest.py             # Test runner
-│   │   └── templates/             # Code generation templates
-│   │       ├── argCmdDef.py       # Default template with argument handling
-│   │       ├── simple.py          # Minimal template
-│   │       ├── classCall.py       # OOP template
-│   │       └── asyncDef.py        # Async template
+│   │   ├── commands.json           # Central command registry and metadata
+│   │   ├── cmdOptSwitchbord.py     # Command disptcer/router for command line options
+│   │   ├── cmdSwitcbord.py         # Command disptcer/router
+│   │   ├── commands.json           # Command, argument, and option discription data
+│   │   ├── commands.py             # Command loading and management
+│   │   ├── fileDiff.py             # Use difflib to compare two files
+│   │   ├── newCmd.py               # Create new commands
+│   │   ├── modCmd.py               # Modify existing commands
+│   │   ├── rmCmd.py                # Remove commands
+│   │   ├── runTest.py              # Test runner
+│   │   ├── tmplMgt.py              # Template Manager 
+│   │   └── templates/              # Code generation templates
+│   │       ├── argCmdDef.py        # Default template with argument handling by function
+│   │       ├── argDefTemplate.py   # Argument handling function template
+│   │       ├── simple.py           # Minimal template
+│   │       ├── classCall.py        # OOP template
+│   │       └── asyncDef.py         # Async template
 │   ├── defs/
-│   │   ├── logIt.py              # Logging and colored output utilities
-│   │   └── validation.py         # Input validation functions
-│   └── .${packName}rc                     # User configuration file (runtime-generated)
-├── tests/
-│   ├── test_newCmd_roundtrip.py  # Tests for command creation
-│   ├── test_modCmd_roundtrip.py  # Tests for command modification
-│   ├── test_rmCmd_roundtrip.py   # Tests for command removal
+│   │   ├── logIt.py                # Logging and colored output utilities
+│   │   └── validation.py           # Input validation functions
+│   └── .${packName}rc                       # User configuration file (runtime-generated)
+├── tests/  
+│   ├── cleanup_test_artifacts      # Rremove files created during testing
+│   ├── test_newCmd_roundtrip.py    # Tests for command creation
+│   ├── test_modCmd_roundtrip.py    # Tests for command modification
+│   ├── test_rmCmd_roundtrip.py     # Tests for command removal
 │   └── test_argCmdDef_roundtrip.py # Template-specific tests
-├── pyproject.toml                # Package configuration
+├── genTempSyncData.json            # Template tracking data
+├── pyproject.toml                  # Package configuration
+├── README_Command_modifications.md # Disription of command modification funtionality
+├── ${readme}.                      # Basic package functionally README template
 └── .gitignore
-```
 
 ## Core Concepts
+
+### Vertual Environment
+- ${packName} is operated from the package base directory where the env directory lives
+- Use `. env/${packName}/bin/activate`
+- During the package genertion process `pip install -e .` was exected
+- Bash syntext executes ${packName} commands `. env/${packName}/bin/activate && ${packName} -h`
+- `. env/${packName}/bin/activate` may be omitted with subequnet command in the same shell
 
 ### Command Types and Templates
 ${packName} supports multiple command templates for different use cases:
@@ -63,7 +78,7 @@ ${packName} supports multiple command templates for different use cases:
 ### Configuration System
 - **commands.json**: Central registry storing all command definitions and metadata
 - **.${packName}rc**: User preferences file (generated at runtime)
-- **Template variables**: Dynamic substitution using `$${variable}` syntax
+- **Template variables**: Dynamic substitution using `$$$${variable}` syntax
 
 ## Key Features
 
@@ -103,8 +118,8 @@ Commands are generated from templates with variable substitution:
 - Test error conditions and edge cases
 
 ### Template Development
-- Templates should be self-contained and reusable
-- Use clear variable naming with `$${variable}` syntax
+- Templates are genrated using the `${packName} tmplMgt sync` command
+- Use clear variable naming with `$$$${variable}` syntax
 - Include comprehensive help text and examples
 - Test templates with various parameter combinations
 
@@ -141,7 +156,7 @@ Commands are generated from templates with variable substitution:
 
 ### Template System
 - Templates use Python's `string.Template` class
-- Variable substitution with `$${variable}` syntax
+- Variable substitution with `$$$${variable}` syntax
 - Support for conditional logic and loops
 - Extensible template inheritance
 

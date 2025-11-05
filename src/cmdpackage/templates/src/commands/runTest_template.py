@@ -70,9 +70,7 @@ class TestRunner:
             if not self.summary_only and self.verbose:
                 printIt(f"Running: {cmd}", lable.DEBUG)
 
-            result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, executable="/bin/bash"
-            )
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
 
             duration = time.time() - start_time
             success = result.returncode == 0
@@ -90,9 +88,7 @@ class TestRunner:
             duration = time.time() - start_time
             return False, f"Exception running test: {str(e)}", duration
 
-    def run_all_tests(
-        self, test_files: List[Path]
-    ) -> Dict[str, Tuple[bool, str, float]]:
+    def run_all_tests(self, test_files: List[Path]) -> Dict[str, Tuple[bool, str, float]]:
         \"\"\"Run all discovered test files\"\"\"
         results = {}
 
@@ -170,11 +166,7 @@ def runTest(argParse):
     \"\"\"Main runTest function - entry point for the command\"\"\"
     args = argParse.args
     # Filter out flag arguments (starting with + or -)
-    theArgs = [
-        arg
-        for arg in args.arguments
-        if not (isinstance(arg, str) and len(arg) > 1 and arg[0] in "+-")
-    ]
+    theArgs = [arg for arg in args.arguments if not (isinstance(arg, str) and len(arg) > 1 and arg[0] in "+-")]
 
     # Get command-line flags from .${packName}rc file after flag processing
     from ..classes.optSwitches import getCmdswitchFlags
@@ -184,9 +176,7 @@ def runTest(argParse):
     stop_on_failure = cmd_flags.get("stop", False)
     summary_only = cmd_flags.get("summary", False)
 
-    runner = TestRunner(
-        verbose=verbose, stop_on_failure=stop_on_failure, summary_only=summary_only
-    )
+    runner = TestRunner(verbose=verbose, stop_on_failure=stop_on_failure, summary_only=summary_only)
 
     if len(theArgs) == 0:
         # Run all tests

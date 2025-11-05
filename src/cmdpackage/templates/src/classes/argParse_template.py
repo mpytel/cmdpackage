@@ -58,9 +58,7 @@ class ArgParse:
             _, tCols = os.popen("stty size", "r").read().split()
             tCols = int(tCols)
             indentPad = 8
-            formatter_class = lambda prog: PiHelpFormatter(
-                prog, max_help_position=8, width=tCols
-            )
+            formatter_class = lambda prog: PiHelpFormatter(prog, max_help_position=8, width=tCols)
             commandsHelp = ""
             argumentsHelp = ""
             theCmds = Commands()
@@ -68,9 +66,7 @@ class ArgParse:
             swtcFlag = theCmds.switchFlags["switchFlags"]
             for cmdName in commands:
                 # Skip metadata entries that are not actual commands
-                if cmdName in ["description", "_globalSwtceFlags"] or not isinstance(
-                    commands[cmdName], dict
-                ):
+                if cmdName in ["description", "_globalSwtceFlags"] or not isinstance(commands[cmdName], dict):
                     continue
 
                 needCmdDescription = True
@@ -79,9 +75,7 @@ class ArgParse:
                 argumentsHelp += cStr(cmdName, color.YELLOW) + ": \\n"
                 for argName in arguments:
                     if argName == "description":
-                        cmdHelp = (
-                            cStr(cmdName, color.YELLOW) + ": " + f"{arguments[argName]}"
-                        )
+                        cmdHelp = cStr(cmdName, color.YELLOW) + ": " + f"{arguments[argName]}"
                         if len(cmdHelp) > tCols:
                             indentPad = len(cmdName) + 2
                             cmdHelp = formatHelpWidth(cmdHelp, tCols, indentPad)
@@ -91,10 +85,7 @@ class ArgParse:
                         needCmdDescription = False
                     elif argName not in ["switchFlags"]:
                         # Only process actual arguments, not metadata
-                        argHelp = (
-                            cStr(f"  <{argName}> ", color.CYAN)
-                            + f"{arguments[argName]}"
-                        )
+                        argHelp = cStr(f"  <{argName}> ", color.CYAN) + f"{arguments[argName]}"
                         if len(argHelp) > tCols:
                             indentPad = len(argName) + 5
                             argHelp = " " + formatHelpWidth(argHelp, tCols, indentPad)
@@ -134,9 +125,7 @@ class ArgParse:
 
             for optFlag in swtcFlag:
                 flagHelp = swtcFlag[optFlag]
-                self.parser.add_argument(
-                    f"-{optFlag}", action="store_true", help=flagHelp
-                )
+                self.parser.add_argument(f"-{optFlag}", action="store_true", help=flagHelp)
             self.args = self.parser.parse_args(self.filtered_args)
 
     def _extract_cmd_options(self, args):
@@ -162,9 +151,7 @@ class ArgParse:
                 # Handle command-specific options with double hyphen
                 elif "=" in arg:
                     # Handle --option=value format
-                    option_name, option_value = arg[2:].split(
-                        "=", 1
-                    )  # Remove -- and split on first =
+                    option_name, option_value = arg[2:].split("=", 1)  # Remove -- and split on first =
                     self.cmd_options[option_name] = option_value
                     i += 1
                 else:

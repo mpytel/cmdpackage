@@ -143,9 +143,7 @@ class TemplateSyncer:
                 lable.WARN,
             )
 
-    def _get_template_subdirectory(
-        self, file_path: str, temp_file_name: str = ""
-    ) -> str:
+    def _get_template_subdirectory(self, file_path: str, temp_file_name: str = "") -> str:
         \"\"\"Determine the correct subdirectory for a template based on tempFileName from genTempSyncData.json\"\"\"
 
         # First, try to use the provided temp_file_name parameter
@@ -160,18 +158,14 @@ class TemplateSyncer:
             file_info = self.sync_data[abs_file_path]
             stored_temp_file_name = file_info.get("tempFileName", "")
             if stored_temp_file_name and stored_temp_file_name != "newMakeTemplate":
-                subdir = self._extract_subdirectory_from_temp_filename(
-                    stored_temp_file_name
-                )
+                subdir = self._extract_subdirectory_from_temp_filename(stored_temp_file_name)
                 if subdir is not None:
                     return subdir
 
         # Last resort: use hardcoded fallback patterns
         return self._get_fallback_subdirectory(file_path)
 
-    def _extract_subdirectory_from_temp_filename(
-        self, temp_file_name: str
-    ) -> Optional[str]:
+    def _extract_subdirectory_from_temp_filename(self, temp_file_name: str) -> Optional[str]:
         \"\"\"Extract subdirectory path from tempFileName field\"\"\"
         try:
             # Expected format: /path/to/cmdpackage/templates/subdir/filename.py
@@ -219,9 +213,7 @@ class TemplateSyncer:
             return "src"
         elif rel_path.startswith("tests/"):
             return "tests"
-        elif rel_path in ["pyproject.toml", ".gitignore"] or rel_path.startswith(
-            "README"
-        ):
+        elif rel_path in ["pyproject.toml", ".gitignore"] or rel_path.startswith("README"):
             return ""  # Root level
         else:
             return ""  # Default to root level
@@ -231,12 +223,6 @@ class TemplateSyncer:
         # For multi-line strings in triple quotes, we need to escape backslashes and triple quotes
         escaped = text.replace("\\\\", "\\\\\\\\")  # Escape backslashes first
         escaped = escaped.replace('\"\"\"', '\\\\"\\\\"\\\\"')  # Escape triple quotes to \\"\\"\\"
-        return escaped
-
-    def _escape_string_for_json(self, text: str) -> str:
-        \"\"\"Escape special characters for JSON template generation\"\"\"
-        escaped = text.replace("\\\\", "\\\\\\\\")  # Escape backslashes first
-        escaped = escaped.replace('"', '\\\\"')  # Escape double quotes
         return escaped
 
     def _convert_literals_to_placeholders(self, content: str) -> str:
@@ -280,82 +266,63 @@ class TemplateSyncer:
                             (f".{field_value}rc", f".$${{{placeholder_name}}}rc"),
                         ]
                         for compound_pattern, compound_replacement in compound_patterns:
-                            modified_content = modified_content.replace(
-                                compound_pattern, compound_replacement
-                            )
+                            modified_content = modified_content.replace(compound_pattern, compound_replacement)
                     # General replacement (exact mtces with and without word boundaries)
                     pattern = r"\\b" + re.escape(field_value) + r"\\b"
                     modified_content = re.sub(pattern, placeholder, modified_content)
                     # pattern = re.escape(field_value)
                     # modified_content = re.sub(pattern, placeholder, modified_content)
 
+        # After replacing literals with placeholders, escape remaining $$ characters
+        modified_content = self._escape_literal_dollars(modified_content)
+
         return modified_content
 
-    def _load_template_content(
-        self, template_file: str, template_name: str
-    ) -> Optional[str]:
-        \"\"\"Load template content from template file\"\"\"
-        # Use the new templates directory copy instead of the original path
-        template_file_name = os.path.basename(template_file)
-        local_template_path = os.path.join(self.new_templates_dir, template_file_name)
+    def _escape_literal_dollars(self, content: str) -> str:
+        \"\"\"Escape literal $$ characters that are not part of valid template placeholders\"\"\"
+        if "fields" not in self.sync_data:
+            return content
 
-        if not os.path.exists(local_template_path):
-            printIt(f"Template file not found: {local_template_path}", lable.ERROR)
-            return None
+        # Get list of valid placeholder names from field_mappings
+        valid_placeholders = [
+            "authorsEmail",
+            "maintainersEmail",
+            "packName",
+            "version",
+            "description",
+            "readme",
+            "license",
+            "authors",
+            "maintainers",
+            "classifiers",
+        ]
 
-        try:
-            with open(local_template_path, "r", encoding="utf-8") as f:
-                content = f.read()
+        # Create pattern to match valid placeholders: $${validName}
+        valid_placeholder_pattern = r"\\$$\\{(" + "|".join(re.escape(name) for name in valid_placeholders) + r")\\}"
 
-            # Parse the template content to find the specific template
-            template_content = self._extract_template_from_file(content, template_name)
-            return template_content
+        # Find all $$ characters and their positions
+        result = []
+        i = 0
+        while i < len(content):
+            if content[i] == "$$":
+                # Check if this $$ is part of a valid placeholder
+                remaining_content = content[i:]
+                match = re.match(valid_placeholder_pattern, remaining_content)
+                if match:
+                    # This is a valid placeholder, keep it as is
+                    result.append(match.group(0))
+                    i += len(match.group(0))
+                else:
+                    # This is a literal $$, escape it as $$$$
+                    result.append("$$$$")
+                    i += 1
+            else:
+                result.append(content[i])
+                i += 1
 
-        except Exception as e:
-            printIt(
-                f"Error loading template {template_name} from {local_template_path}: {e}",
-                lable.ERROR,
-            )
-            return None
+        return "".join(result)
 
-    def _extract_template_from_file(
-        self, file_content: str, template_name: str
-    ) -> Optional[str]:
-        \"\"\"Extract specific template from a template file\"\"\"
-        # Look for different template patterns
-
-        # Pattern 1: dedent(\"\"\"...\"\"\") assignments
-        dedent_pattern = rf'^{re.escape(template_name)}\\s*=\\s*dedent\\(\"\"\"(.*?)\"\"\"\\)'
-        mtc = re.search(dedent_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if mtc:
-            return mtc.group(1)
-
-        # Pattern 2: Template(dedent(\"\"\"...\"\"\")) assignments
-        template_pattern = (
-            rf'^{re.escape(template_name)}\\s*=\\s*Template\\(dedent\\(\"\"\"(.*?)\"\"\"\\)\\)'
-        )
-        mtc = re.search(template_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if mtc:
-            return mtc.group(1)
-
-        # Pattern 3: JSON dictionary assignments
-        json_pattern = rf"^{re.escape(template_name)}\\s*=\\s*(\\{{.*?\\}})"
-        mtc = re.search(json_pattern, file_content, re.DOTALL | re.MULTILINE)
-        if mtc:
-            try:
-                # Try to parse as JSON and return formatted version
-                # Using eval for Python dict syntax
-                json_data = eval(mtc.group(1))
-                return json.dumps(json_data, indent=2, ensure_ascii=False)
-            except:
-                return mtc.group(1)
-
-        printIt(f"Template '{template_name}' not found in file", lable.WARN)
-        return None
-
-    def _substitute_template_fields(
-        self, template_content: str, fields: Dict[str, Any]
-    ) -> str:
+    def _substitute_template_fields(self, template_content: str, fields: Dict[str, Any]) -> str:
         \"\"\"Substitute field placeholders in template content\"\"\"
         try:
             # Use string.Template for safe substitution
@@ -449,338 +416,11 @@ class TemplateSyncer:
 
         return json.dumps(commands_dict, indent=2, ensure_ascii=False)
 
-    def _sync_file(self, file_path: str, file_info: Dict[str, Any]) -> bool:
-        \"\"\"Generate new template for a modified file\"\"\"
-        if not os.path.exists(file_path):
-            printIt(
-                f"File not found: {os.path.relpath(file_path, self.project_root)}",
-                lable.WARN,
-            )
-            return False
-
-        # Calculate current MD5
-        current_md5 = calculate_md5(file_path)
-        stored_md5 = file_info.get("fileMD5", "")
-
-        if current_md5 == stored_md5:
-            return True
-
-        printIt(
-            f"File modified: {os.path.relpath(file_path, self.project_root)}",
-            lable.WARN,
-        )
-
-        # Get template info
-        template_name = file_info.get("template", "")
-        template_file = file_info.get("tempFileName", "")
-
-        if not template_name or not template_file:
-            printIt(f"Missing template info for {file_path}", lable.ERROR)
-            return False
-
-        # Read current file content
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                current_content = f.read()
-        except Exception as e:
-            printIt(f"Error reading file {file_path}: {e}", lable.ERROR)
-            return False
-
-        # Handle different file types
-        file_ext = os.path.splitext(file_path)[1].lower()
-
-        if file_ext == ".json":
-            success = self._generate_json_template(
-                file_path, current_content, template_name, template_file
-            )
-        elif file_ext == ".md":
-            success = self._generate_markdown_template(
-                file_path, current_content, template_name, template_file
-            )
-        elif file_ext == ".py":
-            success = self._generate_python_template(
-                file_path, current_content, template_name, template_file
-            )
-        else:
-            success = self._generate_generic_template(
-                file_path, current_content, template_name, template_file
-            )
-
-        if success:
-            # Update stored MD5 to reflect that we've synced this version
-            self.sync_data[file_path]["fileMD5"] = current_md5
-
-        return success
-
-    def _generate_json_template(
-        self,
-        file_path: str,
-        current_content: str,
-        template_name: str,
-        template_file: str,
-    ) -> bool:
-        \"\"\"Generate new JSON template from modified file\"\"\"
-        printIt(f"Generating JSON template: {template_name}", lable.INFO)
-
-        try:
-            # Special handling for commands.json - rebuild from tracked commands only
-            if template_name == "commands_commands.json" or file_path.endswith(
-                "commands.json"
-            ):
-                printIt(
-                    "Rebuilding commands.json from tracked commands only (excluding untracked)",
-                    lable.INFO,
-                )
-                # Use rebuilt commands dictionary that only includes tracked commands
-                rebuilt_commands_json = self._build_complete_commands_json_dict()
-                current_content = rebuilt_commands_json
-                current_json = json.loads(rebuilt_commands_json)
-            else:
-                # Parse current JSON content for other JSON files
-                current_json = json.loads(current_content)
-
-            # Create new template file
-            template_file_name = os.path.basename(template_file)
-            new_template_path = os.path.join(self.new_templates_dir, template_file_name)
-
-            # Generate Python code for the JSON template
-            json_str = json.dumps(current_json, indent=2, ensure_ascii=False)
-
-            # Convert JSON string to Python dict format for embedding in Python file
-            template_code = f"{template_name} = {current_content}\\n"
-
-            # Write or append to template file
-            self._write_to_template_file(
-                new_template_path, template_name, template_code
-            )
-
-            printIt(
-                f"JSON template generated: {template_name} -> {os.path.basename(new_template_path)}",
-                lable.PASS,
-            )
-            return True
-
-        except Exception as e:
-            printIt(f"Error generating JSON template for {file_path}: {e}", lable.ERROR)
-            return False
-
-    def _generate_markdown_template(
-        self,
-        file_path: str,
-        current_content: str,
-        template_name: str,
-        template_file: str,
-    ) -> bool:
-        \"\"\"Generate new Markdown template from modified file\"\"\"
-        printIt(f"Generating Markdown template: {template_name}", lable.INFO)
-
-        try:
-            # Create new template file
-            template_file_name = os.path.basename(template_file)
-            new_template_path = os.path.join(self.new_templates_dir, template_file_name)
-
-            # Escape content for Python string embedding
-            escaped_content = self._escape_string_for_template(current_content)
-
-            # Generate Python code with dedent string
-            template_code = f'{template_name} = dedent(\"\"\"{escaped_content}\"\"\")\\n'
-
-            # Write or append to template file
-            printIt(f"new_template_path: {new_template_path}", lable.DEBUG)
-            printIt(f"template_name: {template_name}", lable.DEBUG)
-            printIt(f"template_code: {template_code}", lable.DEBUG)
-            self._write_to_template_file(
-                new_template_path, template_name, template_code
-            )
-
-            printIt(
-                f"Markdown template generated: {template_name} -> {os.path.basename(new_template_path)}",
-                lable.PASS,
-            )
-            return True
-
-        except Exception as e:
-            printIt(
-                f"Error generating Markdown template for {file_path}: {e}", lable.ERROR
-            )
-            return False
-
-    def _generate_python_template(
-        self,
-        file_path: str,
-        current_content: str,
-        template_name: str,
-        template_file: str,
-    ) -> bool:
-        \"\"\"Generate new Python template from modified file\"\"\"
-        printIt(f"Generating Python template: {template_name}", lable.INFO)
-
-        try:
-            # Create new template file
-            template_file_name = os.path.basename(template_file)
-            new_template_path = os.path.join(self.new_templates_dir, template_file_name)
-
-            # Extract commandJsonDict from the source file and prepare for substitution
-            command_json_dict = self._extract_command_json_dict(file_path)
-
-            # Apply field substitutions including commandJsonDict
-            fields = self.sync_data.get("fields", {})
-            if command_json_dict:
-                fields = fields.copy()  # Don't modify the original
-                fields["commandJsonDict"] = command_json_dict
-
-            # Apply field substitutions to content before creating template
-            content_with_substitutions = self._substitute_template_fields(
-                current_content, fields
-            )
-
-            # Determine template format based on template name patterns
-            if "Template" in template_name and template_name.endswith("Template"):
-                # This is a Template() object - use Template(dedent(\"\"\"...\"\"\"))
-                escaped_content = self._escape_string_for_template(
-                    content_with_substitutions
-                )
-                template_code = (
-                    f'{template_name} = Template(dedent(\"\"\"{escaped_content}\"\"\"))\\n'
-                )
-            else:
-                # This is a simple dedent string
-                escaped_content = self._escape_string_for_template(
-                    content_with_substitutions
-                )
-                template_code = f'{template_name} = dedent(\"\"\"{escaped_content}\"\"\")\\n'
-
-            # Write or append to template file
-            self._write_to_template_file(
-                new_template_path, template_name, template_code
-            )
-
-            printIt(
-                f"Python template generated: {template_name} -> {os.path.basename(new_template_path)}",
-                lable.PASS,
-            )
-            return True
-
-        except Exception as e:
-            printIt(
-                f"Error generating Python template for {file_path}: {e}", lable.ERROR
-            )
-            return False
-
-    def _generate_generic_template(
-        self,
-        file_path: str,
-        current_content: str,
-        template_name: str,
-        template_file: str,
-    ) -> bool:
-        \"\"\"Generate new generic template from modified file\"\"\"
-        printIt(f"Generating generic template: {template_name}", lable.INFO)
-
-        try:
-            # Create new template file
-            template_file_name = os.path.basename(template_file)
-            new_template_path = os.path.join(self.new_templates_dir, template_file_name)
-
-            # Escape content for Python string embedding
-            escaped_content = self._escape_string_for_template(current_content)
-
-            # Generate Python code with dedent string
-            template_code = f'{template_name} = dedent(\"\"\"{escaped_content}\"\"\")\\n'
-
-            # Write or append to template file
-            self._write_to_template_file(
-                new_template_path, template_name, template_code
-            )
-
-            printIt(
-                f"Generic template generated: {template_name} -> {os.path.basename(new_template_path)}",
-                lable.PASS,
-            )
-            return True
-
-        except Exception as e:
-            printIt(
-                f"Error generating generic template for {file_path}: {e}", lable.ERROR
-            )
-            return False
-
-    def _merge_json_structures(
-        self, template: Dict[str, Any], current: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        \"\"\"Merge JSON structures, preserving user modifications where possible\"\"\"
-        merged = copy.deepcopy(template)
-
-        # Recursively merge structures
-        def merge_recursive(tmpl_obj, curr_obj, path=""):
-            if isinstance(tmpl_obj, dict) and isinstance(curr_obj, dict):
-                for key in curr_obj:
-                    if key in tmpl_obj:
-                        if isinstance(tmpl_obj[key], (dict, list)):
-                            tmpl_obj[key] = merge_recursive(
-                                tmpl_obj[key], curr_obj[key], f"{path}.{key}"
-                            )
-                        else:
-                            # Keep user's value if it differs from template
-                            tmpl_obj[key] = curr_obj[key]
-                    else:
-                        # This is a user addition, keep it
-                        tmpl_obj[key] = curr_obj[key]
-            elif isinstance(tmpl_obj, list) and isinstance(curr_obj, list):
-                # For lists, we keep the current version to preserve user modifications
-                return curr_obj
-            else:
-                # For primitive types, keep current value
-                return curr_obj
-
-            return tmpl_obj
-
-        return merge_recursive(merged, current)
-
-    def _is_template_file_valid(self, template_file_path: str) -> bool:
-        \"\"\"Check if a template file has valid structure (basic checks only)\"\"\"
-        try:
-            with open(template_file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            # Skip Python syntax compilation check for .py template files
-            # Template files contain template variables like ${packName} which aren't valid Python
-            # We only check for structural corruption patterns
-
-            # Check for common corruption patterns
-            corruption_patterns = [
-                r'\"\"\"\\)def ',  # Missing newline after template ending with \"\"\")
-                r'\"\"\"\\)class ',  # Missing newline after template ending with \"\"\")
-                r'\"\"\"\\)[a-zA-Z]',  # Missing newline after template (general)
-            ]
-
-            import re
-
-            for pattern in corruption_patterns:
-                if re.search(pattern, content):
-                    printIt(
-                        f"Template corruption detected in {template_file_path}: pattern {pattern}",
-                        lable.WARN,
-                    )
-                    return False
-
-            return True
-
-        except Exception as e:
-            printIt(
-                f"Error validating template file {template_file_path}: {e}", lable.WARN
-            )
-            return False
-
-    def _write_to_template_file(
-        self, template_file_path: str, template_name: str, template_code: str
-    ):
+    def _write_to_template_file(self, template_file_path: str, template_name: str, template_code: str):
         \"\"\"Write or update template code in a template file, maintaining original structure and order\"\"\"
         # Get the original template file from the new templates directory
         template_file_name = os.path.basename(template_file_path)
-        original_template_path = os.path.join(
-            self.new_templates_dir, template_file_name
-        )
+        original_template_path = os.path.join(self.new_templates_dir, template_file_name)
 
         # Load original template file to maintain structure
         print(original_template_path)
@@ -805,9 +445,7 @@ class TemplateSyncer:
         import re
 
         # First, try to find existing template in the content and replace it
-        template_pattern = (
-            rf"^({re.escape(template_name)}\\s*=.*?)(?=^[a-zA-Z_][a-zA-Z0-9_]*\\s*=|\\Z)"
-        )
+        template_pattern = rf"^({re.escape(template_name)}\\s*=.*?)(?=^[a-zA-Z_][a-zA-Z0-9_]*\\s*=|\\Z)"
         mtc = re.search(template_pattern, existing_content, re.MULTILINE | re.DOTALL)
 
         if mtc:
@@ -820,9 +458,7 @@ class TemplateSyncer:
             )
         else:
             # Template doesn't exist in new file, try to find it in original and replace
-            original_mtc = re.search(
-                template_pattern, original_content, re.MULTILINE | re.DOTALL
-            )
+            original_mtc = re.search(template_pattern, original_content, re.MULTILINE | re.DOTALL)
             if original_mtc:
                 # Add the template in the same position as original
                 new_content = re.sub(
@@ -850,15 +486,9 @@ class TemplateSyncer:
 
         # Ensure necessary imports are present
         imports_needed = []
-        if (
-            "dedent(" in new_content
-            and "from textwrap import dedent" not in new_content
-        ):
+        if "dedent(" in new_content and "from textwrap import dedent" not in new_content:
             imports_needed.append("from textwrap import dedent")
-        if (
-            "Template(" in new_content
-            and "from string import Template" not in new_content
-        ):
+        if "Template(" in new_content and "from string import Template" not in new_content:
             imports_needed.append("from string import Template")
 
         if imports_needed:
@@ -868,9 +498,7 @@ class TemplateSyncer:
                 lines = new_content.split("\\n")
                 insert_pos = 0
                 for i, line in enumerate(lines):
-                    if line.startswith("#") and (
-                        "coding" in line or "encoding" in line or line.startswith("#!")
-                    ):
+                    if line.startswith("#") and ("coding" in line or "encoding" in line or line.startswith("#!")):
                         insert_pos = i + 1
                     else:
                         break
@@ -938,9 +566,7 @@ class TemplateSyncer:
                 if template_file_name not in template_file_groups:
                     template_file_groups[template_file_name] = []
                 if file_path in files_to_sync:
-                    template_file_groups[template_file_name].append(
-                        (file_path, file_info)
-                    )
+                    template_file_groups[template_file_name].append((file_path, file_info))
 
         if not files_to_sync:
             if not self.force:
@@ -969,18 +595,14 @@ class TemplateSyncer:
 
         return True
 
-    def _sync_template_file_group(
-        self, template_file_name: str, file_group: List[Tuple[str, Dict[str, Any]]]
-    ) -> bool:
+    def _sync_template_file_group(self, template_file_name: str, file_group: List[Tuple[str, Dict[str, Any]]]) -> bool:
         \"\"\"Sync a group of files that belong to the same template file\"\"\"
         success = False
         # Check if this is using the special newMakeTemplate marker
         # This marker indicates files that are authorized for make action
         if template_file_name == "newMakeTemplate":
             # Create standalone template files for each modified file in this group
-            printIt(
-                f"Creating standalone templates for newMakeTemplate group", lable.DEBUG
-            )
+            printIt(f"Creating standalone templates for newMakeTemplate group", lable.DEBUG)
             return self._create_standalone_templates_for_group(file_group)
 
         # stats for black formatting
@@ -1011,26 +633,20 @@ class TemplateSyncer:
 
         return success
 
-    def _create_standalone_templates_for_group(
-        self, file_group: List[Tuple[str, Dict[str, Any]]]
-    ) -> bool:
+    def _create_standalone_templates_for_group(self, file_group: List[Tuple[str, Dict[str, Any]]]) -> bool:
         \"\"\"Create standalone template files for files in newMakeTemplate group\"\"\"
         success_count = 0
         total_processed = 0
 
         for file_path, file_info in file_group:
             if not os.path.exists(file_path):
-                total_processed += (
-                    1  # Count as processed (file missing is handled gracefully)
-                )
+                total_processed += 1  # Count as processed (file missing is handled gracefully)
                 success_count += 1  # This is not an error condition
                 continue
 
             template_name = file_info.get("template", "")
             if not template_name:
-                total_processed += (
-                    1  # Count as processed (no template name to work with)
-                )
+                total_processed += 1  # Count as processed (no template name to work with)
                 success_count += 1  # This is not an error condition
                 continue
 
@@ -1077,9 +693,7 @@ class TemplateSyncer:
         else:
             template_filename = f"{name_without_ext}.py"
 
-        template_file_path = os.path.join(
-            self.new_templates_dir, testTempPath, template_filename
-        )
+        template_file_path = os.path.join(self.new_templates_dir, testTempPath, template_filename)
         return os.path.exists(template_file_path)
 
     def list_tracked_files(self):
@@ -1130,9 +744,7 @@ class TemplateSyncer:
         modified_file_list = []
         missing_file_list = []
 
-        printIt(
-            "-" * 29, cStr(" Tracked File Status ", color.GREEN), "-" * 30, lable.INFO
-        )
+        printIt("-" * 29, cStr(" Tracked File Status ", color.GREEN), "-" * 30, lable.INFO)
 
         for file_path, file_info in self.sync_data.items():
             if file_path == "fields":
@@ -1162,17 +774,13 @@ class TemplateSyncer:
         printIt(f"Total tracked files: {total_files}", lable.INFO)
         printIt(f"{cStr('Files in sync:', color.GREEN)} {ok_files}", lable.INFO)
         if modified_files > 0:
-            printIt(
-                f"{cStr('Modified files:', color.YELLOW)} {modified_files}", lable.INFO
-            )
+            printIt(f"{cStr('Modified files:', color.YELLOW)} {modified_files}", lable.INFO)
         if missing_files > 0:
             printIt(f"{cStr('Missing files:', color.RED)} {missing_files}", lable.INFO)
 
         # List modified files
         if modified_file_list:
-            printIt(
-                "-" * 32, cStr(" Modified Files ", color.YELLOW), "-" * 32, lable.INFO
-            )
+            printIt("-" * 32, cStr(" Modified Files ", color.YELLOW), "-" * 32, lable.INFO)
             for file_path, template_name in modified_file_list:
                 # Show relative path if possible
                 try:
@@ -1261,9 +869,7 @@ class TemplateSyncer:
 
             for root, dirs, files in os.walk(scan_dir):
                 # Filter out excluded directories
-                dirs[:] = [
-                    d for d in dirs if not any(excl in d for excl in exclude_patterns)
-                ]
+                dirs[:] = [d for d in dirs if not any(excl in d for excl in exclude_patterns)]
 
                 for file in files:
                     # Skip excluded files
@@ -1341,7 +947,7 @@ class TemplateSyncer:
         try:
             # Run black on individual file for better error reporting
             result = subprocess.run(
-                ["black", "--line-length=200", file_path], capture_output=True, text=True, timeout=30
+                ["black", "--line-length=120", file_path], capture_output=True, text=True, timeout=30
             )
             rel_path = os.path.relpath(file_path, self.project_root)
 
@@ -1405,8 +1011,9 @@ class TemplateSyncer:
         # Create template file name - for non-Python files that generate Python templates, use .py extension
         if file_ext == ".json":
             # get filename without .json extension h
-            template_filename = os.path.basename(filename)  # keep .json extension
+            # template_filename = os.path.basename(filename)  # keep .json extension
             template_filename = template_filename + "_template.json"
+
         else:
             # Other files get .py extension
             template_filename = f"{name_without_ext}_template.py"
@@ -1421,19 +1028,14 @@ class TemplateSyncer:
             except json.JSONDecodeError as e:
                 printIt(f"Invalid JSON in file {file_path}: {e}", lable.ERROR)
                 return False
-        elif file_ext in [".py", ".md", ".txt"] or template_name.lower().endswith(
-            "template"
-        ):
+        elif file_ext in [".py", ".md", ".txt"] or template_name.lower().endswith("template"):
             # Escape content for Python string embedding
             escaped_content = self._escape_string_for_template(file_content)
             # .md files should always use Template(dedent()) format
             if file_ext == ".md" or (
-                "template" in template_name.lower()
-                and template_name.lower().endswith("template")
+                "template" in template_name.lower() and template_name.lower().endswith("template")
             ):
-                template_code = (
-                    f'{template_name} = Template(dedent(\"\"\"{escaped_content}\"\"\"))\\n'
-                )
+                template_code = f'{template_name} = Template(dedent(\"\"\"{escaped_content}\"\"\"))\\n'
             else:
                 template_code = f'{template_name} = dedent(\"\"\"{escaped_content}\"\"\")\\n'
         else:
@@ -1466,6 +1068,7 @@ class TemplateSyncer:
 
         # Create template file content based on file type
         if file_ext == ".json":
+            new_template_path = new_template_path.replace(".json_template.json", "_template.json")
             # For JSON files, just write the template code without Python headers
             template_file_content = template_code
         else:
@@ -1553,9 +1156,7 @@ class TemplateSyncer:
         \"\"\"Transfer templates from newTemplates to origialTemplatePath directory\"\"\"
         newtemplates_files = []
         if os.path.exists(self.origialTemplatePath):
-            resopone = input(
-                f"Are you sure you want to clobber {self.origialTemplatePath}? (y/N): "
-            )
+            resopone = input(f"Are you sure you want to clobber {self.origialTemplatePath}? (y/N): ")
             if resopone.lower() != "y":
                 printIt("Transfer cancelled by user", lable.WARN)
                 return
@@ -1604,9 +1205,7 @@ class TemplateSyncer:
                 #     lable.DEBUG,
                 # )
                 shutil.copy2(source_file_name, target_file_name)
-                printIt(
-                    cStr(os.path.basename(target_file_name), color.YELLOW), lable.SAVED
-                )
+                printIt(cStr(os.path.basename(target_file_name), color.YELLOW), lable.SAVED)
             except Exception as e:
                 printIt(
                     f"Error transferring template to {target_file_name}: {e}",
@@ -1674,9 +1273,9 @@ class tmplMgtCommand:
         function_names = [
             name
             for name, obj in all_members
-            if inspect.isfunction(obj)  # Check if it's a function object
+            if inspect.isfunction(obj)
             and obj.__module__
-            == __name__  # Ensure it's defined in THIS file, not imported
+            == __name__  # Check if it's a function object  # Ensure it's defined in THIS file, not imported
             # Exclude internal/special functions like __init__
             and not name.startswith("_")
             # Exclude methods of the tmplMgt function

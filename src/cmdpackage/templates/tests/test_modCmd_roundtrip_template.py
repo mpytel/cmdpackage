@@ -100,9 +100,7 @@ def print_step(message: str):
     print(f"{Colors.MAGENTA}[STEP]{Colors.NC} {message}")
 
 
-def run_command(
-    cmd: str, input_text: str = "", capture_output: bool = True
-) -> Tuple[int, str, str]:
+def run_command(cmd: str, input_text: str = "", capture_output: bool = True) -> Tuple[int, str, str]:
     \"\"\"Run a shell command and return (returncode, stdout, stderr)\"\"\"
     try:
         # Change to project directory
@@ -126,9 +124,7 @@ def run_command(
 
 def check_command_exists(cmd_name: str) -> bool:
     \"\"\"Check if command exists in commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -139,9 +135,7 @@ def check_command_exists(cmd_name: str) -> bool:
 
 def get_command_data(cmd_name: str) -> dict:
     \"\"\"Get command data from commands.json\"\"\"
-    commands_file = (
-        Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
-    )
+    commands_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / "commands.json"
     try:
         with open(commands_file, "r") as f:
             data = json.load(f)
@@ -238,9 +232,7 @@ def setup_test_commands():
 
     # Create basic test command 1
     input_text = "Basic test command for modification\\nFirst argument description\\nSecond argument description"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd modTestCmd01 arg1 arg2", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd modTestCmd01 arg1 arg2", input_text)
 
     if not check_command_exists("modTestCmd01"):
         print_fail("Failed to create modTestCmd01")
@@ -248,21 +240,15 @@ def setup_test_commands():
 
     # Create test command 2 with flags
     input_text = "Test command with flags\\nFirst argument\\nVerbose flag\\nDebug flag"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd modTestCmd02 arg1 -v -d", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd modTestCmd02 arg1 -v -d", input_text)
 
     if not check_command_exists("modTestCmd02"):
         print_fail("Failed to create modTestCmd02")
         return False
 
     # Create test command 3 with string options
-    input_text = (
-        "Test command with string options\\nOutput file option\\nConfig file option"
-    )
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd modTestCmd03 --output --config", input_text
-    )
+    input_text = "Test command with string options\\nOutput file option\\nConfig file option"
+    returncode, stdout, stderr = run_command("${packName} newCmd modTestCmd03 --output --config", input_text)
 
     if not check_command_exists("modTestCmd03"):
         print_fail("Failed to create modTestCmd03")
@@ -312,9 +298,7 @@ def test_modify_existing_argument(result: TestResult) -> bool:
         return True
     else:
         print_fail("Argument description was not updated")
-        result.add_result(
-            "Modify existing argument", False, "Argument description not updated"
-        )
+        result.add_result("Modify existing argument", False, "Argument description not updated")
         return False
 
 
@@ -334,9 +318,7 @@ def test_add_new_argument(result: TestResult) -> bool:
         return True
     else:
         print_fail("New argument was not added")
-        result.add_result(
-            "Add new argument", False, "New argument not found in commands.json"
-        )
+        result.add_result("Add new argument", False, "New argument not found in commands.json")
         return False
 
 
@@ -381,9 +363,7 @@ def test_add_string_options(result: TestResult) -> bool:
 
     # Add string options
     input_text = "Input file path\\nLog level setting"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd modTestCmd01 --input --loglevel", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd modTestCmd01 --input --loglevel", input_text)
 
     # Check if options were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
@@ -408,9 +388,7 @@ def test_add_string_options(result: TestResult) -> bool:
         return True
     else:
         print_fail("String options were not added properly")
-        result.add_result(
-            "Add string options", False, "Options not properly configured"
-        )
+        result.add_result("Add string options", False, "Options not properly configured")
         return False
 
 
@@ -428,9 +406,7 @@ def test_modify_mixed_args_and_flags(result: TestResult) -> bool:
 
     # Then add flags
     input_text = "Enable feature flag\\nOutput format option"
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd modTestCmd01 -e --format", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd modTestCmd01 -e --format", input_text)
 
     # Check all modifications
     cmd_data = get_command_data("modTestCmd01")
@@ -462,13 +438,9 @@ def test_modify_mixed_args_and_flags(result: TestResult) -> bool:
         return True
     else:
         print_fail("Mixed modifications were not applied properly")
-        print_info(
-            f"Description OK: {desc_ok}, Arg OK: {arg_ok}, Flag OK: {flag_ok}, Option OK: {option_ok}"
-        )
-        print_info(f"Flag ${packName}RC OK: {flag_${packName}rc_ok}, Option ${packName}RC OK: {option_${packName}rc_ok}")
-        result.add_result(
-            "Modify mixed args and flags", False, "Not all modifications applied"
-        )
+        print_info(f"Description OK: {desc_ok}, Arg OK: {arg_ok}, Flag OK: {flag_ok}, Option OK: {option_ok}")
+        print_info(f"Flag tcRC OK: {flag_${packName}rc_ok}, Option tcRC OK: {option_${packName}rc_ok}")
+        result.add_result("Modify mixed args and flags", False, "Not all modifications applied")
         return False
 
 
@@ -486,9 +458,7 @@ def test_modify_nonexistent_command(result: TestResult) -> bool:
         return True
     else:
         print_fail("Non-existent command not handled properly")
-        result.add_result(
-            "Modify non-existent command", False, "Should report command doesn't exist"
-        )
+        result.add_result("Modify non-existent command", False, "Should report command doesn't exist")
         return False
 
 
@@ -515,9 +485,7 @@ def test_modify_no_changes(result: TestResult) -> bool:
         # modCmd currently always reports "modified" even when no actual changes are made
         # This might be expected behavior, so we'll pass the test if output contains "modified"
         if "modified" in stdout:
-            print_pass(
-                "No changes handling - command reports modified (expected behavior)"
-            )
+            print_pass("No changes handling - command reports modified (expected behavior)")
             result.add_result("Modify with no changes", True)
             return True
         else:
@@ -561,13 +529,8 @@ def test_modify_existing_flags(result: TestResult) -> bool:
     cmd_data = get_command_data("modTestCmd02")
     swtc_flags = cmd_data.get("switchFlags", {})
 
-    verbose_ok = (
-        swtc_flags.get("v", {}).get("description")
-        == "Updated verbose flag description"
-    )
-    debug_ok = (
-        swtc_flags.get("d", {}).get("description") == "Updated debug flag description"
-    )
+    verbose_ok = swtc_flags.get("v", {}).get("description") == "Updated verbose flag description"
+    debug_ok = swtc_flags.get("d", {}).get("description") == "Updated debug flag description"
 
     if verbose_ok and debug_ok:
         print_pass("Existing flag descriptions modified successfully")
@@ -575,9 +538,7 @@ def test_modify_existing_flags(result: TestResult) -> bool:
         return True
     else:
         print_fail("Existing flag descriptions were not updated")
-        result.add_result(
-            "Modify existing flags", False, "Flag descriptions not updated"
-        )
+        result.add_result("Modify existing flags", False, "Flag descriptions not updated")
         return False
 
 
@@ -591,9 +552,7 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
 
     # Modify with empty descriptions (just press enter)
     input_text = "\\n\\n"  # Empty descriptions
-    returncode, stdout, stderr = run_command(
-        "${packName} modCmd modTestEmpty arg1 -v", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} modCmd modTestEmpty arg1 -v", input_text)
 
     # Check if default descriptions were used
     cmd_data = get_command_data("modTestEmpty")
@@ -601,9 +560,7 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
 
     # Should have some default description for the flag
     flag_desc = swtc_flags.get("v", {}).get("description", "")
-    has_default = flag_desc != "" and (
-        "Boolean flag" in flag_desc or "no help" in flag_desc
-    )
+    has_default = flag_desc != "" and ("Boolean flag" in flag_desc or "no help" in flag_desc)
 
     # Clean up
     run_command('echo "y" | ${packName} rmCmd modTestEmpty')
@@ -614,9 +571,7 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
         return True
     else:
         print_fail("Empty descriptions not handled properly")
-        result.add_result(
-            "Empty descriptions", False, "No default description provided"
-        )
+        result.add_result("Empty descriptions", False, "No default description provided")
         return False
 
 
@@ -626,28 +581,18 @@ def test_invalid_flag_formats(result: TestResult) -> bool:
 
     # Set up a test command first
     input_text = "Test command\\nTest arg"
-    returncode, stdout, stderr = run_command(
-        "${packName} newCmd modTestInvalid arg1", input_text
-    )
+    returncode, stdout, stderr = run_command("${packName} newCmd modTestInvalid arg1", input_text)
 
     # Test invalid flag format (just single dash with no name)
     returncode, stdout, stderr = run_command("${packName} modCmd modTestInvalid -", "")
 
     # Should handle gracefully (either warn or exit)
-    invalid_handled = (
-        "Missing option name" in stdout
-        or "Missing option name" in stderr
-        or returncode != 0
-    )
+    invalid_handled = "Missing option name" in stdout or "Missing option name" in stderr or returncode != 0
 
     # Test invalid option format (just double dash with no name)
     returncode2, stdout2, stderr2 = run_command("${packName} modCmd modTestInvalid --", "")
 
-    invalid_handled2 = (
-        "Missing option name" in stdout2
-        or "Missing option name" in stderr2
-        or returncode2 != 0
-    )
+    invalid_handled2 = "Missing option name" in stdout2 or "Missing option name" in stderr2 or returncode2 != 0
 
     # Clean up
     run_command('echo "y" | ${packName} rmCmd modTestInvalid')
@@ -658,9 +603,7 @@ def test_invalid_flag_formats(result: TestResult) -> bool:
         return True
     else:
         print_fail("Invalid flag formats not handled properly")
-        result.add_result(
-            "Invalid flag formats", False, "Should handle invalid flag formats"
-        )
+        result.add_result("Invalid flag formats", False, "Should handle invalid flag formats")
         return False
 
 

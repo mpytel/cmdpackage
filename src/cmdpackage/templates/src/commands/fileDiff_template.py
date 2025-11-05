@@ -76,9 +76,7 @@ def compare_python_files(origFileName: str, newFileName: str, chkBlack=False) ->
     # 3. Generate differences using difflib.unified_diff
     # unified_diff produces a diff in the unified format, like 'diff -u'
     # 'lineterm=' is important if readlines() keeps newlines, to avoid double spacing in output.
-    diff = difflib.unified_diff(
-        lines1, lines2, fromfile=origFileName, tofile=newFileName
-    )
+    diff = difflib.unified_diff(lines1, lines2, fromfile=origFileName, tofile=newFileName)
     # lineterm=''  # Ensures difflib doesn't add an extra newline if lines already have them
 
     # Convert diff generator to list to check if it has content
@@ -126,17 +124,13 @@ def compare_black_diff(origFileName, newFileName):
         orig_code = orig_file_path.read_text(encoding="utf-8")
 
         # Format the code using Black
-        orig_formatted_code = black.format_file_contents(
-            orig_code, fast=True, mode=FileMode(line_length=88)
-        )
+        orig_formatted_code = black.format_file_contents(orig_code, fast=True, mode=FileMode(line_length=88))
 
         # Read the new content
         new_code = new_file_path.read_text(encoding="utf-8")
 
         # Format the code using Black
-        new_formatted_code = black.format_file_contents(
-            new_code, fast=True, mode=FileMode(line_length=88)
-        )
+        new_formatted_code = black.format_file_contents(new_code, fast=True, mode=FileMode(line_length=88))
 
         # Split the original and formatted code into lines
         original_lines = orig_formatted_code.splitlines(keepends=True)

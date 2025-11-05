@@ -94,12 +94,8 @@ def printCommandHelp(cmdName: str):
             example_parts.append("arg1")
 
         # Show flag examples
-        bool_flags = [
-            name for name, info in switchFlags.items() if info.get("type") == "bool"
-        ]
-        str_flags = [
-            name for name, info in switchFlags.items() if info.get("type") == "str"
-        ]
+        bool_flags = [name for name, info in switchFlags.items() if info.get("type") == "bool"]
+        str_flags = [name for name, info in switchFlags.items() if info.get("type") == "str"]
 
         if str_flags:
             example_parts.append(f"--{str_flags[0]} value")
@@ -147,10 +143,7 @@ def cmdSwitcbord(argParse: ArgParse):
                         # Check if it's a command-specific flag
                         if cmdName in commands and "switchFlags" in commands[cmdName]:
                             cmdswitchFlags = commands[cmdName]["switchFlags"]
-                            if (
-                                flagName in cmdswitchFlags
-                                and cmdswitchFlags[flagName].get("type") == "bool"
-                            ):
+                            if flagName in cmdswitchFlags and cmdswitchFlags[flagName].get("type") == "bool":
                                 # This is a command-specific boolean flag
                                 setValue = arg[0] == "+"
                                 toggleCmdSwtcFlag(cmdName, flagName, setValue)
@@ -160,11 +153,7 @@ def cmdSwitcbord(argParse: ArgParse):
                 if not flag_toggle_occurred:
                     swtcFlagChk = sys.argv[2]
                     # Only handle single hyphen options here, let double hyphen pass through
-                    if (
-                        len(sys.argv) == 3
-                        and swtcFlagChk[0] in "-+?"
-                        and not swtcFlagChk.startswith("--")
-                    ):
+                    if len(sys.argv) == 3 and swtcFlagChk[0] in "-+?" and not swtcFlagChk.startswith("--"):
                         flagName = swtcFlagChk[1:]
 
                         # Check if it's a global swtc flag first
@@ -176,10 +165,7 @@ def cmdSwitcbord(argParse: ArgParse):
                         cmdName = sys.argv[1]
                         if cmdName in commands and "switchFlags" in commands[cmdName]:
                             cmdswitchFlags = commands[cmdName]["switchFlags"]
-                            if (
-                                flagName in cmdswitchFlags
-                                and cmdswitchFlags[flagName].get("type") == "bool"
-                            ):
+                            if flagName in cmdswitchFlags and cmdswitchFlags[flagName].get("type") == "bool":
                                 # This is a command-specific boolean flag
                                 setValue = swtcFlagChk[0] == "+"
                                 toggleCmdSwtcFlag(cmdName, flagName, setValue)
@@ -199,11 +185,7 @@ def cmdSwitcbord(argParse: ArgParse):
             if theCmd in commands.keys():
                 # Save command-specific swtc flags before executing command
                 # Skip if a flag toggle already occurred to avoid overwriting the toggle
-                if (
-                    hasattr(argParse, "cmd_options")
-                    and argParse.cmd_options
-                    and not flag_toggle_occurred
-                ):
+                if hasattr(argParse, "cmd_options") and argParse.cmd_options and not flag_toggle_occurred:
                     cmdswitchFlags = commands[theCmd].get("switchFlags", {})
                     if cmdswitchFlags:
                         saveCmdswitchFlags(theCmd, argParse.cmd_options, cmdswitchFlags)

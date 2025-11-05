@@ -8,9 +8,7 @@ from ..defs.logIt import printIt, lable, cStr, color
 from ..classes.optSwitches import removeCmdswitchFlags
 from .commands import Commands
 
-commandJsonDict = {
-    "commands_rmCmd": {"description": "Command commands_rmCmd", "switchFlags": {}}
-}
+commandJsonDict = {"commands_rmCmd": {"description": "Command commands_rmCmd", "switchFlags": {}}}
 
 cmdObj = Commands()
 commands = cmdObj.commands
@@ -95,14 +93,9 @@ def rmCmd(argParse):
             anArg = theArgs[argIndex]
 
             # Check if anArg is a swtc flag name (check if it exists in switchFlags)
-            if (
-                "switchFlags" in commands[cmdName]
-                and anArg in commands[cmdName]["switchFlags"]
-            ):
+            if "switchFlags" in commands[cmdName] and anArg in commands[cmdName]["switchFlags"]:
                 # Handle swtc flag removal by flag name (without -)
-                chkRm: str = input(
-                    f"Permanently delete swtc flag '-{anArg}' from {cmdName} (y/N):\\n"
-                )
+                chkRm: str = input(f"Permanently delete swtc flag '-{anArg}' from {cmdName} (y/N):\\n")
                 if chkRm == "":
                     chkRm = "N"
                 if chkRm[0].lower() == "y":
@@ -120,13 +113,8 @@ def rmCmd(argParse):
             elif anArg.startswith("-"):
                 # Handle swtc flag removal with dash prefix
                 flagName = anArg.lstrip("-")  # Remove - or -- prefix
-                if (
-                    "switchFlags" in commands[cmdName]
-                    and flagName in commands[cmdName]["switchFlags"]
-                ):
-                    chkRm: str = input(
-                        f"Permanently delete swtc flag {anArg} from {cmdName} (y/N):\\n"
-                    )
+                if "switchFlags" in commands[cmdName] and flagName in commands[cmdName]["switchFlags"]:
+                    chkRm: str = input(f"Permanently delete swtc flag {anArg} from {cmdName} (y/N):\\n")
                     if chkRm == "":
                         chkRm = "N"
                     if chkRm[0].lower() == "y":
@@ -187,10 +175,7 @@ def removeCmdSwtcFlag(cmdName, flagName):
     global jsonFileName
     with open(jsonFileName, "r") as rf:
         theJson = json.load(rf)
-        if (
-            "switchFlags" in theJson[cmdName]
-            and flagName in theJson[cmdName]["switchFlags"]
-        ):
+        if "switchFlags" in theJson[cmdName] and flagName in theJson[cmdName]["switchFlags"]:
             del theJson[cmdName]["switchFlags"][flagName]
             # If switchFlags becomes empty, we can leave it empty
             if not theJson[cmdName]["switchFlags"]:
@@ -202,9 +187,7 @@ def removeCmdSwtcFlag(cmdName, flagName):
     update_sync_data_md5(jsonFileName)
 
     # Remove flag from .${packName}rc file
-    ${packName}rc_file = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(jsonFileName))), ".${packName}rc"
-    )
+    ${packName}rc_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(jsonFileName))), ".${packName}rc")
 
     if os.path.exists(${packName}rc_file):
         try:
