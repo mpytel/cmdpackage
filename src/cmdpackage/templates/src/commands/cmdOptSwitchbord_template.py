@@ -3,11 +3,11 @@
 from textwrap import dedent
 from string import Template
 
-cmdOptSwitchbord_template = Template(dedent("""from ..classes.optSwitches import optSwitches
+cmdOptSwitchbord_template = Template(dedent("""from ..classes.optSwitches import optSwitches as optSwtch
 
 
 def cmdOptSwitchbord(swtcFlag: str, switchFlags: dict):
-    optSwitches = optSwitches(switchFlags)
+    optSwitches = optSwtch(switchFlags)
     optSwitches.toggleSwtcFlag(swtcFlag)
 """))
 

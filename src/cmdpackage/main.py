@@ -76,8 +76,8 @@ def main():
     print(f'{GREEN}execute{RESET}: . env/{projName}/bin/activate')
     print(f'{GREEN}execute{RESET}: pip install -e .')
     if args.GenTempSyncDataWrite:
-        print(
-            f'{GREEN}execute{RESET}: pip install -e /Users/primwind/proj/python/syncTemps')
+        print(f'\n****************** cmdPackage Developer Install ******************')
+        print(f'\n*** genTempSyncData.json file written to track generated files ***\n')
 
 
 

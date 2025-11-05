@@ -111,7 +111,7 @@ def printCommandHelp(cmdName: str):
             )
 
 
-def cmdSwitcbord(argParse: ArgParse):
+def cmdSwitchbord(argParse: ArgParse):
     global commands
     theCmd = "notSet"
     flag_toggle_occurred = False  # Track if a flag toggle happened

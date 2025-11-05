@@ -135,7 +135,7 @@ ${packName}/
 │   │   └── optSwitches.py         # Option flag management
 │   ├── commands/
 │   │   ├── commands.json          # Command registry
-│   │   ├── cmdSwitcbord.py       # Command disptcer
+│   │   ├── cmdSwitchbord.py       # Command disptcer
 │   │   ├── commands.py            # Command loading
 │   │   ├── newCmd.py              # Command creation
 │   │   ├── modCmd.py              # Command modification

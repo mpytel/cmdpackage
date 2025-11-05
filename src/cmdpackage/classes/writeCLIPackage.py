@@ -218,8 +218,8 @@ class WriteCLIPackage:
         path_parts = output_key_path.split(os.path.sep)
 
         # If the path has at least two components (a root folder and a filename/folder)
-        if len(path_parts) > 1 and path_parts[0] in ('src', '.github'):
-            # Inject the project name after the first directory (e.g., 'src' or 'tests')
+        if len(path_parts) > 1 and path_parts[0] == 'src':
+            # Only inject the project name for 'src' directory, not for '.github'
             # e.g., ['src', '{packName}', 'commands', 'newCmd.py']
             path_parts.insert(1, self.program_name)
 
