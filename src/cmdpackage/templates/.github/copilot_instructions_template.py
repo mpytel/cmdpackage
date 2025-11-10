@@ -3,173 +3,106 @@
 from textwrap import dedent
 from string import Template
 
-copilot_instructions_template = Template(dedent("""# GitHub Copilot Instructions for ${packName}
+copilot_instructions_template = Template(dedent("""# GitHub Copilot Instructions for ${packName} system development
+
+## Specific Copilot Chat Instructions
+
+**I-1)** When copilot creates a new shell, for working with or testing ${packName}, WILL run `source env/${packName}/bin/activate` to set the vertual environment. All subsequent ${packName} commands will NOT included this source command.
+
+**I-2)** Small focused changes can be implimented automaticly. If rather large refactoring is reqiured, work wiht the Programmer befor implement code changes based on thie type of request.
+
+**I-3)** Copilot WILL explain back ${packName} concepts before implementing changes.
+
+**I-4)** "Pertinent Information" (${packName}) as a core concept that may not align with common programming patterns. For this reason Copilot MUST defer to the programer when it comes to design choices. 
+
+**I-5)** Copilot MUST NOT perform any automated testing without asking the Programmer to proceed.
+
+**I-6)** Copilot CAN provide a list of CLI command to run, but the Programmer WILL execute them in a sperate zsh shell and paste results into the Copilot chat.
+
+**I-7)** Intentional or accidental misspellings in code and documentation ("fraimwork", "challanges", "experance") WILL be encouterd. Copilot will point this out so it can be corrected. piFraimwork is such a case and piFramework is not.
 
 ## Project Overview
 
-**${packName}** is a dynamic command-line framework for creating, modifying, and managing custom commands with interactive help and argument parsing. It's a Python package (version ${version}) that allows users to build extensible CLI applications through an interactive interface.
+**Pi** is a versatile pertinent information collection, storage, and retrieval system. It is a research project investigating how user and AI generated content can be captured and stored in structure so users can reliably use it in repeatable semi-constant ways that can justify a protean understanding of their truth.
 
-## Project Structure
+${packName} is a `cmdPackage` derived python package. `cmdPackage` generates framework (`copilot_instructions_cmdpackage_pi.md`) for derived python packages to add, modify, and remove command line interface (CLI) functionality. Also, enabling Python Package Index (PyPI) distribution. 
 
+${packName} represents an object to manage an unlimited number of ideas. This number is unlimited because the type of information captured by Pi becomes a network of recursively self-defining (`copilot_definition_recursively_self_defining.md`) pieces of information. This idea stems from the notion of topics, an outcrop of ideas associated with topic oriented writing. Where reuse and agnostic output targeting is used with self-indexing and maps to manage topics during their authoring, editing, and output life-cycle phases of content delivery. The net result is a self indexing pertinent information (${packName}) json file storage system and CLI/API interfaces.
+
+**Note:** The meaning/definition of what ${packName} represents are many:
+1) 'Pi' represents system encapsulating inspired concepts for pertinent information management.
+2) '${packName}' represents the derived python package. 
+3) '${packName}' represents the concept of self-indexing pertinent information. 
+4) '${packName}' represents the basic json data structure that other pis will inherit.
+5) '${packName}' represents an unlimited number of ideas.
+
+The notion that ${packName} sets can describe a users truth about an idea with a network of recursively self-defining pis stems from an idea that any ${packName} is a topic. Syntactically, a ${packName} name uses different conventions depending on context:
+
+**Documentation Convention (piCase):** Any token or word-set predicted by '${packName}', concatenated into Pascal case variable naming convention, where spaces between words are removed. This naming convention puts the title of any topic into the ${packName} domain (e.g., piProgramInvestigates, piUserProfile, piDomainBody). This is used in documentation, conceptual discussions, and system design.
+
+**Python Code Convention (snake_case):** Standard Python snake_case naming follows PEP 8 conventions for actual code implementation (e.g., pi_program_investigates, pi_user_profile, pi_domain_body). This ensures code readability and compliance with Python standards.
+
+**Key Distinction:**
+- **piCase** = Documentation, concepts, design discussions (piProgramInvestigates)
+- **snake_case** = Python code implementation (pi_program_investigates)
+
+Both conventions maintain the '${packName}' prefix to clearly identify variables as part of the Pi system, but adapt to their respective contexts for optimal readability and standards compliance.
+
+The seed of `piDomain` is a topic. A topic is tuple of strings (type, title, and short description). In the piDomain, this tuple is named piSeed, when used as raw text, and `piBase` when stored as json. The piBase object has three attributes: 1) `piType`, 2) `piTitle`, and 3) `piSD`. A piSeed uses bash terminal CLI string handling (dog jade 'my dog is a rat terrier cattle dog mix. She is good, cute, and clever.').
+
+The basic ${packName} json data structure is:
 ```
-${packName}/
-├── src/${packName}/ 
-│   ├── main.py                     # Entry point - calls cmdSwitchbord
-│   ├── classes/
-│   │   ├── argParse.py             # Argument parsing logic
-│   │   └── optSwitches.py          # Option flag management and .${packName}rc file handling
-│   ├── commands/
-│   │   ├── commands.json           # Central command registry and metadata
-│   │   ├── cmdOptSwitchbord.py     # Command disptcer/router for command line options
-│   │   ├── cmdSwitchbord.py         # Command disptcer/router
-│   │   ├── commands.json           # Command, argument, and option discription data
-│   │   ├── commands.py             # Command loading and management
-│   │   ├── fileDiff.py             # Use difflib to compare two files
-│   │   ├── newCmd.py               # Create new commands
-│   │   ├── modCmd.py               # Modify existing commands
-│   │   ├── rmCmd.py                # Remove commands
-│   │   ├── runTest.py              # Test runner
-│   │   ├── tmplMgt.py              # Template Manager 
-│   │   └── templates/              # Code generation templates
-│   │       ├── argCmdDef.py        # Default template with argument handling by function
-│   │       ├── argDefTemplate.py   # Argument handling function template
-│   │       ├── simple.py           # Minimal template
-│   │       ├── classCall.py        # OOP template
-│   │       └── asyncDef.py         # Async template
-│   ├── defs/
-│   │   ├── logIt.py                # Logging and colored output utilities
-│   │   └── validation.py           # Input validation functions
-│   └── .${packName}rc                       # User configuration file (runtime-generated)
-├── tests/  
-│   ├── cleanup_test_artifacts      # Rremove files created during testing
-│   ├── test_newCmd_roundtrip.py    # Tests for command creation
-│   ├── test_modCmd_roundtrip.py    # Tests for command modification
-│   ├── test_rmCmd_roundtrip.py     # Tests for command removal
-│   └── test_argCmdDef_roundtrip.py # Template-specific tests
-├── genTempSyncData.json            # Template tracking data
-├── pyproject.toml                  # Package configuration
-├── README_Command_modifications.md # Disription of command modification funtionality
-├── ${readme}.                      # Basic package functionally README template
-└── .gitignore
+"piBase": {
+  "piProlog": {
+    "title": "",
+    "version": "",
+    "author": "",
+    "copyright": ""
+  },
+  "piBase": {
+    "piType": "",
+    "piTitle": "",
+    "piSD": ""
+  },
+  "piID": "",
+  "piTouch": {
+    "piCreationDate": "",
+    "piModificationDate": "",
+    "piTouchDate": "",
+    "piTouches": 0
+  },
+  "piIndexer": {
+    "piMD5": "",
+    "piUser": "",
+    "piRealm": "",
+    "piDomain": "",
+    "piSubject": ""
+  },
+  "piInfluence": {
+    "piPrecedent": [],
+    "piDescendent": []
+  },
+  "piBody": {}
+}
+```
 
-## Core Concepts
+Extensibility is drawn from the piBody that starts out as dict, but can assume the structure of any ${packName}<Type>Body.
 
-### Vertual Environment
-- ${packName} is operated from the package base directory where the env directory lives
-- Use `. env/${packName}/bin/activate`
-- During the package genertion process `pip install -e .` was exected
-- Bash syntext executes ${packName} commands `. env/${packName}/bin/activate && ${packName} -h`
-- `. env/${packName}/bin/activate` may be omitted with subequnet command in the same shell
+## Pi Domain and Data Structure
 
-### Command Types and Templates
-${packName} supports multiple command templates for different use cases:
+The ${packName} system is built around the concept of topics and self-indexing pertinent information. For detailed implementation and cmdPackage framework information, see `copilot_instructions_cmdpackage_pi.md`.
 
-1. **argCmdDef** (Default template) - Full-featured command with argument handling
-2. **simple** - Minimal template for basic commands  
-3. **classCall** - Object-oriented template for structured commands
-4. **asyncDef** - Async template for concurrent operations
+## Pi Development Guidelines
 
-### Command Management Flow
-1. **Creation**: `newCmd` creates commands from templates
-2. **Modification**: `modCmd` updates existing commands
-3. **Removal**: `rmCmd` cleans up commands and their dependencies
-4. **Testing**: `runTest` validates functionality with various scenarios
+When working with Pi concepts:
+- **Documentation**: Use piCase naming for all ${packName}-related concepts (piProgramInvestigates, piUserProfile, piDomainBody)
+- **Python Code**: Use snake_case naming following PEP 8 standards (pi_program_investigates, pi_user_profile, pi_domain_body)
+- Remember that any topic can become a ${packName} by applying the appropriate naming convention for the context and programiclly constructing an inharited class of the `piPi.py` base class.
+- Focus on the recursive, self-defining nature of ${packName} data structures
+- Understand that piBody provides extensibility through ${packName}<Type>Body structures
+- Be mindful of the philosophical aspects of "truth" representation in data
+- Always maintain the '${packName}' prefix in both naming conventions to identify variables as part of the Pi system
 
-### Configuration System
-- **commands.json**: Central registry storing all command definitions and metadata
-- **.${packName}rc**: User preferences file (generated at runtime)
-- **Template variables**: Dynamic substitution using `$$$${variable}` syntax
-
-## Key Features
-
-### Dynamic Command Generation
-Commands are generated from templates with variable substitution:
-- Package name: `${packName}`
-- Version: `${version}` 
-- Custom variables as needed
-
-### Interactive Help System
-- Colored terminal output using ANSI codes
-- Context-sensitive help for each command
-- Argument validation and error reporting
-
-### Extensible Architecture
-- Template-based command creation
-- Plugin-style command loading
-- Modular structure supporting easy extensions
-
-## Development Guidelines
-
-### Code Style
-- Use f-strings for string formatting where possible
-- Follow PEP 8 naming conventions
-- Add docstrings to all classes and functions
-- Use type hints for function parameters and return values
-
-### Error Handling
-- Implement graceful error handling with informative messages
-- Use colored output for errors and warnings
-- Validate user inputs thoroughly
-
-### Testing
-- Write comprehensive tests for each command type
-- Test round-trip scenarios (create → modify → remove)
-- Validate template generation and substitution
-- Test error conditions and edge cases
-
-### Template Development
-- Templates are genrated using the `${packName} tmplMgt sync` command
-- Use clear variable naming with `$$$${variable}` syntax
-- Include comprehensive help text and examples
-- Test templates with various parameter combinations
-
-## Common Tasks
-
-### Adding New Commands
-1. Define template in `templates/` directory
-2. Add command logic in `commands/`
-3. Update `commands.json` registry
-4. Create corresponding tests
-5. Update documentation
-
-### Modifying Templates
-1. Update template files in `templates/`
-2. Test template generation
-3. Verify variable substitution
-4. Update related tests
-5. Document changes
-
-### Debugging Issues
-1. Check `commands.json` for command definitions
-2. Verify template syntax and variables
-3. Review log output for errors
-4. Test with various input scenarios
-5. Check file permissions and paths
-
-## Architecture Notes
-
-### Command Processing Pipeline
-1. **argParse.py** - Parses command-line arguments
-2. **cmdSwitchbord.py** - Routes to appropriate command handler
-3. **commands.py** - Loads and manages command definitions
-4. **Individual command files** - Execute specific functionality
-
-### Template System
-- Templates use Python's `string.Template` class
-- Variable substitution with `$$$${variable}` syntax
-- Support for conditional logic and loops
-- Extensible template inheritance
-
-### Configuration Management
-- Runtime configuration in `.${packName}rc`
-- Command metadata in `commands.json`
-- Template-specific settings per command type
-
-This framework is designed to be highly extensible and maintainable. When working with ${packName}, focus on:
-- Clean separation of concerns
-- Comprehensive error handling
-- Thorough testing coverage
-- Clear documentation and examples
-- Consistent coding patterns across all modules
+This framework is designed to capture and manage pertinent information in a self-indexing, recursively expandable system that reflects the user's understanding of their truth.
 """))
 

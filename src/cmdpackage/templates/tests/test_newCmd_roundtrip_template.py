@@ -116,28 +116,38 @@ def check_command_exists(cmd_name: str) -> bool:
 
 
 def check_flags_in_${packName}rc(cmd_name: str) -> bool:
-    \"\"\"Check if flags exist in .${packName}rc\"\"\"
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    \"\"\"Check if flags exist in .cmdrc\"\"\"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     try:
-        if not ${packName}rc_file.exists():
+        if not cmdrc_file.exists():
             return False
-        with open(${packName}rc_file, "r") as f:
+        with open(cmdrc_file, "r") as f:
             data = json.load(f)
-        return cmd_name in data.get("commandFlags", {})
+        return cmd_name in data.get("commands", {})
     except Exception:
         return False
 
 
 def check_flag_value(cmd_name: str, flag_name: str, expected_value) -> bool:
-    \"\"\"Check if a specific flag has the expected value in .${packName}rc\"\"\"
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    \"\"\"Check if a specific flag has the expected value in .cmdrc\"\"\"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     try:
-        if not ${packName}rc_file.exists():
+        if not cmdrc_file.exists():
             return False
-        with open(${packName}rc_file, "r") as f:
+        with open(cmdrc_file, "r") as f:
             data = json.load(f)
-        command_flags = data.get("commandFlags", {}).get(cmd_name, {})
-        return command_flags.get(flag_name) == expected_value
+        command_options = data.get("commands", {}).get(cmd_name, {})
+        # Check both option_switches and option_strings for the flag
+        option_switches = command_options.get("option_switches", {})
+        option_strings = command_options.get("option_strings", {})
+
+        # For boolean flags, check option_switches
+        if flag_name in option_switches:
+            return option_switches[flag_name] == expected_value
+        # For string options, check option_strings
+        elif flag_name in option_strings:
+            return option_strings[flag_name] == expected_value
+        return False
     except Exception:
         return False
 
@@ -184,10 +194,10 @@ def cleanup_test_commands():
         if file_exists(py_file):
             os.remove(Path(__file__).parent.parent / py_file)
 
-    # Clean up .${packName} if it exists
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
-    if ${packName}rc_file.exists():
-        ${packName}rc_file.unlink()
+    # Clean up .cmdrc if it exists
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
+    if cmdrc_file.exists():
+        cmdrc_file.unlink()
 
     print_pass("Cleanup completed")
 
@@ -232,11 +242,11 @@ def test_command_with_bool_flags(result: TestResult) -> bool:
     print_pass("Command testCmd02 created successfully")
 
     if not check_flags_in_${packName}rc("testCmd02"):
-        print_fail("Boolean flags were not saved to .${packName}rc")
-        result.add_result("Boolean flags creation", False, "Flags not saved to .${packName}rc")
+        print_fail("Boolean flags were not saved to .cmdrc")
+        result.add_result("Boolean flags creation", False, "Flags not saved to .cmdrc")
         return False
 
-    print_pass("Boolean flags saved to .${packName}rc")
+    print_pass("Boolean flags saved to .cmdrc")
 
     # Check specific flag values
     if not (check_flag_value("testCmd02", "verbose", False) and check_flag_value("testCmd02", "debug", False)):
@@ -269,7 +279,7 @@ def test_command_with_string_options(result: TestResult) -> bool:
         result.add_result("String options and template", False, "Template flag not saved")
         return False
 
-    print_pass("Template flag saved to .${packName}rc under newCmd")
+    print_pass("Template flag saved to .cmdrc under newCmd")
 
     # Verify the template was actually used by checking the generated file
     if file_contains("src/${packName}/commands/testCmd03.py", "# Generated using simple template"):
@@ -323,23 +333,23 @@ def test_help_system(result: TestResult) -> bool:
     print_pass("Command-specific help works")
 
     # Test that help doesn't create unwanted side effects
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     flags_before = ""
-    if ${packName}rc_file.exists():
-        flags_before = ${packName}rc_file.read_text()
+    if cmdrc_file.exists():
+        flags_before = cmdrc_file.read_text()
 
     run_command("${packName} testCmd02 --help")
 
     flags_after = ""
-    if ${packName}rc_file.exists():
-        flags_after = ${packName}rc_file.read_text()
+    if cmdrc_file.exists():
+        flags_after = cmdrc_file.read_text()
 
     if flags_before != flags_after:
-        print_fail("Help command unexpectedly modified .${packName}rc")
-        result.add_result("Help system", False, "Help modified .${packName}rc")
+        print_fail("Help command unexpectedly modified .cmdrc")
+        result.add_result("Help system", False, "Help modified .cmdrc")
         return False
 
-    print_pass("Help command doesn't modify .${packName}rc")
+    print_pass("Help command doesn't modify .cmdrc")
     result.add_result("Help system", True)
     return True
 
@@ -400,11 +410,11 @@ def test_rmcmd_cleanup(result: TestResult) -> bool:
     print_pass("Python file testCmd02.py removed")
 
     if check_flags_in_${packName}rc("testCmd02"):
-        print_fail("Command flags were not removed from .${packName}rc")
-        result.add_result("rmCmd cleanup", False, "Flags not removed from .${packName}rc")
+        print_fail("Command flags were not removed from .cmdrc")
+        result.add_result("rmCmd cleanup", False, "Flags not removed from .cmdrc")
         return False
 
-    print_pass("Command flags removed from .${packName}rc")
+    print_pass("Command flags removed from .cmdrc")
     result.add_result("rmCmd cleanup", True)
     return True
 
@@ -519,16 +529,16 @@ def test_complete_cleanup(result: TestResult) -> bool:
 
     print_pass("All test commands removed")
 
-    # Check if .${packName}rc is cleaned up appropriately
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
-    if ${packName}rc_file.exists():
-        content = ${packName}rc_file.read_text()
+    # Check if .cmdrc is cleaned up appropriately
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
+    if cmdrc_file.exists():
+        content = cmdrc_file.read_text()
         if any(cmd in content for cmd in test_commands):
-            print_fail(".${packName}rc still contains test command flags")
-            result.add_result("Complete cleanup", False, ".${packName}rc not cleaned")
+            print_fail(".cmdrc still contains test command flags")
+            result.add_result("Complete cleanup", False, ".cmdrc not cleaned")
             return False
 
-    print_pass(".${packName}rc cleaned up (no test command flags remain)")
+    print_pass(".cmdrc cleaned up (no test command flags remain)")
     result.add_result("Complete cleanup", True)
     return True
 

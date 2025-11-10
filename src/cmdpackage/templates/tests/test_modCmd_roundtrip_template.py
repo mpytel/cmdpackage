@@ -145,28 +145,38 @@ def get_command_data(cmd_name: str) -> dict:
 
 
 def check_flags_in_${packName}rc(cmd_name: str) -> bool:
-    \"\"\"Check if flags exist in .${packName}rc\"\"\"
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    \"\"\"Check if flags exist in .cmdrc\"\"\"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     try:
-        if not ${packName}rc_file.exists():
+        if not cmdrc_file.exists():
             return False
-        with open(${packName}rc_file, "r") as f:
+        with open(cmdrc_file, "r") as f:
             data = json.load(f)
-        return cmd_name in data.get("commandFlags", {})
+        return cmd_name in data.get("commands", {})
     except Exception:
         return False
 
 
 def check_flag_value(cmd_name: str, flag_name: str, expected_value) -> bool:
-    \"\"\"Check if a specific flag has the expected value in .${packName}rc\"\"\"
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    \"\"\"Check if a specific flag has the expected value in .cmdrc\"\"\"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     try:
-        if not ${packName}rc_file.exists():
+        if not cmdrc_file.exists():
             return False
-        with open(${packName}rc_file, "r") as f:
+        with open(cmdrc_file, "r") as f:
             data = json.load(f)
-        command_flags = data.get("commandFlags", {}).get(cmd_name, {})
-        return command_flags.get(flag_name) == expected_value
+        command_options = data.get("commands", {}).get(cmd_name, {})
+        # Check both option_switches and option_strings for the flag
+        option_switches = command_options.get("option_switches", {})
+        option_strings = command_options.get("option_strings", {})
+
+        # For boolean flags, check option_switches
+        if flag_name in option_switches:
+            return option_switches[flag_name] == expected_value
+        # For string options, check option_strings
+        elif flag_name in option_strings:
+            return option_strings[flag_name] == expected_value
+        return False
     except Exception:
         return False
 
@@ -218,10 +228,10 @@ def cleanup_test_commands():
         if file_exists(py_file):
             os.remove(Path(__file__).parent.parent / py_file)
 
-    # Clean up .${packName}rc if it exists
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
-    if ${packName}rc_file.exists():
-        ${packName}rc_file.unlink()
+    # Clean up .cmdrc if it exists
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
+    if cmdrc_file.exists():
+        cmdrc_file.unlink()
 
     print_pass("Cleanup completed")
 
@@ -287,12 +297,13 @@ def test_modify_existing_argument(result: TestResult) -> bool:
     print_test("Test 2: Modify existing argument description")
 
     # Modify existing argument description
-    input_text = "y\\nUpdated description for first argument"
+    input_text = "Updated description for first argument\\n"
     returncode, stdout, stderr = run_command("${packName} modCmd modTestCmd01 arg1", input_text)
 
     # Check if argument description was updated
     cmd_data = get_command_data("modTestCmd01")
-    if cmd_data.get("arg1") == "Updated description for first argument":
+    arguments = cmd_data.get("arguments", {})
+    if arguments.get("arg1") == "Updated description for first argument":
         print_pass("Argument description modified successfully")
         result.add_result("Modify existing argument", True)
         return True
@@ -312,7 +323,8 @@ def test_add_new_argument(result: TestResult) -> bool:
 
     # Check if new argument was added
     cmd_data = get_command_data("modTestCmd01")
-    if cmd_data.get("arg3") == "New third argument description":
+    arguments = cmd_data.get("arguments", {})
+    if arguments.get("arg3") == "New third argument description":
         print_pass("New argument added successfully")
         result.add_result("Add new argument", True)
         return True
@@ -332,16 +344,10 @@ def test_add_boolean_flags(result: TestResult) -> bool:
 
     # Check if flags were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swtc_flags = cmd_data.get("switchFlags", {})
+    option_switches = cmd_data.get("option_switches", {})
 
-    force_flag_ok = (
-        swtc_flags.get("f", {}).get("type") == "bool"
-        and swtc_flags.get("f", {}).get("description") == "Force operation flag"
-    )
-    quiet_flag_ok = (
-        swtc_flags.get("q", {}).get("type") == "bool"
-        and swtc_flags.get("q", {}).get("description") == "Quiet mode flag"
-    )
+    force_flag_ok = option_switches.get("f") == "Force operation flag"
+    quiet_flag_ok = option_switches.get("q") == "Quiet mode flag"
 
     # Check if flags were added to .${packName}rc
     force_${packName}rc_ok = check_flag_value("modTestCmd01", "f", False)
@@ -367,16 +373,10 @@ def test_add_string_options(result: TestResult) -> bool:
 
     # Check if options were added to commands.json
     cmd_data = get_command_data("modTestCmd01")
-    swtc_flags = cmd_data.get("switchFlags", {})
+    option_strings = cmd_data.get("option_strings", {})
 
-    input_option_ok = (
-        swtc_flags.get("input", {}).get("type") == "str"
-        and swtc_flags.get("input", {}).get("description") == "Input file path"
-    )
-    loglevel_option_ok = (
-        swtc_flags.get("loglevel", {}).get("type") == "str"
-        and swtc_flags.get("loglevel", {}).get("description") == "Log level setting"
-    )
+    input_option_ok = option_strings.get("input") == "Input file path"
+    loglevel_option_ok = option_strings.get("loglevel") == "Log level setting"
 
     # Check if options were added to .${packName}rc
     input_${packName}rc_ok = check_flag_value("modTestCmd01", "input", "")
@@ -415,18 +415,14 @@ def test_modify_mixed_args_and_flags(result: TestResult) -> bool:
     desc_ok = cmd_data.get("description") == "Updated mixed command description"
 
     # Check new argument
-    arg_ok = cmd_data.get("arg4") == "New fourth argument"
+    arguments = cmd_data.get("arguments", {})
+    arg_ok = arguments.get("arg4") == "New fourth argument"
 
     # Check swtc flags
-    swtc_flags = cmd_data.get("switchFlags", {})
-    flag_ok = (
-        swtc_flags.get("e", {}).get("type") == "bool"
-        and swtc_flags.get("e", {}).get("description") == "Enable feature flag"
-    )
-    option_ok = (
-        swtc_flags.get("format", {}).get("type") == "str"
-        and swtc_flags.get("format", {}).get("description") == "Output format option"
-    )
+    option_switches = cmd_data.get("option_switches", {})
+    option_strings = cmd_data.get("option_strings", {})
+    flag_ok = option_switches.get("e") == "Enable feature flag"
+    option_ok = option_strings.get("format") == "Output format option"
 
     # Check .${packName}rc
     flag_${packName}rc_ok = check_flag_value("modTestCmd01", "e", False)
@@ -527,10 +523,10 @@ def test_modify_existing_flags(result: TestResult) -> bool:
 
     # Check if flag descriptions were updated
     cmd_data = get_command_data("modTestCmd02")
-    swtc_flags = cmd_data.get("switchFlags", {})
+    option_switches = cmd_data.get("option_switches", {})
 
-    verbose_ok = swtc_flags.get("v", {}).get("description") == "Updated verbose flag description"
-    debug_ok = swtc_flags.get("d", {}).get("description") == "Updated debug flag description"
+    verbose_ok = option_switches.get("v") == "Updated verbose flag description"
+    debug_ok = option_switches.get("d") == "Updated debug flag description"
 
     if verbose_ok and debug_ok:
         print_pass("Existing flag descriptions modified successfully")
@@ -556,11 +552,11 @@ def test_modify_with_empty_descriptions(result: TestResult) -> bool:
 
     # Check if default descriptions were used
     cmd_data = get_command_data("modTestEmpty")
-    swtc_flags = cmd_data.get("switchFlags", {})
+    option_switches = cmd_data.get("option_switches", {})
 
     # Should have some default description for the flag
-    flag_desc = swtc_flags.get("v", {}).get("description", "")
-    has_default = flag_desc != "" and ("Boolean flag" in flag_desc or "no help" in flag_desc)
+    flag_desc = option_switches.get("v", "")
+    has_default = flag_desc != "" and ("Boolean option" in flag_desc or "no help" in flag_desc)
 
     # Clean up
     run_command('echo "y" | ${packName} rmCmd modTestEmpty')
@@ -621,10 +617,10 @@ def test_complete_cleanup(result: TestResult) -> bool:
                 cleanup_success = False
                 print_fail(f"Failed to remove {cmd}")
 
-    # Clean up .${packName}rc
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
-    if ${packName}rc_file.exists():
-        ${packName}rc_file.unlink()
+    # Clean up .cmdrc
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
+    if cmdrc_file.exists():
+        cmdrc_file.unlink()
 
     if cleanup_success:
         print_pass("All test commands cleaned up successfully")

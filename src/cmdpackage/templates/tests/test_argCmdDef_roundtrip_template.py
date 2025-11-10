@@ -373,8 +373,9 @@ def test_valid_argument_acceptance(result: TestResult) -> bool:
 
     # Check if both arguments were added
     cmd_data = get_command_data("testValidation")
-    valid_arg_ok = "validArg" in cmd_data
-    another_valid_ok = "anotherValid" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    valid_arg_ok = "validArg" in arguments
+    another_valid_ok = "anotherValid" in arguments
 
     # Check output messages
     contains_modified = "CMD MODIFIED: " in stdout
@@ -406,9 +407,10 @@ def test_invalid_argument_rejection(result: TestResult) -> bool:
 
     # Check that none of the invalid arguments were added
     cmd_data = get_command_data("testValidation")
-    list_rejected = "list" not in cmd_data
-    str_rejected = "str" not in cmd_data
-    int_rejected = "int" not in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    list_rejected = "list" not in arguments
+    str_rejected = "str" not in arguments
+    int_rejected = "int" not in arguments
 
     # Check output messages
     contains_all_rejected = "All requested modifications" in stdout and "were rejected" in stdout
@@ -439,9 +441,10 @@ def test_mixed_valid_invalid_arguments(result: TestResult) -> bool:
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    valid_mixed_ok = "validMixed" in cmd_data
-    list_rejected = "list" not in cmd_data
-    int_rejected = "int" not in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    valid_mixed_ok = "validMixed" in arguments
+    list_rejected = "list" not in arguments
+    int_rejected = "int" not in arguments
 
     # Check output messages
     contains_modified = "CMD MODIFIED: " in stdout and "validMixed" in stdout
@@ -474,9 +477,13 @@ def test_swtc_flags_with_arguments(result: TestResult) -> bool:
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    swtc_arg_ok = "swtcArg" in cmd_data
-    verbose_flag_ok = "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
-    list_rejected = "list" not in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    swtc_arg_ok = "swtcArg" in arguments
+    # Check for flags in new structure (option_switches) or old structure (switchFlags)
+    option_switches = cmd_data.get("option_switches", {})
+    switchFlags = cmd_data.get("switchFlags", {})
+    verbose_flag_ok = "verbose" in option_switches or "verbose" in switchFlags
+    list_rejected = "list" not in arguments
 
     # Check output messages
     contains_modified = "CMD MODIFIED: " in stdout
@@ -520,7 +527,8 @@ def test_simple_template_bypass(result: TestResult) -> bool:
 
     # Check that the reserved name was allowed
     cmd_data = get_command_data("testSimple")
-    list_allowed = "list" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    list_allowed = "list" in arguments
     template_type = check_template_type("testSimple")
 
     # Should not contain error messages about reserved names
@@ -557,11 +565,15 @@ def test_comprehensive_scenario(result: TestResult) -> bool:
 
     # Check results
     cmd_data = get_command_data("testValidation")
-    debug_flag_ok = "switchFlags" in cmd_data and "debug" in cmd_data["switchFlags"]
-    verbose_option_ok = "switchFlags" in cmd_data and "verbose" in cmd_data["switchFlags"]
-    valid_comp_ok = "validComprehensive" in cmd_data
-    while_rejected = "while" not in cmd_data
-    def_rejected = "def" not in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    # Check for flags in new structure (option_switches) or old structure (switchFlags)
+    option_switches = cmd_data.get("option_switches", {})
+    switchFlags = cmd_data.get("switchFlags", {})
+    debug_flag_ok = "debug" in option_switches or "debug" in switchFlags
+    verbose_option_ok = "verbose" in option_switches or "verbose" in switchFlags
+    valid_comp_ok = "validComprehensive" in arguments
+    while_rejected = "while" not in arguments
+    def_rejected = "def" not in arguments
 
     # Check messaging
     contains_modified = "CMD MODIFIED: " in stdout
@@ -616,8 +628,9 @@ def test_function_definition_addition(result: TestResult) -> bool:
 
     # Check JSON metadata was also updated
     cmd_data = get_command_data("testFunctions")
-    first_arg_in_json = "firstArg" in cmd_data
-    second_arg_in_json = "secondArg" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    first_arg_in_json = "firstArg" in arguments
+    second_arg_in_json = "secondArg" in arguments
 
     all_ok = (
         first_func_exists and second_func_exists and contains_function_msg and first_arg_in_json and second_arg_in_json
@@ -702,9 +715,10 @@ def test_multiple_argument_functions(result: TestResult) -> bool:
 
     # Verify all 3 are in JSON
     cmd_data = get_command_data("testMultiple")
-    arg1_in_json = "arg1" in cmd_data
-    arg2_in_json = "arg2" in cmd_data
-    arg3_in_json = "arg3" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    arg1_in_json = "arg1" in arguments
+    arg2_in_json = "arg2" in arguments
+    arg3_in_json = "arg3" in arguments
 
     # Check that the output message mentions all arguments
     contains_all_args = "arg1" in stdout and "arg2" in stdout and "arg3" in stdout
@@ -768,9 +782,10 @@ def test_function_removal_consistency(result: TestResult) -> bool:
 
     # Check JSON consistency
     cmd_data = get_command_data("testMultiple")
-    json_arg1_exists = "arg1" in cmd_data
-    json_arg2_removed = "arg2" not in cmd_data
-    json_arg3_exists = "arg3" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    json_arg1_exists = "arg1" in arguments
+    json_arg2_removed = "arg2" not in arguments
+    json_arg3_exists = "arg3" in arguments
 
     # Verify output messages
     contains_removed_msg = "Removed function 'arg2'" in stdout or "ARG REMOVED: arg2" in stdout

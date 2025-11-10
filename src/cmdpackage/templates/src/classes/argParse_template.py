@@ -71,11 +71,16 @@ class ArgParse:
 
                 needCmdDescription = True
                 needArgDescription = True
-                arguments = commands[cmdName]
+                command_info = commands[cmdName]
                 argumentsHelp += cStr(cmdName, color.YELLOW) + ": \\n"
-                for argName in arguments:
-                    if argName == "description":
-                        cmdHelp = cStr(cmdName, color.YELLOW) + ": " + f"{arguments[argName]}"
+
+                # Handle new structure vs old structure
+                if "arguments" in command_info:
+                    # New structure - arguments are under "arguments" key
+                    arguments = command_info["arguments"]
+                    # Get description from description field
+                    if "description" in command_info:
+                        cmdHelp = cStr(cmdName, color.YELLOW) + ": " + f"{command_info['description']}"
                         if len(cmdHelp) > tCols:
                             indentPad = len(cmdName) + 2
                             cmdHelp = formatHelpWidth(cmdHelp, tCols, indentPad)
@@ -83,9 +88,10 @@ class ArgParse:
                             cmdHelp += "\\n"
                         commandsHelp += cmdHelp
                         needCmdDescription = False
-                    elif argName not in ["switchFlags"]:
-                        # Only process actual arguments, not metadata
-                        argHelp = cStr(f"  <{argName}> ", color.CYAN) + f"{arguments[argName]}"
+
+                    # Process arguments
+                    for argName, argDesc in arguments.items():
+                        argHelp = cStr(f"  <{argName}> ", color.CYAN) + f"{argDesc}"
                         if len(argHelp) > tCols:
                             indentPad = len(argName) + 5
                             argHelp = " " + formatHelpWidth(argHelp, tCols, indentPad)
@@ -93,6 +99,28 @@ class ArgParse:
                             argHelp += "\\n"
                         argumentsHelp += argHelp
                         needArgDescription = False
+                else:
+                    # Old structure - iterate through all keys and filter out metadata
+                    for argName in command_info:
+                        if argName == "description":
+                            cmdHelp = cStr(cmdName, color.YELLOW) + ": " + f"{command_info[argName]}"
+                            if len(cmdHelp) > tCols:
+                                indentPad = len(cmdName) + 2
+                                cmdHelp = formatHelpWidth(cmdHelp, tCols, indentPad)
+                            else:
+                                cmdHelp += "\\n"
+                            commandsHelp += cmdHelp
+                            needCmdDescription = False
+                        elif argName not in ["switchFlags", "option_switches", "option_strings"]:
+                            # Only process actual arguments, not metadata
+                            argHelp = cStr(f"  <{argName}> ", color.CYAN) + f"{command_info[argName]}"
+                            if len(argHelp) > tCols:
+                                indentPad = len(argName) + 5
+                                argHelp = " " + formatHelpWidth(argHelp, tCols, indentPad)
+                            else:
+                                argHelp += "\\n"
+                            argumentsHelp += argHelp
+                            needArgDescription = False
                 if needArgDescription:
                     argumentsHelp = argumentsHelp[:-1]
                     argumentsHelp += "no arguments\\n"
@@ -165,10 +193,12 @@ class ArgParse:
                         # Mark it specially so we know it's a string option during command creation
                         self.cmd_options[option_name] = "__STRING_OPTION__"
                         i += 1
-            elif arg.startswith("-") and len(arg) > 1:
-                # Handle single-hyphen options that might be command-specific
+            elif (arg.startswith("-") or arg.startswith("+")) and len(arg) > 1:
+                # Handle single-hyphen and plus-sign options that might be command-specific
+                # Pi system uses unconventional persistence storage: -flag=OFF, +flag=ON
                 # Check if this is a known global flag first
-                option_name = arg[1:]
+                is_plus_flag = arg.startswith("+")
+                option_name = arg[1:]  # Remove - or +
 
                 # Handle help flags - only preserve for general help (when no command specified)
                 if option_name in ["h"]:
@@ -185,7 +215,8 @@ class ArgParse:
                     i += 1
                 else:
                     # This might be a command-specific flag, treat as such
-                    self.cmd_options[option_name] = True
+                    # Pi system: -flag=False (OFF), +flag=True (ON)
+                    self.cmd_options[option_name] = True if is_plus_flag else False
                     i += 1
             else:
                 filtered_args.append(arg)
@@ -213,8 +244,9 @@ def formatHelpWidth(theText, tCols, indentPad=1) -> str:
             if len(token) > tCols:
                 # when the mtc word is longer then the terminal character width (tCols),
                 # DEBUG how it should be handeled here.
-                print(f"here with long mtc.group():\\n{token}")
-                exit()
+                # Temporarily comment out debug code
+                # print(f"here with long mtc.group():\\n{token}")
+                # exit()
                 chkStr = token
                 while len(chkStr) > tCols:  # a single word may be larger the tCols
                     outLine += chkStr[:tCols]

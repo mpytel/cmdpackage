@@ -16,9 +16,8 @@ from black.report import NothingChanged
 
 commandJsonDict = {
     "fileDiff": {
-        "description": "Show the differnces between two files.",
-        "origFile": "Original file name",
-        "newFile": "New file name",
+        "description": "Show the differences between two files.",
+        "arguments": {"origFile": "Original file name", "newFile": "New file name"},
     }
 }
 

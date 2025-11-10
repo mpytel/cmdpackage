@@ -12,13 +12,13 @@ This test suite validates the rmCmd command functionality including:
 1. Creating a test command with arguments and swtc flags
 2. Modifying the command with additional arguments and flags
 3. Removing individual arguments without affecting the command file
-4. Removing individual swtc flags from all locations(.${packName}rc, commands.json, source file)
+4. Removing individual swtc flags from all locations(.cmdrc, commands.json, source file)
 5. Verifying that the command file remains intact during selective removals
 6. Finally removing the entire command and verifying complete cleanup
 
 All operations are verified across:
 - commands.json
-- .${packName}rc file
+- .cmdrc file
 - source command file ( < cmdName > .py)
 \"\"\"
 
@@ -145,12 +145,16 @@ def get_command_data(cmd_name: str) -> dict:
 
 
 def check_flag_in_${packName}rc(cmd_name: str, flag_name: str) -> bool:
-    \"\"\"Check if a specific flag exists in .${packName}rc\"\"\"
-    ${packName}rc_file = Path(__file__).parent.parent / "src" / ".${packName}rc"
+    \"\"\"Check if a specific flag exists in .cmdrc\"\"\"
+    cmdrc_file = Path(__file__).parent.parent / "src" / "${packName}" / "commands" / ".cmdrc"
     try:
-        with open(${packName}rc_file, "r") as f:
+        with open(cmdrc_file, "r") as f:
             data = json.load(f)
-            return cmd_name in data.get("commandFlags", {}) and flag_name in data["commandFlags"][cmd_name]
+            command_options = data.get("commands", {}).get(cmd_name, {})
+            # Check both option_switches and option_strings for the flag
+            option_switches = command_options.get("option_switches", {})
+            option_strings = command_options.get("option_strings", {})
+            return flag_name in option_switches or flag_name in option_strings
     except Exception:
         return False
 
@@ -158,6 +162,17 @@ def check_flag_in_${packName}rc(cmd_name: str, flag_name: str) -> bool:
 def check_swtc_flag_definition(cmd_name: str, flag_name: str, flag_type: str) -> bool:
     \"\"\"Check if a swtc flag is properly defined in commands.json\"\"\"
     cmd_data = get_command_data(cmd_name)
+    # Check both new structure and old switchFlags for backwards compatibility
+    option_switches = cmd_data.get("option_switches", {})
+    option_strings = cmd_data.get("option_strings", {})
+
+    # For the new structure, check if flag exists in appropriate section
+    if (flag_type == "bool" or flag_type == "boolean") and flag_name in option_switches:
+        return True
+    elif flag_type == "string" and flag_name in option_strings:
+        return True
+
+    # Fallback to old structure check
     swtc_flags = cmd_data.get("switchFlags", {})
     flag_def = swtc_flags.get(flag_name, {})
     return flag_def.get("type") == flag_type
@@ -289,8 +304,9 @@ def test_add_flags_and_arguments(result: TestResult) -> bool:
 
     # Verify arguments were added
     cmd_data = get_command_data("rmTestCmd01")
-    arg1_ok = "arg1" in cmd_data
-    arg2_ok = "arg2" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    arg1_ok = "arg1" in arguments
+    arg2_ok = "arg2" in arguments
 
     all_ok = verbose_ok and debug_ok and verbose_${packName}rc and debug_${packName}rc and arg1_ok and arg2_ok
 
@@ -319,8 +335,9 @@ def test_remove_regular_argument(result: TestResult) -> bool:
 
     # Verify arg1 was removed but everything else remains
     cmd_data = get_command_data("rmTestCmd01")
-    arg1_removed = "arg1" not in cmd_data
-    arg2_exists = "arg2" in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    arg1_removed = "arg1" not in arguments
+    arg2_exists = "arg2" in arguments
     verbose_exists = check_swtc_flag_definition("rmTestCmd01", "verbose", "bool")
     debug_exists = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")
@@ -356,7 +373,9 @@ def test_remove_swtc_flag(result: TestResult) -> bool:
 
     # Verify other items still exist
     debug_exists = check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
-    arg2_exists = "arg2" in get_command_data("rmTestCmd01")
+    cmd_data = get_command_data("rmTestCmd01")
+    arguments = cmd_data.get("arguments", {})
+    arg2_exists = "arg2" in arguments
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")
     debug_${packName}rc_exists = check_flag_in_${packName}rc("rmTestCmd01", "debug")
 
@@ -398,7 +417,8 @@ def test_remove_remaining_items(result: TestResult) -> bool:
 
     # Verify everything was removed except basic command structure
     cmd_data = get_command_data("rmTestCmd01")
-    arg2_removed = "arg2" not in cmd_data
+    arguments = cmd_data.get("arguments", {})
+    arg2_removed = "arg2" not in arguments
     debug_removed_json = not check_swtc_flag_definition("rmTestCmd01", "debug", "bool")
     debug_removed_${packName}rc = not check_flag_in_${packName}rc("rmTestCmd01", "debug")
     file_exists_check = file_exists("src/${packName}/commands/rmTestCmd01.py")

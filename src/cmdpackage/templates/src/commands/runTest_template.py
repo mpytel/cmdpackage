@@ -16,13 +16,16 @@ from .commands import Commands
 commandJsonDict = {
     "runTest": {
         "description": "Run test(s) in ./tests directory. Use 'listTests' to see available tests.",
-        "switchFlags": {
-            "verbose": {"description": "Verbose output flag", "type": "bool"},
-            "stop": {"description": "Stop on failure flag", "type": "bool"},
-            "summary": {"description": "Summary only flag", "type": "bool"},
+        "option_switches": {
+            "verbose": "Verbose output flag",
+            "stop": "Stop on failure flag",
+            "summary": "Summary only flag",
         },
-        "testName": "Optional name of specific test to run (without .py extension)",
-        "listTests": "List all available tests in the tests directory",
+        "option_strings": {},
+        "arguments": {
+            "testName": "Optional name of specific test to run (without .py extension)",
+            "listTests": "List all available tests in the tests directory",
+        },
     }
 }
 
@@ -45,6 +48,21 @@ class TestRunner:
         self.stop_on_failure = stop_on_failure
         self.summary_only = summary_only
         self.results: Dict[str, Tuple[bool, str, float]] = {}
+
+    def count_tests_in_file(self, test_file: Path) -> int:
+        \"\"\"Count the number of test functions in a test file\"\"\"
+        try:
+            with open(test_file, "r") as f:
+                content = f.read()
+
+            # Count functions that match the pattern "def test_" and have "result:" in their signature
+            import re
+
+            pattern = r"def test_.*\\(.*result:.*\\) -> bool:"
+            matches = re.findall(pattern, content)
+            return len(matches)
+        except Exception:
+            return 0
 
     def discover_tests(self) -> List[Path]:
         \"\"\"Discover all test files in the tests directory\"\"\"
@@ -106,11 +124,13 @@ class TestRunner:
 
             # Show individual test results if not summary only
             if not self.summary_only:
+                test_count = self.count_tests_in_file(test_file)
                 if success:
                     status = cStr("PASS", color.GREEN)
+                    print(f"  {status} {test_count} ({duration:.2f}s)")
                 else:
                     status = cStr("FAIL", color.RED)
-                print(f"  {status} ({duration:.2f}s)")
+                    print(f"  {status} {test_count} ({duration:.2f}s)")
 
                 if self.verbose or not success:
                     # Show output for failed tests or when verbose is enabled
@@ -157,9 +177,9 @@ class TestRunner:
         print("=" * 60)
 
         if failed_tests == 0:
-            printIt("🎉 All tests passed!", lable.PASS)
+            printIt(f"{passed_tests} ({total_time:.2f}s)", lable.PASS)
         else:
-            printIt(f"❌ {failed_tests} test(s) failed", lable.ERROR)
+            printIt(f"{passed_tests} ({total_time:.2f}s)", lable.ERROR)
 
 
 def runTest(argParse):
@@ -168,10 +188,10 @@ def runTest(argParse):
     # Filter out flag arguments (starting with + or -)
     theArgs = [arg for arg in args.arguments if not (isinstance(arg, str) and len(arg) > 1 and arg[0] in "+-")]
 
-    # Get command-line flags from .${packName}rc file after flag processing
-    from ..classes.optSwitches import getCmdswitchFlags
+    # Get command-line flags from .mlprc file after flag processing
+    from ..classes.optSwitches import getCmdSwitchOptions
 
-    cmd_flags = getCmdswitchFlags("runTest")
+    cmd_flags = getCmdSwitchOptions("runTest")
     verbose = cmd_flags.get("verbose", False)
     stop_on_failure = cmd_flags.get("stop", False)
     summary_only = cmd_flags.get("summary", False)
@@ -207,17 +227,17 @@ def runTest(argParse):
         test_file = runner.tests_dir / test_name
         if not test_file.exists():
             printIt(f"Test file not found: {test_name}", lable.ERROR)
-            printIt("Use '${packName} runTest listTests' to see available tests", lable.INFO)
+            printIt("Use 'mlp runTest listTests' to see available tests", lable.INFO)
             return
 
         printIt(f"Running specific test: {test_name}", lable.INFO)
         success, output, duration = runner.run_single_test(test_file)
+        test_count = runner.count_tests_in_file(test_file)
 
         if success:
-            status = cStr("PASSED", color.GREEN)
+            printIt(f"{test_count} ({duration:.2f}s)", lable.PASS)
         else:
-            status = cStr("FAILED", color.RED)
-        print(f"Test {status} ({duration:.2f}s)")
+            printIt(f"0 ({duration:.2f}s)", lable.ERROR)
 
         if output.strip() and (verbose or not success):
             print(output)
@@ -226,7 +246,7 @@ def runTest(argParse):
             sys.exit(1)
     else:
         printIt(
-            "Too many arguments. Usage: ${packName} runTest [testName] or ${packName} runTest listTests",
+            "Too many arguments. Usage: mlp runTest [testName] or mlp runTest listTests",
             lable.ERROR,
         )
 
@@ -265,10 +285,10 @@ def listTests(argParse):
         print()
 
     print(f"Usage:")
-    print(f"  ${packName} runTest                       # Run all tests")
-    print(f"  ${packName} runTest {test_files[0].stem}  # Run specific test")
-    print(f"  ${packName} runTest -verbose              # Run all tests with verbose output")
-    print(f"  ${packName} runTest -stop                 # Stop on first failure")
-    print(f"  ${packName} runTest -summary              # Show only summary")
+    print(f"  mlp runTest                       # Run all tests")
+    print(f"  mlp runTest {test_files[0].stem}  # Run specific test")
+    print(f"  mlp runTest -verbose              # Run all tests with verbose output")
+    print(f"  mlp runTest -stop                 # Stop on first failure")
+    print(f"  mlp runTest -summary              # Show only summary")
 """))
 

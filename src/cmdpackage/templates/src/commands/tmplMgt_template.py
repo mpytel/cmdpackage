@@ -19,26 +19,27 @@ from typing import Dict, Any, List, Optional, Union, Tuple
 from ..defs.logIt import printIt, lable, cStr, color
 from ..defs.utilities import calculate_md5, split_args
 from .commands import Commands
-from ..classes.optSwitches import getCmdswitchFlags
+from ..classes.optSwitches import getCmdSwitchOptions
+from ..classes.CommandManager import command_manager
 
 commandJsonDict = {
     "tmplMgt": {
-        "description": "cmdPackage template managmet for transfering new or modified  command files with supporting files back to an editable install of comPackage.th supporting file",
-        "switchFlags": {
-            "black": {
-                "description": "Use +black to enable and -black to disable, tracked python file formating before template generation, and the new template after generation.",
-                "type": "bool",
-            },
-            "force": {
-                "description": "Force template generation even if files are not modified.",
-                "type": "bool",
-            },
+        "description": "cmdPackage template management for transferring new or modified  command files with supporting files back to an editable install of comPackage.th supporting file",
+        "option_switches": {
+            "black": "Use +black to enable and -black to disable, tracked python file formatting before template generation, and the new template after generation.",
+            "force": "Force template generation even if files are not modified.",
         },
-        "status": "Show status of all tracked files",
-        "make": "Make a template from a file that will be tracked",
-        "sync": "Syncronize all tracked files that have changes",
-        "trans": "Transfer new templates back to cmdPackage",
-        "list": "List current set of templates",
+        "option_strings": {},
+        "arguments": {
+            "status": "Show status of all tracked files",
+            "scanFiles": "Show detailed file discovery report including exclusions",
+            "listFiles": "List files by category: tracked, untracked, noTracked, or new",
+            "sync": "Synchronize all tracked files that have changes",
+            "trans": "Transfer new templates back to cmdPackage",
+            "track": "Track file for template sync",
+            "untrack": "Remove a template from being tracked",
+            "notrack": "Add files to doNotTrack list to exclude from tracking consideration",
+        },
     }
 }
 
@@ -53,13 +54,24 @@ class TemplateSyncer:
         self.sync_data_file = os.path.join(self.project_root, "genTempSyncData.json")
         self.new_templates_dir = os.path.join(self.project_root, "newTemplates")
         self.sync_data = {}
-        cmd_flags = getCmdswitchFlags("tmplMgt")
+        self.args = argParse.args  # Store args for use in track/untrack methods
+        cmd_flags = getCmdSwitchOptions("tmplMgt")
         self.run_black = cmd_flags.get("black", True)
         self.force = cmd_flags.get("force", False)
+
+        # Check if newTemplates directory is missing
+        self.temp_force_due_to_missing_dir = False
+        if not os.path.exists(self.new_templates_dir):
+            self.temp_force_due_to_missing_dir = True
+            printIt("newTemplates directory missing - enabling force mode for this run", lable.INFO)
 
         # Load the sync data file into self.sync_data
         self._load_sync_data()
         self.origialTemplatePath = self._getOrigialPathToTemplates()
+
+    def is_force_mode(self) -> bool:
+        \"\"\"Check if force mode is active (either from cmdrc or temporary due to missing directory)\"\"\"
+        return self.force or self.temp_force_due_to_missing_dir
 
     def _load_sync_data(self):
         \"\"\"Load the synchronization data from JSON file in current working directory\"\"\"
@@ -90,7 +102,6 @@ class TemplateSyncer:
                 )
                 # Save the cleaned data immediately
                 self._save_sync_data()
-
             printIt(
                 f"Loaded sync data from: {os.path.relpath(self.sync_data_file, self.project_root)}",
                 lable.INFO,
@@ -106,7 +117,7 @@ class TemplateSyncer:
             with open(self.sync_data_file, "w", encoding="utf-8") as f:
                 json.dump(self.sync_data, f, indent=4, ensure_ascii=False)
             printIt(
-                f"Sync data in {cStr(os.path.basename(self.sync_data_file),color.YELLOW)} updated",
+                f"Update sync data in {cStr(os.path.basename(self.sync_data_file),color.YELLOW)}",
                 lable.SAVED,
             )
         except Exception as e:
@@ -128,7 +139,7 @@ class TemplateSyncer:
 
         # Check each tracked file (skip 'fields' entry)
         for file_path in list(self.sync_data.keys()):
-            if file_path == "fields":
+            if file_path in ["fields", "doNotTrack"]:
                 continue
 
             # Check if file exists
@@ -515,7 +526,7 @@ class TemplateSyncer:
             f.write(new_content)
 
     def sync_all_files(self, file_patterns: Optional[List[str]] = None) -> bool:
-        \"\"\"Synchronize all tracked files or files mtcing patterns\"\"\"
+        \"\"\"Synchronize all tracked files or files matching patterns\"\"\"
         if not self.sync_data:
             printIt("No sync data available", lable.ERROR)
             return False
@@ -535,47 +546,51 @@ class TemplateSyncer:
             if not isinstance(file_info, dict):
                 continue
 
-            # If patterns specified, check if file mtces
+            # If patterns specified, check if file matches
             if file_patterns:
-                mtces = False
+                matches = False
                 for pattern in file_patterns:
                     if pattern in file_path or pattern in os.path.basename(file_path):
-                        mtces = True
+                        matches = True
                         break
-                if not mtces:
+                if not matches:
                     continue
 
-            if self.force:
-                files_to_sync.append(file_path)
+            # Determine if file should be synced
+            should_sync = False
+            if self.is_force_mode():
+                # Force mode: sync ALL tracked files (either explicit +force or missing directory)
+                should_sync = True
             else:
-                # Check if file is modified
+                # Normal mode: only sync modified files
                 current_md5 = calculate_md5(file_path)
                 stored_md5 = file_info.get("fileMD5", "")
                 if current_md5 != stored_md5:
-                    files_to_sync.append(file_path)
-                else:
-                    # check if template exists in new templates dir
-                    templateExists = self._check_newTemplate_exists(file_path)
-                    if not templateExists:
-                        files_to_sync.append(file_path)
+                    should_sync = True
 
-            # Group by template file
-            template_file = file_info.get("tempFileName", "")
-            if template_file:
-                template_file_name = os.path.basename(template_file)
-                if template_file_name not in template_file_groups:
-                    template_file_groups[template_file_name] = []
-                if file_path in files_to_sync:
+            if should_sync:
+                files_to_sync.append(file_path)
+
+                # Group by template file
+                template_file = file_info.get("tempFileName", "")
+                if template_file:
+                    template_file_name = os.path.basename(template_file)
+                    if template_file_name not in template_file_groups:
+                        template_file_groups[template_file_name] = []
                     template_file_groups[template_file_name].append((file_path, file_info))
 
         if not files_to_sync:
-            if not self.force:
-                printIt("No files modified", lable.INFO)
-                return True
-            else:
-                printIt("Forcing sync - processing all files", lable.INFO)
+            printIt("No files to sync", lable.INFO)
+            return True
         else:
-            printIt(f"Generating templates for {len(files_to_sync)} files.", lable.INFO)
+            if self.temp_force_due_to_missing_dir:
+                printIt(
+                    f"Missing directory mode: Generating templates for {len(files_to_sync)} tracked files.", lable.INFO
+                )
+            elif self.force:
+                printIt(f"Force mode: Generating templates for {len(files_to_sync)} tracked files.", lable.INFO)
+            # else:
+            #     printIt(f"Generating templates for {len(files_to_sync)} modified files.", lable.INFO)
 
         success_count = 0
 
@@ -584,13 +599,24 @@ class TemplateSyncer:
             if self._sync_template_file_group(template_file_name, file_group):
                 success_count += 1
 
-        printIt(
-            f"Generated templates for {success_count}/{len(files_to_sync)} files",
-            lable.INFO,
-        )
+        # printIt(
+        #     f"Generated templates for {success_count}/{len(files_to_sync)} files",
+        #     lable.INFO,
+        # )
+
+        # Special handling for commands.json: Always generate commands_template.json from tracked Python files
+        commands_json_generated = False
+        try:
+            # printIt("Generating commands_template.json from tracked Python files...", lable.INFO)
+            if command_manager.generate_commands_template_json():
+                commands_json_generated = True
+                # printIt("Generated commands_template.json from commandJsonDict in tracked Python files", lable.INFO)
+
+        except Exception as e:
+            printIt(f"Error generating commands_template.json: {e}", lable.ERROR)
 
         # Save updated sync data
-        if success_count > 0:
+        if success_count > 0 or commands_json_generated:
             self._save_sync_data()
 
         return True
@@ -696,43 +722,8 @@ class TemplateSyncer:
         template_file_path = os.path.join(self.new_templates_dir, testTempPath, template_filename)
         return os.path.exists(template_file_path)
 
-    def list_tracked_files(self):
-        \"\"\"List all files tracked in the sync data\"\"\"
-        if not self.sync_data:
-            printIt("No sync data available", lable.ERROR)
-            return
-
-        printIt("\\nTracked files:", lable.INFO)
-        printIt("-" * 80, lable.INFO)
-
-        for file_path, file_info in self.sync_data.items():
-            if file_path == "fields":
-                continue
-
-            if not isinstance(file_info, dict):
-                continue
-
-            # Check if file exists and if it's modified
-            exists = os.path.exists(file_path)
-            if exists:
-                current_md5 = calculate_md5(file_path)
-                stored_md5 = file_info.get("fileMD5", "")
-                status = "OK" if current_md5 == stored_md5 else "MODIFIED"
-                status_color = color.GREEN if status == "OK" else color.YELLOW
-            else:
-                status = "MISSING"
-                status_color = color.RED
-
-            template_name = file_info.get("template", "Unknown")
-            rel_path = os.path.relpath(file_path, self.project_root)
-
-            printIt(
-                f"{cStr(status, status_color):10} {rel_path:50} ({template_name})",
-                lable.INFO,
-            )
-
-    def show_status(self):
-        \"\"\"Show status of all tracked files\"\"\"
+    def show_status(self, file_patterns: Optional[List[str]] = None):
+        \"\"\"Show status of all tracked files or files matching patterns\"\"\"
         if not self.sync_data:
             printIt("No sync data available", lable.ERROR)
             return
@@ -744,8 +735,8 @@ class TemplateSyncer:
         modified_file_list = []
         missing_file_list = []
 
-        printIt("-" * 29, cStr(" Tracked File Status ", color.GREEN), "-" * 30, lable.INFO)
-
+        # Filter files based on patterns if provided
+        files_to_check = []
         for file_path, file_info in self.sync_data.items():
             if file_path == "fields":
                 continue
@@ -753,6 +744,31 @@ class TemplateSyncer:
             if not isinstance(file_info, dict):
                 continue
 
+            # Skip commands.json - it's generated from Python files, not tracked for status
+            if file_path.endswith("/commands.json") or file_path.endswith("\\\\commands.json"):
+                continue
+
+            # If patterns specified, check if file matches
+            if file_patterns:
+                matches = self._matches_any_pattern(file_path, file_info, file_patterns)
+                if not matches:
+                    continue
+
+            files_to_check.append((file_path, file_info))
+
+        if not files_to_check:
+            if file_patterns:
+                printIt(f"No tracked files match patterns: {', '.join(file_patterns)}", lable.WARN)
+            else:
+                printIt("No tracked files found", lable.WARN)
+            return
+
+        if file_patterns:
+            printIt(f"Status for files matching patterns: {', '.join(file_patterns)}", lable.INFO)
+
+        printIt("-" * 29, cStr(" Tracked File Status ", color.GREEN), "-" * 30, lable.INFO)
+
+        for file_path, file_info in files_to_check:
             total_files += 1
 
             # Check if file exists and if it's modified
@@ -803,40 +819,96 @@ class TemplateSyncer:
                 printIt(f"  {cStr('MISSING', color.RED)} {rel_path}", lable.INFO)
                 printIt(f"          Template: {template_name}", lable.INFO)
 
-        # List untracked files
-        untracked_files = self._discover_untracked_files()
-        if untracked_files:
-            printIt(
-                "-" * 31,
-                cStr(" Untracked Files ", color.CYAN),
-                "-" * 32,
-                lable.INFO,
-            )
-            for file_path in untracked_files:
-                # Show relative path if possible
-                try:
-                    rel_path = os.path.relpath(file_path, self.project_root)
-                except ValueError:
-                    rel_path = file_path
-                printIt(f"  {cStr('UNTRACKED', color.CYAN)} {rel_path}", lable.INFO)
-            printIt(
-                f"\\n  To track these files, use: {cStr('${packName} tmplMgt make <file>', color.GREEN)}",
-                lable.INFO,
-            )
+        # List untracked files only if no patterns specified (to avoid confusion)
+        if not file_patterns:
+            untracked_files = self._discover_untracked_files()
+            if untracked_files:
+                printIt(
+                    "-" * 31,
+                    cStr(" Untracked Files ", color.CYAN),
+                    "-" * 32,
+                    lable.INFO,
+                )
+                for file_path in untracked_files:
+                    # Show relative path if possible
+                    try:
+                        rel_path = os.path.relpath(file_path, self.project_root)
+                    except ValueError:
+                        rel_path = file_path
+                    printIt(f"  {cStr('UNTRACKED', color.CYAN)} {rel_path}", lable.INFO)
+                printIt(
+                    f"\\n  To track these files, use: {cStr('${packName} tmplMgt track <file>', color.GREEN)}",
+                    lable.INFO,
+                )
 
-    def _discover_untracked_files(self) -> List[str]:
+    def _matches_any_pattern(self, file_path: str, file_info: dict, patterns: List[str]) -> bool:
+        \"\"\"Check if a file matches any of the given patterns\"\"\"
+        # Get various ways to refer to this file
+        filename = os.path.basename(file_path)
+        name_without_ext = os.path.splitext(filename)[0]
+        template_name = file_info.get("template", "")
+
+        # Try to get relative path
+        try:
+            rel_path = os.path.relpath(file_path, self.project_root)
+        except ValueError:
+            rel_path = file_path
+
+        for pattern in patterns:
+            # Direct matches
+            if (
+                pattern in file_path
+                or pattern in filename
+                or pattern in rel_path
+                or pattern in name_without_ext
+                or pattern in template_name
+            ):
+                return True
+
+            # Handle template name patterns (remove _template suffix)
+            if pattern.endswith("_template"):
+                base_pattern = pattern[:-9]  # Remove "_template"
+                if base_pattern in filename or base_pattern in name_without_ext or base_pattern in rel_path:
+                    return True
+
+            # Handle adding _template to pattern
+            pattern_with_template = pattern + "_template"
+            if pattern_with_template in template_name:
+                return True
+
+            # Handle .py extension variants
+            if not pattern.endswith(".py"):
+                pattern_py = pattern + ".py"
+                if pattern_py in filename or pattern_py in rel_path:
+                    return True
+
+        return False
+
+    def _discover_untracked_files(self, verbose: bool = False) -> List[str]:
         \"\"\"Discover files that exist but aren't tracked in genTempSyncData.json\"\"\"
         untracked = []
+        excluded_files = []
+        already_tracked_files = []
 
         # Get list of tracked files
         tracked_files = set()
         for file_path in self.sync_data.keys():
-            if file_path != "fields" and isinstance(self.sync_data[file_path], dict):
+            if file_path != "fields" and file_path != "doNotTrack" and isinstance(self.sync_data[file_path], dict):
                 # Normalize to absolute path
                 if os.path.isabs(file_path):
                     tracked_files.add(file_path)
                 else:
                     tracked_files.add(os.path.join(self.project_root, file_path))
+
+        # Get doNotTrack list from sync data
+        do_not_track = self.sync_data.get("doNotTrack", [])
+        do_not_track_abs = set()
+        for file_pattern in do_not_track:
+            # Convert to absolute path if not already
+            if os.path.isabs(file_pattern):
+                do_not_track_abs.add(file_pattern)
+            else:
+                do_not_track_abs.add(os.path.join(self.project_root, file_pattern))
 
         # Directories to scan for potential template files
         scan_dirs = [
@@ -872,25 +944,151 @@ class TemplateSyncer:
                 dirs[:] = [d for d in dirs if not any(excl in d for excl in exclude_patterns)]
 
                 for file in files:
-                    # Skip excluded files
-                    if any(excl in file for excl in exclude_patterns):
+                    file_path = os.path.join(root, file)
+
+                    # Check if file is in doNotTrack list
+                    if file_path in do_not_track_abs:
+                        if verbose:
+                            excluded_files.append((file_path, "listed in doNotTrack"))
                         continue
 
-                    # Check if file mtces any pattern
-                    file_path = os.path.join(root, file)
+                    # Check exclusions and track reasons
+                    if file.startswith(("${packName}", ".${packName}")):
+                        if verbose:
+                            excluded_files.append((file_path, "starts with '${packName}' or '.${packName}'"))
+                        continue
+
+                    # Skip excluded files
+                    if any(excl in file for excl in exclude_patterns):
+                        if verbose:
+                            excluded_files.append(
+                                (
+                                    file_path,
+                                    f"matches exclusion pattern: {[excl for excl in exclude_patterns if excl in file]}",
+                                )
+                            )
+                        continue
 
                     # Only include Python files for now
                     if not file.endswith(".py"):
+                        if verbose:
+                            excluded_files.append((file_path, "not a .py file"))
                         continue
 
                     # Skip if already tracked
                     if file_path in tracked_files:
+                        if verbose:
+                            already_tracked_files.append(file_path)
                         continue
 
                     # Add to untracked list
                     untracked.append(file_path)
 
+        if verbose:
+            printIt(f"\\n{cStr('File Discovery Report:', color.CYAN)}", lable.INFO)
+            printIt(f"  Scanned directories: {scan_dirs}", lable.INFO)
+            printIt(f"  Found {len(untracked)} untracked files", lable.INFO)
+            printIt(f"  Found {len(already_tracked_files)} already tracked files", lable.INFO)
+            printIt(f"  Excluded {len(excluded_files)} files", lable.INFO)
+
+            if excluded_files:
+                printIt(f"\\n{cStr('Excluded Files:', color.YELLOW)}", lable.INFO)
+                for file_path, reason in excluded_files[:10]:  # Show first 10
+                    rel_path = os.path.relpath(file_path, self.project_root)
+                    printIt(f"  {rel_path} - {reason}", lable.INFO)
+                if len(excluded_files) > 10:
+                    printIt(f"  ... and {len(excluded_files) - 10} more", lable.INFO)
+
         return sorted(untracked)
+
+    def _find_files_by_keyword(self, keyword: str) -> List[str]:
+        \"\"\"Find all untracked files associated with a keyword (e.g., 'qt' finds test_qt.py, README_qt_instructions.md, etc.)\"\"\"
+        associated_files = []
+
+        # Get list of untracked files
+        untracked_files = self._discover_untracked_files()
+
+        # Also scan for other file types in the project root and common directories
+        scan_dirs = [
+            self.project_root,  # Root directory for README, config files
+            os.path.join(self.project_root, "tests"),
+            os.path.join(self.project_root, "src"),
+            os.path.join(self.project_root, "docs"),
+        ]
+
+        # Additional file extensions to look for
+        extensions = [".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini"]
+
+        # Files/directories to exclude
+        exclude_patterns = [
+            "__pycache__",
+            ".pyc",
+            "env/",
+            "venv/",
+            ".git/",
+            "build/",
+            "dist/",
+            ".egg-info",
+            "node_modules/",
+        ]
+
+        all_candidate_files = set(untracked_files)  # Start with untracked Python files
+
+        # Scan for additional file types
+        for scan_dir in scan_dirs:
+            if not os.path.exists(scan_dir):
+                continue
+
+            for root, dirs, files in os.walk(scan_dir):
+                # Filter out excluded directories
+                dirs[:] = [d for d in dirs if not any(excl in d for excl in exclude_patterns)]
+
+                for file in files:
+                    if file.startswith("."):  # Skip hidden files
+                        continue
+
+                    # Skip excluded files
+                    if any(excl in file for excl in exclude_patterns):
+                        continue
+
+                    # Check if file has an extension we care about
+                    file_ext = os.path.splitext(file)[1].lower()
+                    if file_ext in extensions:
+                        file_path = os.path.join(root, file)
+
+                        # Skip if already tracked
+                        rel_path = os.path.relpath(file_path, self.project_root)
+                        if rel_path in self.sync_data:
+                            continue
+
+                        all_candidate_files.add(file_path)
+
+        # Filter files that contain the keyword
+        keyword_lower = keyword.lower()
+        for file_path in all_candidate_files:
+            filename = os.path.basename(file_path)
+            filename_lower = filename.lower()
+
+            # Check if keyword appears in filename
+            if keyword_lower in filename_lower:
+                # Additional checks for common patterns
+                patterns_match = [
+                    f"test_{keyword_lower}",  # test_qt.py
+                    f"{keyword_lower}_test",  # qt_test.py
+                    f"test{keyword_lower}",  # testqt.py
+                    f"{keyword_lower}test",  # qttest.py
+                    f"readme_{keyword_lower}",  # README_qt_instructions.md
+                    f"{keyword_lower}_readme",  # qt_README.md
+                    f"{keyword_lower}_",  # qt_something.py
+                    f"_{keyword_lower}",  # something_qt.py
+                    keyword_lower,  # qt.py
+                ]
+
+                # If any pattern matches, add to associated files
+                if any(pattern in filename_lower for pattern in patterns_match):
+                    associated_files.append(file_path)
+
+        return sorted(associated_files)
 
     def _get_all_python_files(self) -> List[str]:
         \"\"\"Get all Python files (tracked and untracked) in the project\"\"\"
@@ -1120,16 +1318,29 @@ class TemplateSyncer:
         name_without_ext = os.path.splitext(filename)[0]
         template_name = f"{name_without_ext}_template"
 
+        # Determine the correct template filename with extension
+        file_ext = os.path.splitext(file_path)[1].lower()
+        if file_ext == ".json":
+            template_filename = f"{name_without_ext}_template.json"
+        else:
+            template_filename = f"{name_without_ext}_template.py"
+
         # Determine template subdirectory
         template_subdir = self._get_fallback_subdirectory(file_path)
 
         # Create template file name
         if template_subdir:
-            temp_file_name = os.path.join(template_subdir, filename)
+            temp_file_name = os.path.join(template_subdir, template_filename)
         else:
-            temp_file_name = filename
+            temp_file_name = template_filename
+        #
+        temp_file_name_chk = os.path.join(
+            self.origialTemplatePath, os.path.relpath(file_path, self.project_root), temp_file_name
+        )
 
         temp_file_name = os.path.join(self.origialTemplatePath, temp_file_name)
+        printIt(f"temp_file_name_chk: {temp_file_name_chk}", lable.DEBUG)
+        printIt(f"temp_file_name: {temp_file_name}", lable.DEBUG)
 
         # Calculate MD5
         file_md5 = calculate_md5(file_path)
@@ -1141,6 +1352,201 @@ class TemplateSyncer:
             "tempFileName": temp_file_name,
         }
 
+        self._save_sync_data()
+
+    def track_template(self):
+        \"\"\"Track a file for template synchronization\"\"\"
+        args = self.args if hasattr(self, "args") else None
+        if not args:
+            printIt("No arguments provided for track action", lable.ERROR)
+            return
+
+        theArgs = args.arguments
+        theArgs, optArgs = split_args(theArgs, ["track"])
+
+        if not theArgs:
+            printIt("No file specified for 'track' action", lable.ERROR)
+            return
+
+        for arg in theArgs:
+            # Check if arg is a file path that exists
+            if os.path.exists(arg):
+                # Handle as existing file path
+                rel_path = os.path.relpath(arg, self.project_root) if os.path.isabs(arg) else arg
+                if rel_path in self.sync_data:
+                    printIt(f"File already tracked: {rel_path}", lable.WARN)
+                    continue
+
+                # Remove from doNotTrack list if it exists there
+                if "doNotTrack" in self.sync_data and rel_path in self.sync_data["doNotTrack"]:
+                    self.sync_data["doNotTrack"].remove(rel_path)
+                    printIt(f"Removed from doNotTrack list: {rel_path}", lable.INFO)
+
+                # Create template and add to tracking
+                success = self._make_template_from_file(arg)
+                if success:
+                    self.add_file_to_sync_data(arg)
+                    printIt(f"Successfully started tracking: {rel_path}", lable.INFO)
+                else:
+                    printIt(f"Failed to create template for: {rel_path}", lable.ERROR)
+            else:
+                # Handle as keyword - find associated files
+                associated_files = self._find_files_by_keyword(arg)
+
+                if not associated_files:
+                    printIt(
+                        f"No files found associated with keyword '{arg}' and file '{arg}' does not exist", lable.WARN
+                    )
+                    continue
+
+                printIt(f"Found {len(associated_files)} files associated with '{arg}':", lable.INFO)
+
+                # Show files that would be tracked and ask for confirmation
+                for file_path in associated_files:
+                    rel_path = os.path.relpath(file_path, self.project_root)
+                    printIt(f"  {cStr(rel_path, color.CYAN)}", lable.INFO)
+
+                # Ask for confirmation to track and make templates
+                try:
+                    response = (
+                        input(f"\\nTrack all {len(associated_files)} files and create templates? (y/N): ")
+                        .strip()
+                        .lower()
+                    )
+                    if not response or response[0] != "y":
+                        printIt(f"Cancelled tracking files for '{arg}'", lable.WARN)
+                        continue
+                except (KeyboardInterrupt, EOFError):
+                    printIt(f"\\nCancelled tracking files for '{arg}'", lable.WARN)
+                    continue
+
+                # Track all associated files
+                success_count = 0
+                for file_path in associated_files:
+                    rel_path = os.path.relpath(file_path, self.project_root)
+
+                    # Check if already tracked
+                    if rel_path in self.sync_data:
+                        printIt(f"File already tracked: {rel_path}", lable.WARN)
+                        continue
+
+                    # Create template and add to tracking
+                    success = self._make_template_from_file(file_path)
+                    if success:
+                        self.add_file_to_sync_data(file_path)
+                        printIt(f"Successfully started tracking: {rel_path}", lable.INFO)
+                        success_count += 1
+                    else:
+                        printIt(f"Failed to create template for: {rel_path}", lable.ERROR)
+
+                if success_count > 0:
+                    printIt(
+                        f"Successfully tracked {success_count}/{len(associated_files)} files for '{arg}'", lable.INFO
+                    )
+
+    def untrack_template(self):
+        \"\"\"Remove a file from template synchronization tracking\"\"\"
+        args = self.args if hasattr(self, "args") else None
+        if not args:
+            printIt("No arguments provided for untrack action", lable.ERROR)
+            return
+
+        theArgs = args.arguments
+        theArgs, optArgs = split_args(theArgs, ["untrack"])
+
+        if not theArgs:
+            printIt("No file specified for 'untrack' action", lable.ERROR)
+            return
+
+        for arg in theArgs:
+            # Convert to relative path for consistency
+            rel_path = os.path.relpath(arg, self.project_root) if os.path.isabs(arg) else arg
+
+            # Check if file is currently tracked
+            if rel_path not in self.sync_data:
+                # Check if it's in the doNotTrack list
+                if "doNotTrack" in self.sync_data and rel_path in self.sync_data["doNotTrack"]:
+                    self.sync_data["doNotTrack"].remove(rel_path)
+                    self._save_sync_data()
+                    printIt(f"Removed from doNotTrack list: {rel_path}", lable.INFO)
+                    continue
+
+                # Try to find by template name or partial match
+                found_key = None
+                for key in self.sync_data.keys():
+                    if key in ["fields", "doNotTrack"]:
+                        continue
+                    # Check if basename matches
+                    if os.path.basename(key) == os.path.basename(rel_path):
+                        found_key = key
+                        break
+                    # Check if it's a template name match
+                    if key.endswith(arg) or arg.endswith(os.path.basename(key)):
+                        found_key = key
+                        break
+
+                if not found_key:
+                    printIt(f"File not currently tracked or in doNotTrack list: {rel_path}", lable.WARN)
+                    continue
+                rel_path = found_key
+
+            # Remove from tracking
+            file_info = self.sync_data[rel_path]
+            del self.sync_data[rel_path]
+
+            # Also try to remove the template file if it exists
+            if "tempFileName" in file_info:
+                template_path = os.path.join(self.new_templates_dir, os.path.basename(file_info["tempFileName"]))
+                if os.path.exists(template_path):
+                    try:
+                        os.remove(template_path)
+                        printIt(f"Removed template file: {os.path.basename(template_path)}", lable.INFO)
+                    except Exception as e:
+                        printIt(f"Could not remove template file {template_path}: {e}", lable.WARN)
+
+            self._save_sync_data()
+            printIt(f"Successfully stopped tracking: {rel_path}", lable.INFO)
+
+    def notrack_file(self):
+        \"\"\"Add files to the doNotTrack list to exclude them from tracking consideration\"\"\"
+        args = self.args if hasattr(self, "args") else None
+        if not args:
+            printIt("No arguments provided for notrack action", lable.ERROR)
+            return
+
+        theArgs = args.arguments
+        theArgs, optArgs = split_args(theArgs, ["notrack"])
+
+        if not theArgs:
+            printIt("No file specified for 'notrack' action", lable.ERROR)
+            return
+
+        # Ensure doNotTrack list exists in sync_data
+        if "doNotTrack" not in self.sync_data:
+            self.sync_data["doNotTrack"] = []
+
+        for arg in theArgs:
+            # Convert to relative path for consistency
+            rel_path = os.path.relpath(arg, self.project_root) if os.path.isabs(arg) else arg
+
+            # Check if already in doNotTrack list
+            if rel_path in self.sync_data["doNotTrack"]:
+                printIt(f"File already in doNotTrack list: {rel_path}", lable.WARN)
+                continue
+
+            # Check if currently tracked - if so, warn user
+            if rel_path in self.sync_data:
+                printIt(
+                    f"Warning: File '{rel_path}' is currently being tracked. Use 'untrack' first if you want to stop tracking it.",
+                    lable.WARN,
+                )
+                continue
+
+            # Add to doNotTrack list
+            self.sync_data["doNotTrack"].append(rel_path)
+            printIt(f"Added to doNotTrack list: {rel_path}", lable.INFO)
+
+        # Save the updated sync data
         self._save_sync_data()
 
     def _get_all_files_in_directory(self, directory: str) -> List[str]:
@@ -1155,15 +1561,7 @@ class TemplateSyncer:
     def transfer_templates(self):
         \"\"\"Transfer templates from newTemplates to origialTemplatePath directory\"\"\"
         newtemplates_files = []
-        if os.path.exists(self.origialTemplatePath):
-            resopone = input(f"Are you sure you want to clobber {self.origialTemplatePath}? (y/N): ")
-            if resopone.lower() != "y":
-                printIt("Transfer cancelled by user", lable.WARN)
-                return
-            elif os.path.exists(self.new_templates_dir):
-                # remove origialTemplatePath directory
-                shutil.rmtree(self.origialTemplatePath)
-        else:
+        if not os.path.exists(self.origialTemplatePath):
             # does origialTemplatePath parent directory exist
             if not os.path.exists(os.path.dirname(self.origialTemplatePath)):
                 printIt(
@@ -1179,17 +1577,30 @@ class TemplateSyncer:
             return
 
         printIt(
-            f"Transferring templates from {self.new_templates_dir} to {self.origialTemplatePath}",
+            f"{len(newtemplates_files)} templates ready for transfer\\n    from: {self.new_templates_dir}\\n      to: {self.origialTemplatePath}",
             lable.INFO,
         )
 
-        # get list of all files in self.new_templates_dir
-        if not os.path.exists(self.new_templates_dir):
-            printIt(
-                f"New templates directory does not exist: {self.new_templates_dir}",
-                lable.ERROR,
-            )
+        inputStr = input("\\nProceed with transfer? (y/n/List): ")
+        if len(inputStr) == 0:
+            inputStr = "l"
+        if inputStr.lower()[0] == "n":
+            printIt("Transfer cancelled by user", lable.WARN)
             return
+        elif len(inputStr) == 0 or inputStr.lower()[0] == "l":
+            printIt("\\nTemplates to be transferred:", lable.INFO)
+            # Show all templates first
+            for source_file_name in newtemplates_files:
+                file_name = os.path.basename(source_file_name)
+                printIt(f"  {cStr(file_name, color.YELLOW)}", lable.INFO)
+
+            # Then ask for confirmation once
+            inputStr = input("\\nProceed with transfer? (Y/n): ")
+            if len(inputStr) == 0:
+                inputStr = "y"
+            if inputStr.lower()[0] != "y":
+                printIt("Transfer cancelled by user", lable.WARN)
+                return
 
         # Copy all files from newTemplates to origialTemplatePath
         for source_file_name in newtemplates_files:
@@ -1198,22 +1609,243 @@ class TemplateSyncer:
             target_file_name = os.path.join(self.origialTemplatePath, rel_path)
             try:
                 target_dir = os.path.dirname(target_file_name)
-                os.makedirs(target_dir, exist_ok=True)
-                # printIt(
-                #     f"Transfer:\\n{new_file_name}\\n{target_file_name}",
-                #     f"\\nTransferred: {os.path.exists(new_file_name)}, {os.path.exists(target_file_name)}",
-                #     lable.DEBUG,
-                # )
-                shutil.copy2(source_file_name, target_file_name)
-                printIt(cStr(os.path.basename(target_file_name), color.YELLOW), lable.SAVED)
+                if not os.path.exists(target_dir):
+                    printIt(f"No target directory found: {target_dir}", lable.WARN)
+                    printIt(f"Skipping template transfer for {source_file_name} ", lable.INFO)
+                else:
+                    shutil.copy2(source_file_name, target_file_name)
+                    printIt(cStr(os.path.basename(target_file_name), color.YELLOW), lable.SAVED)
             except Exception as e:
                 printIt(
                     f"Error transferring template to {target_file_name}: {e}",
                     lable.ERROR,
                 )
 
-    def listNew_templates(self):
-        \"\"\"List all templates in the newTemplates directory\"\"\"
+    def list_tracked_files(self, directory_filter: Optional[str] = None):
+        \"\"\"List all tracked files in a formatted style\"\"\"
+        if not self.sync_data:
+            printIt("No sync data available", lable.ERROR)
+            return
+
+        tracked_files = []
+        for file_path, file_info in self.sync_data.items():
+            if file_path in ["fields", "doNotTrack"] or not isinstance(file_info, dict):
+                continue
+
+            # Convert absolute paths to relative
+            if file_path.startswith("/"):
+                rel_path = os.path.relpath(file_path, self.project_root)
+            else:
+                rel_path = file_path
+
+            # Apply directory filter if specified
+            if directory_filter:
+                # Normalize paths for comparison
+                rel_dir = os.path.dirname(rel_path)
+
+                # Check if the file's directory matches the filter
+                filter_match = False
+
+                # Root level files when filter is ".", "", or "root"
+                if directory_filter in [".", "", "root"]:
+                    if rel_dir == "":
+                        filter_match = True
+                # Exact directory match
+                elif rel_dir == directory_filter:
+                    filter_match = True
+                # Starts with filter (for subdirectories) - more precise check
+                elif directory_filter != "." and (
+                    rel_dir.startswith(directory_filter + "/") or rel_dir.startswith(directory_filter + "\\\\")
+                ):
+                    filter_match = True
+                # Check if just the directory basename matches (e.g., "templates" matches "src/commands/templates")
+                elif directory_filter != "." and os.path.basename(rel_dir) == directory_filter:
+                    filter_match = True
+
+                if not filter_match:
+                    continue
+
+            # Get file stats if file exists
+            abs_path = file_path if os.path.isabs(file_path) else os.path.join(self.project_root, file_path)
+            if os.path.exists(abs_path):
+                try:
+                    import datetime
+
+                    mod_time = os.path.getmtime(abs_path)
+                    mod_time_str = datetime.datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M")
+                    tracked_files.append((rel_path, mod_time_str))
+                except Exception:
+                    tracked_files.append((rel_path, "unknown date"))
+            else:
+                tracked_files.append((rel_path, "MISSING"))
+
+        tracked_files.sort()
+
+        # Header with 80 col color formatting
+        if directory_filter:
+            theLable = cStr(f"Tracked Files in {directory_filter}", color.GREEN)
+        else:
+            theLable = cStr("Tracked Files", color.GREEN)
+        printIt(f"{'-' * 10} {theLable} {'-' * (80-9-len(theLable))}", lable.INFO)
+
+        if not tracked_files and directory_filter:
+            printIt(f"  No tracked files found matching filter: {directory_filter}", lable.WARN)
+            return
+
+        for file_path, mod_time_str in tracked_files:
+            printIt(f"  {cStr(file_path, color.GREEN):60} {mod_time_str}", lable.INFO)
+
+        filter_text = f" (filtered by {directory_filter})" if directory_filter else ""
+        print(f"     Total tracked files{filter_text}: {len(tracked_files)}")
+
+    def list_untracked_files(self, directory_filter: Optional[str] = None):
+        \"\"\"List files that could be tracked but aren't in formatted style\"\"\"
+        untracked_files = self._discover_untracked_files(verbose=False)
+
+        if not untracked_files:
+            printIt("No untracked files found", lable.INFO)
+            return
+
+        # Prepare file data with modification times
+        file_data = []
+        for file_path in untracked_files:
+            rel_path = os.path.relpath(file_path, self.project_root)
+
+            # Apply directory filter if specified
+            if directory_filter:
+                # Normalize paths for comparison
+                rel_dir = os.path.dirname(rel_path)
+
+                # Check if the file's directory matches the filter
+                filter_match = False
+
+                # Root level files when filter is ".", "", or "root"
+                if directory_filter in [".", "", "root"]:
+                    if rel_dir == "":
+                        filter_match = True
+                # Exact directory match
+                elif rel_dir == directory_filter:
+                    filter_match = True
+                # Starts with filter (for subdirectories) - more precise check
+                elif directory_filter != "." and (
+                    rel_dir.startswith(directory_filter + "/") or rel_dir.startswith(directory_filter + "\\\\")
+                ):
+                    filter_match = True
+                # Check if just the directory basename matches (e.g., "templates" matches "src/commands/templates")
+                elif directory_filter != "." and os.path.basename(rel_dir) == directory_filter:
+                    filter_match = True
+
+                if not filter_match:
+                    continue
+
+            try:
+                import datetime
+
+                mod_time = os.path.getmtime(file_path)
+                mod_time_str = datetime.datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M")
+                file_data.append((rel_path, mod_time_str))
+            except Exception:
+                file_data.append((rel_path, "unknown date"))
+
+        file_data.sort()
+
+        # Header with 80 col color formatting
+
+        if directory_filter:
+            theLable = cStr(f"Untracked Files in {directory_filter}", color.CYAN)
+        else:
+            theLable = cStr("Untracked Files", color.CYAN)
+        printIt(f"{'-' * 10} {theLable} {'-' * (80-9-len(theLable))}", lable.INFO)
+
+        if not file_data and directory_filter:
+            printIt(f"  No untracked files found matching filter: {directory_filter}", lable.WARN)
+            return
+
+        for file_path, mod_time_str in file_data:
+            printIt(f"  {cStr(file_path, color.CYAN):60} {mod_time_str}", lable.INFO)
+
+        filter_text = f" (filtered by {directory_filter})" if directory_filter else ""
+        print(f"     Total untracked files{filter_text}: {len(file_data)}")
+
+    def list_not_tracked_files(self, directory_filter: Optional[str] = None):
+        \"\"\"List files in the doNotTrack list in formatted style\"\"\"
+        do_not_track = self.sync_data.get("doNotTrack", [])
+
+        if not do_not_track:
+            printIt("No files in doNotTrack list", lable.INFO)
+            return
+
+        # Prepare file data with modification times if files exist
+        file_data = []
+        for file_pattern in do_not_track:
+            # Convert pattern to relative path for filtering
+            if file_pattern.startswith("/"):
+                rel_pattern = os.path.relpath(file_pattern, self.project_root)
+            else:
+                rel_pattern = file_pattern
+
+            # Apply directory filter if specified
+            if directory_filter:
+                # Normalize paths for comparison
+                rel_dir = os.path.dirname(rel_pattern)
+
+                # Check if the file's directory matches the filter
+                filter_match = False
+
+                # Root level files when filter is ".", "", or "root"
+                if directory_filter in [".", "", "root"]:
+                    if rel_dir == "":
+                        filter_match = True
+                # Exact directory match
+                elif rel_dir == directory_filter:
+                    filter_match = True
+                # Starts with filter (for subdirectories) - more precise check
+                elif directory_filter != "." and (
+                    rel_dir.startswith(directory_filter + "/") or rel_dir.startswith(directory_filter + "\\\\")
+                ):
+                    filter_match = True
+                # Check if just the directory basename matches (e.g., "templates" matches "src/commands/templates")
+                elif directory_filter != "." and os.path.basename(rel_dir) == directory_filter:
+                    filter_match = True
+
+                if not filter_match:
+                    continue
+
+            # Try to get file stats if it's a real file
+            abs_path = file_pattern if os.path.isabs(file_pattern) else os.path.join(self.project_root, file_pattern)
+            if os.path.exists(abs_path):
+                try:
+                    import datetime
+
+                    mod_time = os.path.getmtime(abs_path)
+                    mod_time_str = datetime.datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M")
+                    file_data.append((rel_pattern, mod_time_str))
+                except Exception:
+                    file_data.append((rel_pattern, "unknown date"))
+            else:
+                file_data.append((rel_pattern, "pattern/missing"))
+
+        file_data.sort()
+
+        # Header with 80 col color formatting
+        if directory_filter:
+            theLable = cStr(f"Do Not Track Files in {directory_filter}", color.YELLOW)
+        else:
+            theLable = cStr("Do Not Track Files", color.YELLOW)
+        printIt(f"{'-' * 10} {theLable} {'-' * (80-9-len(theLable))}", lable.INFO)
+
+        if not file_data and directory_filter:
+            printIt(f"  No doNotTrack files found matching filter: {directory_filter}", lable.WARN)
+            return
+
+        for file_pattern, mod_time_str in file_data:
+            printIt(f"  {cStr(file_pattern, color.YELLOW):60} {mod_time_str}", lable.INFO)
+
+        filter_text = f" (filtered by {directory_filter})" if directory_filter else ""
+        print(f"     Total doNotTrack entries{filter_text}: {len(file_data)}")
+
+    def list_new_files(self, directory_filter: Optional[str] = None):
+        \"\"\"List all templates in the newTemplates directory, optionally filtered by directory path\"\"\"
         if not os.path.exists(self.new_templates_dir):
             printIt(
                 f"New templates directory not found: {self.new_templates_dir}",
@@ -1221,14 +1853,80 @@ class TemplateSyncer:
             )
             return
 
-        printIt("\\nTemplates in newTemplates directory:", lable.INFO)
-        printIt("-" * 80, lable.INFO)
+        # Determine what we're listing
+        if directory_filter:
+            theLable = cStr(f"Templates in newTemplates/{directory_filter}", color.GREEN)
+        else:
+            theLable = cStr("Templates in newTemplates directory", color.GREEN)
 
+        printIt(f"{'-' * 10} {theLable} {'-' * (80-9-len(theLable))}", lable.INFO)
+
+        template_count = 0
         for root, dirs, files in os.walk(self.new_templates_dir):
             for file in files:
                 template_path = os.path.join(root, file)
                 rel_path = os.path.relpath(template_path, self.new_templates_dir)
-                printIt(f"{rel_path}", lable.INFO)
+
+                # Apply directory filter if specified
+                if directory_filter:
+                    # Normalize paths for comparison
+                    rel_dir = os.path.dirname(rel_path)
+
+                    # Check if the file's directory matches the filter
+                    filter_match = False
+
+                    # Root level files when filter is ".", "", or "root"
+                    if directory_filter in [".", "", "root"]:
+                        if rel_dir == "":
+                            filter_match = True
+                    # Exact directory match
+                    elif rel_dir == directory_filter:
+                        filter_match = True
+                    # Starts with filter (for subdirectories) - more precise check
+                    elif directory_filter != "." and (
+                        rel_dir.startswith(directory_filter + "/") or rel_dir.startswith(directory_filter + "\\\\")
+                    ):
+                        filter_match = True
+                    # Check if just the directory basename matches (e.g., "templates" matches "src/commands/templates")
+                    elif directory_filter != "." and os.path.basename(rel_dir) == directory_filter:
+                        filter_match = True
+
+                    if not filter_match:
+                        continue
+
+                # Show file size and modification time
+                try:
+                    stat_info = os.stat(template_path)
+                    file_size = stat_info.st_size
+                    mod_time = os.path.getmtime(template_path)
+                    import datetime
+
+                    mod_time_str = datetime.datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M")
+
+                    # Remove redundant directory portion from display when filtering
+                    display_path = rel_path
+                    if directory_filter and directory_filter not in [".", "", "root"]:
+                        # If the path starts with the filter, remove that portion
+                        if rel_path.startswith(directory_filter + "/") or rel_path.startswith(directory_filter + "\\\\"):
+                            display_path = rel_path[len(directory_filter) + 1 :]  # +1 to remove the slash
+                        # If it's an exact directory match, show just the filename
+                        elif os.path.dirname(rel_path) == directory_filter:
+                            display_path = os.path.basename(rel_path)
+
+                    printIt(f"  {cStr(display_path, color.GREEN):60} {mod_time_str}", lable.INFO)
+                    template_count += 1
+                except Exception as e:
+                    printIt(f"  {cStr(rel_path, color.YELLOW):50} (error reading file info)", lable.INFO)
+                    template_count += 1
+
+        if template_count == 0:
+            if directory_filter:
+                printIt(f"  No templates found matching filter: {directory_filter}", lable.WARN)
+            else:
+                printIt("  No templates found", lable.WARN)
+        else:
+            filter_text = f" (filtered by {directory_filter})" if directory_filter else ""
+            print(f"     Total templates{filter_text}: {template_count}")
 
 
 class tmplMgtCommand:
@@ -1242,8 +1940,6 @@ class tmplMgtCommand:
         self.theArgs: list[str] = self.args.arguments
 
         self.module = sys.modules[__name__]
-
-        # printIt(f"Command flags from .${packName}rc: {cmd_flags}", lable.DEBUG)
 
     def execute(self):
         \"\"\"Main execution method for tmplMgt command\"\"\"
@@ -1259,9 +1955,38 @@ class tmplMgtCommand:
             anArg = theArgs[argIndex]
             method_name = str(anArg)
             if hasattr(self.module, method_name):
+                # Store original arguments length to detect if arguments were consumed
+                original_args = theArgs[:]
+
                 # Dynamically calls use handle_ prefix to map to methods.
                 getattr(self.module, method_name)(self.argParse)
-            argIndex += 1
+
+                # Handle special cases where functions consume multiple arguments
+                if method_name == "listFiles":
+                    # listFiles consumes up to 2 additional arguments (type and optional directory filter)
+                    # Skip to after all consumed arguments
+                    remaining_args = len(theArgs) - argIndex - 1  # How many args are left after current
+                    if remaining_args >= 2:
+                        # Both type and directory filter provided
+                        argIndex += 3  # Skip listFiles, type, and directory_filter
+                    elif remaining_args >= 1:
+                        # Only type provided
+                        argIndex += 2  # Skip listFiles and type
+                    else:
+                        # No additional args
+                        argIndex += 1  # Skip just listFiles
+                elif method_name in ["untrack", "track", "notrack"]:
+                    # untrack, track, and notrack consume all remaining arguments as filenames
+                    # Skip to end of arguments since they process all remaining args
+                    argIndex = len(theArgs)
+                else:
+                    argIndex += 1
+            else:
+                # Invalid function name - provide helpful warning
+                valid_functions = ["status", "scanFiles", "listFiles", "sync", "trans", "track", "untrack", "notrack"]
+                printIt(f"Unknown tmplMgt function: '{method_name}'", lable.WARN)
+                printIt(f"Valid tmplMgt functions are: {', '.join(valid_functions)}", lable.INFO)
+                argIndex += 1
 
     def get_external_helpers(self):
         \"\"\"Gets and returns the names of all module-level functions.\"\"\"
@@ -1294,31 +2019,24 @@ def tmplMgt(argParse):
 
 
 def status(argParse):
-    \"\"\"Show status of all tracked files\"\"\"
-    syncer = TemplateSyncer(argParse)
-    syncer.show_status()
-
-
-def make(argParse):
+    \"\"\"Show status of all tracked files or files matching patterns\"\"\"
     syncer = TemplateSyncer(argParse)
 
     args = argParse.args
     theArgs = args.arguments
-    theArgs, optArgs = split_args(theArgs, ["make"])
+    theArgs, optArgs = split_args(theArgs, ["status"])
 
-    for i, arg in enumerate(theArgs):
-        if i + 1 < len(theArgs):
-            make_file = theArgs[i + 1]
-            # Skip the next argument since we consumed it
-            theArgs = theArgs[: i + 1] + theArgs[i + 2 :]
-            break
-    if theArgs:
-        for arg in theArgs:
-            sucess = syncer._make_template_from_file(arg)
-            if sucess:
-                syncer.add_file_to_sync_data(arg)
-    else:
-        printIt("No file specified for 'make' action", lable.ERROR)
+    file_patterns = []
+    for arg in theArgs:
+        file_patterns.append(arg)
+
+    if file_patterns:
+        printIt(
+            f"Showing status for files matching patterns: {', '.join(file_patterns)}",
+            lable.INFO,
+        )
+
+    syncer.show_status(file_patterns if file_patterns else None)
 
 
 def sync(argParse):
@@ -1342,13 +2060,77 @@ def sync(argParse):
     syncer.sync_all_files(file_patterns if file_patterns else None)
 
 
-def listNew(argParse):
+def listFiles(argParse):
+    \"\"\"Unified list command for different file categories\"\"\"
     syncer = TemplateSyncer(argParse)
-    syncer.listNew_templates()
+
+    args = argParse.args
+    theArgs = args.arguments
+    theArgs, optArgs = split_args(theArgs, ["listFiles"])
+
+    if len(theArgs) == 0:
+        # Default to showing help
+        printIt("Usage: ${packName} tmplMgt listFiles <type>", lable.INFO)
+        printIt("Available types:", lable.INFO)
+        printIt(f"  {cStr('tracked', color.GREEN)}   - Show all tracked files", lable.INFO)
+        printIt(f"  {cStr('untracked', color.CYAN)} - Show files that could be tracked but aren't", lable.INFO)
+        printIt(f"  {cStr('noTracked', color.YELLOW)} - Show files in doNotTrack list", lable.INFO)
+        printIt(f"  {cStr('new', color.GREEN)}       - Show generated template files", lable.INFO)
+        return
+
+    list_type = theArgs[0].lower()
+    directory_filter = theArgs[1] if len(theArgs) > 1 else None
+
+    if list_type in ["tracked", "tk", "trackedFiles", "tracked-files"]:
+        syncer.list_tracked_files(directory_filter)
+    elif list_type in ["untracked", "utk", "untrackedFiles", "untracked-files"]:
+        syncer.list_untracked_files(directory_filter)
+    elif list_type in ["notracked", "notk", "nottracked", "not-tracked"]:
+        syncer.list_not_tracked_files(directory_filter)
+    elif list_type in ["new", "newFiles", "new-files"]:
+        syncer.list_new_files(directory_filter)
+    else:
+        printIt(f"Unknown list type: {list_type}", lable.WARN)
+        printIt("Valid types: tracked, untracked, noTracked, new", lable.INFO)
 
 
 def trans(argParse):
     syncer = TemplateSyncer(argParse)
     syncer.transfer_templates()
+
+
+def scanFiles(argParse):
+    \"\"\"Show detailed file discovery report including exclusions\"\"\"
+    syncer = TemplateSyncer(argParse)
+
+    printIt(f"{cStr('File Discovery Scan Report', color.BLUE)}", lable.INFO)
+    printIt("=" * 80, lable.INFO)
+
+    # Run discovery in verbose mode
+    untracked_files = syncer._discover_untracked_files(verbose=True)
+
+    printIt(f"\\n{cStr('Summary:', color.GREEN)}", lable.INFO)
+    printIt(f"  Untracked files found: {len(untracked_files)}", lable.INFO)
+
+    if untracked_files:
+        printIt(f"\\n{cStr('Untracked Files:', color.CYAN)}", lable.INFO)
+        for file_path in untracked_files:
+            rel_path = os.path.relpath(file_path, syncer.project_root)
+            printIt(f"  {rel_path}", lable.INFO)
+
+
+def track(argParse):
+    syncer = TemplateSyncer(argParse)
+    syncer.track_template()
+
+
+def untrack(argParse):
+    syncer = TemplateSyncer(argParse)
+    syncer.untrack_template()
+
+
+def notrack(argParse):
+    syncer = TemplateSyncer(argParse)
+    syncer.notrack_file()
 """))
 

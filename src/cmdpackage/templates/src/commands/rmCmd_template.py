@@ -5,55 +5,30 @@ from string import Template
 
 rmCmd_template = Template(dedent("""import os, json, hashlib
 from ..defs.logIt import printIt, lable, cStr, color
-from ..classes.optSwitches import removeCmdswitchFlags
+from ..classes.optSwitches import removeCmdSwitchOptions
+from ..classes.CommandManager import command_manager
 from .commands import Commands
 
-commandJsonDict = {"commands_rmCmd": {"description": "Command commands_rmCmd", "switchFlags": {}}}
-
+commandJsonDict = {
+    "rmCmd": {
+        "description": "Remove <cmdName> and delete file cmdName.py, or remove an argument for a command.",
+        "option_switches": {"d": "Silently rm the command"},
+        "option_strings": {},
+        "arguments": {
+            "cmdName": "Name of command to remove, cmdName.py and other commands listed as argument(s) will be delated.",
+            "argName": "Optional names of argument to remove.",
+        },
+    }
+}
 cmdObj = Commands()
 commands = cmdObj.commands
-theDir = os.path.dirname(os.path.realpath(__file__))
-jsonFileName = os.path.join(theDir, "commands.json")
-
-
-def update_sync_data_md5(file_path):
-    \"\"\"Update the MD5 hash for a file in genTempSyncData.json\"\"\"
-    try:
-        # Get the project root (go up from commands dir to ${packName} dir, then to project root)
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(theDir)))
-        sync_data_file = os.path.join(project_root, "genTempSyncData.json")
-
-        if not os.path.exists(sync_data_file):
-            # If genTempSyncData.json doesn't exist, no need to update
-            return
-
-        # Calculate new MD5 hash
-        with open(file_path, "rb") as f:
-            file_hash = hashlib.md5(f.read()).hexdigest()
-
-        # Load sync data
-        with open(sync_data_file, "r") as f:
-            sync_data = json.load(f)
-
-        # Update MD5 for the file if it's tracked
-        abs_file_path = os.path.abspath(file_path)
-        if abs_file_path in sync_data:
-            sync_data[abs_file_path]["fileMD5"] = file_hash
-
-            # Save updated sync data
-            with open(sync_data_file, "w") as f:
-                json.dump(sync_data, f, indent=4)
-
-            printIt(
-                f"Updated MD5 hash for {os.path.basename(file_path)} in sync data",
-                lable.INFO,
-            )
-
-    except Exception as e:
-        printIt(f"Warning: Could not update sync data MD5: {e}", lable.WARN)
 
 
 def rmCmd(argParse):
+    # Check for +d flag (silent mode) using unconventional persistence storage model
+    # -d = silence OFF (prompts), +d = silence ON (no prompts)
+    use_silent_mode = hasattr(argParse, "cmd_options") and argParse.cmd_options.get("d", False)
+
     # Reload commands to get current state
     cmdObj = Commands()
     commands = cmdObj.commands
@@ -67,15 +42,69 @@ def rmCmd(argParse):
 
     cmdName = theArgs[0]
 
-    # If only one argument provided, remove the entire command
+    # CRITICAL BUG FIX: Check if we have cmd_options that represent flags to remove
+    # When user runs "${packName} rmCmd tmplMgt --desc", the --desc gets parsed as cmd_options
+    # rather than being passed as an argument, so we need to handle both cases
+    flags_to_remove = []
+    if hasattr(argParse, "cmd_options") and argParse.cmd_options:
+        for flag_name, flag_value in argParse.cmd_options.items():
+            # Skip the 'd' flag which is for rmCmd itself (silent mode)
+            if flag_name != "d":
+                flags_to_remove.append(flag_name)
+
+    # If we have flags to remove, treat this as "remove specific flags" not "remove entire command"
+    if flags_to_remove:
+        if cmdName not in commands:
+            printIt(f'"{cmdName}" is not currently a Command.', lable.WARN)
+            return
+
+        # Process each flag that was specified for removal
+        for flagName in flags_to_remove:
+            cmd_data = commands[cmdName]
+            is_option_switch = "option_switches" in cmd_data and flagName in cmd_data["option_switches"]
+            is_option_string = "option_strings" in cmd_data and flagName in cmd_data["option_strings"]
+            is_old_switch = "switchFlags" in cmd_data and flagName in cmd_data["switchFlags"]
+
+            if is_option_switch or is_option_string or is_old_switch:
+                if use_silent_mode:
+                    chkRm = "y"  # Auto-confirm in silent mode
+                else:
+                    chkRm: str = input(f"Permanently delete swtc flag '--{flagName}' from {cmdName} (y/N): \\n")
+                    if chkRm == "":
+                        chkRm = "N"
+
+                if chkRm[0].lower() == "y":
+                    removeCmdSwtcFlag(cmdName, flagName)
+                    printIt(
+                        f'Swtc flag "--{flagName}" removed from command "{cmdName}"',
+                        lable.RmArg,
+                    )
+                else:
+                    printIt(
+                        f'Swtc flag "--{flagName}" not removed from command "{cmdName}"',
+                        lable.INFO,
+                    )
+            else:
+                printIt(
+                    f'Swtc flag "--{flagName}" is not defined for command "{cmdName}"',
+                    lable.WARN,
+                )
+        return
+
+    # If only one argument provided and no flags to remove, remove the entire command
     if len(theArgs) == 1:
         if cmdName in commands:
             if cmdName in ["newCmd", "modCmd", "rmCmd"]:
                 printIt(f'Permission denied for "{cmdName}".', lable.WARN)
                 return
-            chkRm: str = input(f"Permanently delete {cmdName} (y/N):\\n")
-            if chkRm == "":
-                chkRm = "N"
+
+            if use_silent_mode:
+                chkRm = "y"  # Auto-confirm in silent mode
+            else:
+                chkRm: str = input(f"Permanently delete {cmdName} (y/N): \\n")
+                if chkRm == "":
+                    chkRm = "N"
+
             if chkRm[0].lower() == "y":
                 removeCmd(cmdName)
                 printIt(cmdName, lable.RmCmd)
@@ -92,31 +121,24 @@ def rmCmd(argParse):
         for argIndex in range(1, len(theArgs)):
             anArg = theArgs[argIndex]
 
-            # Check if anArg is a swtc flag name (check if it exists in switchFlags)
-            if "switchFlags" in commands[cmdName] and anArg in commands[cmdName]["switchFlags"]:
-                # Handle swtc flag removal by flag name (without -)
-                chkRm: str = input(f"Permanently delete swtc flag '-{anArg}' from {cmdName} (y/N):\\n")
-                if chkRm == "":
-                    chkRm = "N"
-                if chkRm[0].lower() == "y":
-                    removeCmdSwtcFlag(cmdName, anArg)
-                    printIt(
-                        f'Swtc flag "-{anArg}" removed from command "{cmdName}"',
-                        lable.RmArg,
-                    )
-                else:
-                    printIt(
-                        f'Swtc flag "-{anArg}" not removed from command "{cmdName}"',
-                        lable.INFO,
-                    )
-            # Check if anArg is a swtc flag (starts with -) - legacy support
-            elif anArg.startswith("-"):
-                # Handle swtc flag removal with dash prefix
-                flagName = anArg.lstrip("-")  # Remove - or -- prefix
-                if "switchFlags" in commands[cmdName] and flagName in commands[cmdName]["switchFlags"]:
-                    chkRm: str = input(f"Permanently delete swtc flag {anArg} from {cmdName} (y/N):\\n")
-                    if chkRm == "":
-                        chkRm = "N"
+            # CRITICAL BUG FIX: Check for flag prefixes FIRST to prevent accidental command deletion
+            # Priority 1: Check if anArg is a flag with prefix (-, --, +, ++)
+            if anArg.startswith(("-", "+")):
+                # Handle swtc flag removal with prefix
+                flagName = anArg.lstrip("-+")  # Remove -, --, +, ++ prefix
+                cmd_data = commands[cmdName]
+                is_option_switch = "option_switches" in cmd_data and flagName in cmd_data["option_switches"]
+                is_option_string = "option_strings" in cmd_data and flagName in cmd_data["option_strings"]
+                is_old_switch = "switchFlags" in cmd_data and flagName in cmd_data["switchFlags"]
+
+                if is_option_switch or is_option_string or is_old_switch:
+                    if use_silent_mode:
+                        chkRm = "y"  # Auto-confirm in silent mode
+                    else:
+                        chkRm: str = input(f"Permanently delete swtc flag {anArg} from {cmdName} (y/N): \\n")
+                        if chkRm == "":
+                            chkRm = "N"
+
                     if chkRm[0].lower() == "y":
                         removeCmdSwtcFlag(cmdName, flagName)
                         printIt(
@@ -133,90 +155,79 @@ def rmCmd(argParse):
                         f'Swtc flag "{anArg}" is not defined for command "{cmdName}"',
                         lable.WARN,
                     )
-            elif anArg in commands[cmdName]:
-                chkRm: str = input(f"Permanently delete argument {anArg} (y/N):\\n")
-                if chkRm == "":
-                    chkRm = "N"
-                if chkRm[0].lower() == "y":
-                    removeCmdArg(cmdName, anArg)
-                    printIt(anArg, lable.RmArg)
+            else:
+                # Priority 2: Check if anArg is a flag name without prefix (legacy support)
+                cmd_data = commands[cmdName]
+                is_option_switch = "option_switches" in cmd_data and anArg in cmd_data["option_switches"]
+                is_option_string = "option_strings" in cmd_data and anArg in cmd_data["option_strings"]
+                is_old_switch = "switchFlags" in cmd_data and anArg in cmd_data["switchFlags"]
+
+                if is_option_switch or is_option_string or is_old_switch:
+                    # Handle swtc flag removal by flag name (without prefix)
+                    if use_silent_mode:
+                        chkRm = "y"  # Auto-confirm in silent mode
+                    else:
+                        chkRm: str = input(f"Permanently delete swtc flag '-{anArg}' from {cmdName} (y/N):\\n")
+                        if chkRm == "":
+                            chkRm = "N"
+
+                    if chkRm[0].lower() == "y":
+                        removeCmdSwtcFlag(cmdName, anArg)
+                        printIt(
+                            f'Swtc flag "-{anArg}" removed from command "{cmdName}"',
+                            lable.RmArg,
+                        )
+                    else:
+                        printIt(
+                            f'Swtc flag "-{anArg}" not removed from command "{cmdName}"',
+                            lable.INFO,
+                        )
+                # Priority 3: Check if anArg is a regular argument
+                elif "arguments" in commands[cmdName] and anArg in commands[cmdName]["arguments"]:
+                    if use_silent_mode:
+                        chkRm = "y"  # Auto-confirm in silent mode
+                    else:
+                        chkRm: str = input(f"Permanently delete argument {anArg} (y/N): \\n")
+                        if chkRm == "":
+                            chkRm = "N"
+
+                    if chkRm[0].lower() == "y":
+                        removeCmdArg(cmdName, anArg)
+                        printIt(anArg, lable.RmArg)
+                    else:
+                        printIt(
+                            f'Argument "{anArg}" not removed from command "{cmdName}".',
+                            lable.INFO,
+                        )
                 else:
                     printIt(
-                        f'Argument "{anArg}" not removed from command "{cmdName}".',
-                        lable.INFO,
+                        f'"{anArg}" is not an argument or swtc flag for command "{cmdName}".',
+                        lable.WARN,
                     )
-            else:
-                printIt(
-                    f'"{anArg}" is not an argument or swtc flag for command "{cmdName}".',
-                    lable.WARN,
-                )
 
 
 def removeCmdArg(cmdName, argName):
-    global jsonFileName
-    with open(jsonFileName, "r") as rf:
-        theJson = json.load(rf)
-        del theJson[cmdName][argName]
-    with open(jsonFileName, "w") as wf:
-        json.dump(theJson, wf, indent=2)
-
-    # Update MD5 hash in genTempSyncData.json if it exists
-    update_sync_data_md5(jsonFileName)
+    \"\"\"Remove an argument from a command using CommandManager\"\"\"
+    # Use CommandManager to remove the argument
+    if not command_manager.remove_argument(cmdName, argName):
+        printIt(f"Argument '{argName}' not found in command '{cmdName}'", lable.WARN)
+        return
 
     # Remove the function from the source file
     removeFunctionFromSourceFile(cmdName, argName)
 
     # Update source file's commandJsonDict
-    updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
+    cmd_data = command_manager.get_command_data(cmdName)
+    updateSourceFileAfterRemoval(cmdName, cmd_data)
 
 
-def removeCmdSwtcFlag(cmdName, flagName):
-    \"\"\"Remove a swtc flag from commands.json, .${packName}rc, and source file\"\"\"
-    global jsonFileName
-    with open(jsonFileName, "r") as rf:
-        theJson = json.load(rf)
-        if "switchFlags" in theJson[cmdName] and flagName in theJson[cmdName]["switchFlags"]:
-            del theJson[cmdName]["switchFlags"][flagName]
-            # If switchFlags becomes empty, we can leave it empty
-            if not theJson[cmdName]["switchFlags"]:
-                theJson[cmdName]["switchFlags"] = {}
-    with open(jsonFileName, "w") as wf:
-        json.dump(theJson, wf, indent=2)
-
-    # Update MD5 hash in genTempSyncData.json if it exists
-    update_sync_data_md5(jsonFileName)
-
-    # Remove flag from .${packName}rc file
-    ${packName}rc_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(jsonFileName))), ".${packName}rc")
-
-    if os.path.exists(${packName}rc_file):
-        try:
-            with open(${packName}rc_file, "r") as pf:
-                ${packName}rc_data = json.load(pf)
-
-            # Remove the flag from commandFlags if it exists
-            if (
-                "commandFlags" in ${packName}rc_data
-                and cmdName in ${packName}rc_data["commandFlags"]
-                and flagName in ${packName}rc_data["commandFlags"][cmdName]
-            ):
-
-                del ${packName}rc_data["commandFlags"][cmdName][flagName]
-
-                # If command has no more flags, remove the command entry
-                if not ${packName}rc_data["commandFlags"][cmdName]:
-                    del ${packName}rc_data["commandFlags"][cmdName]
-
-                with open(${packName}rc_file, "w") as pf:
-                    json.dump(${packName}rc_data, pf, indent=2)
-
-                printIt(f"Removed flag '{flagName}' from .${packName}rc", lable.INFO)
-
-        except (json.JSONDecodeError, KeyError) as e:
-            printIt(f"Warning: Could not update .${packName}rc file: {e}", lable.WARN)
+def removeCmdSwtcFlag(cmdName: str, flagName: str) -> None:
+    \"\"\"Remove a switch flag from a command.\"\"\"
+    command_manager.remove_flag_from_all_locations(cmdName, flagName)
 
     # Update source file's commandJsonDict
-    updateSourceFileAfterRemoval(cmdName, theJson[cmdName])
+    cmd_data = command_manager.get_command_data(cmdName)
+    updateSourceFileAfterRemoval(cmdName, cmd_data)
 
 
 def updateSourceFileAfterRemoval(cmdName: str, cmdDict: dict) -> None:
@@ -343,22 +354,16 @@ def removeFunctionFromSourceFile(cmdName: str, argName: str) -> None:
 
 
 def removeCmd(cmdName):
-    global jsonFileName
-    with open(jsonFileName, "r") as rf:
-        theJson = json.load(rf)
-        del theJson[cmdName]
-    with open(jsonFileName, "w") as wf:
-        json.dump(theJson, wf, indent=2)
+    \"\"\"Remove a command completely.\"\"\"
+    command_manager.remove_command(cmdName)
 
-    # Update MD5 hash in genTempSyncData.json if it exists
-    update_sync_data_md5(jsonFileName)
-
+    # Remove the Python file
     pyFileName = f"{cmdName}.py"
-    pyFileName = os.path.join(theDir, pyFileName)
+    pyFileName = os.path.join(os.path.dirname(__file__), pyFileName)
     if os.path.isfile(pyFileName):
         os.remove(pyFileName)
 
-    # Remove command flags from .${packName}rc
-    removeCmdswitchFlags(cmdName)
+    # Remove command flags from .${packName}rc and .cmdrc
+    removeCmdSwitchOptions(cmdName)
 """))
 
